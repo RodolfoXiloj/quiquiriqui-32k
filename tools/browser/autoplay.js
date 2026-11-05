@@ -18,7 +18,7 @@ import { game, settings, formatClock, xpToNext } from '/state.js';
 import { hen, damageHen, syncHenStats } from '/hen.js';
 import { holdKey } from '/input.js';
 import { toIsoX, toIsoY } from '/iso.js';
-import { enemies, spawnEnemy, countEnemies, RAT, FOX } from '/enemies.js';
+import { enemies, spawnEnemy, countEnemies, ENEMY_TYPES } from '/enemies.js';
 import { corn } from '/corn.js';
 import { ITEMS, ITEM_BY_ID, build, buildOrder, applyCard } from '/items.js';
 import { bakeHen, outfitOf } from '/sprites.js';
@@ -94,9 +94,20 @@ window.__qq = {
     damage(amount) {
       damageHen(amount, hen.x + 1, hen.y);
     },
-    /** Spawns `n` predators ('rat' or 'fox') just off-screen. */
+    /** Spawns `n` predators of a kind ('rat', 'fox', 'snake', 'crow', 'badger') just off-screen. */
     spawn(kind = 'rat', n = 1) {
-      for (let i = 0; i < n; i++) spawnEnemy(kind === 'fox' ? FOX : RAT);
+      const index = Math.max(0, ENEMY_TYPES.findIndex((type) => type.name === kind));
+      for (let i = 0; i < n; i++) spawnEnemy(index);
+    },
+    /** Spawns one predator of each kind in a row in front of the hen, standing still. */
+    lineup() {
+      ENEMY_TYPES.forEach((type, i) => {
+        const e = spawnEnemy(i, hen.x + 2 + i * 1.2, hen.y - 2 - i * 1.2);
+        if (e) {
+          e.speed = 0;
+          e.hp = e.maxHp = 1e9;
+        }
+      });
     },
     setTime(seconds) {
       game.time = seconds;

@@ -46,7 +46,7 @@ import {
 } from '../src/render.js';
 import { WIDTH, HEIGHT } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
-import { RAT, FOX, MAX_ENEMIES, spawnEnemy, hitEnemy, screenOffset, countEnemies } from '../src/enemies.js';
+import { RAT, FOX, SNAKE, CROW, BADGER, ENEMY_TYPES, MAX_ENEMIES, spawnEnemy, hitEnemy, screenOffset, countEnemies } from '../src/enemies.js';
 import { spawnCorn } from '../src/corn.js';
 import { ITEMS, ITEM_BY_ID, MAX_ITEM_LEVEL, SLOTS, build, buildOrder, applyCard, rollCards, cardText, stats, weaponDamage } from '../src/items.js';
 import { projectiles, chicks, KERNEL } from '../src/weapons.js';
@@ -622,19 +622,25 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
     assert.ok(game.kills >= 30, `${game.kills} kills`);
   });
 
-  it('ten minutes with a full horde stay inside every pool and the frame budget', () => {
+  it('ten minutes: every predator joins on its minute, the horde stays inside the pools and the frame budget', () => {
     resetRun({ peaceful: false });
     let peak = 0;
     let worst = 0;
+    const firstSeen = {};
     playWithBot(150, {
       onFrame() {
         hen.hp = hen.maxHp = 1e6; // a soak test: keep her standing to see the whole timeline
         peak = Math.max(peak, countEnemies());
-        return game.time >= 600;
+        for (const e of enemies) if (e.alive && !(e.kind in firstSeen)) firstSeen[e.kind] = game.time;
+        return game.over;
       },
     });
-    assert.ok(game.time >= 600, `stopped at ${game.time}`);
+    assert.equal(game.won, true, `stopped at ${game.time}`);
     assert.equal(peak, MAX_ENEMIES, 'the horde never reached the cap');
+    assert.equal(Object.keys(firstSeen).length, ENEMY_TYPES.length, `seen: ${JSON.stringify(firstSeen)}`);
+    for (const [kind, from] of [[SNAKE, 180], [CROW, 300], [BADGER, 420]]) {
+      assert.ok(firstSeen[kind] >= from && firstSeen[kind] < from + 20, `${ENEMY_TYPES[kind].name} first seen at ${firstSeen[kind]}`);
+    }
     // Time a step with the full horde
     const t0 = performance.now();
     for (let i = 0; i < 120; i++) update(STEP);

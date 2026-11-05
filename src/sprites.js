@@ -267,7 +267,7 @@ export function bakeHen(outfit = {}) {
 // --- Predators ---------------------------------------------------------------------------------
 
 /** Palette indices the predators use. None may overlap GROUND_PALETTE_INDICES (test). */
-export const ENEMY_PALETTE_INDICES = [0, 8, 9, 13, 16, 17, 18, 19];
+export const ENEMY_PALETTE_INDICES = [0, 8, 9, 10, 12, 13, 15, 16, 17, 18, 19];
 
 /** The rat in profile, facing right (16x12). */
 function ratShape(step) {
@@ -299,6 +299,48 @@ function foxShape(step) {
     if (inEllipse(x, y, 3.8, 7, 3.1, 1.9)) return x <= 2 ? 13 : 18; // tail
     if (y >= 11 && y <= 12 - liftA && (x === 7 || x === 8)) return 0; // legs
     if (y >= 11 && y <= 12 - liftB && (x === 12 || x === 13)) return 0;
+    return -1;
+  };
+}
+
+/** The snake (18x10): a blue body with dark bands that slithers between poses. */
+function snakeShape(step) {
+  const phase = step === 'stepA' ? 1.6 : step === 'stepB' ? -1.6 : 0;
+  const mid = (x) => 5 + Math.sin(x * 0.75 + phase) * 1.4;
+  return (x, y) => {
+    const hy = Math.round(mid(14));
+    if (x === 17 && y === hy) return 9; // tongue
+    if (inEllipse(x, y, 14.8, hy, 1.8, 1.4)) return x === 15 && y === hy - 1 ? 0 : 12; // head
+    if (x >= 1 && x <= 13 && Math.abs(y - mid(x)) <= (x < 4 ? 0.6 : 1)) return x % 4 === 0 ? 15 : 12;
+    return -1;
+  };
+}
+
+/** The crow (14x12), flapping between poses; it flies, so it has no legs. */
+function crowShape(step) {
+  const wing = step === 'stepA' ? -1 : step === 'stepB' ? 1 : 0;
+  return (x, y) => {
+    if ((x === 12 || x === 13) && y === 5) return 10; // beak
+    if (inEllipse(x, y, 10, 5, 2, 1.8)) return x === 10 && y === 4 ? 13 : 15; // head with a glint
+    if (wing && inTaper(x, y, 6, wing < 0 ? 1 : 7, wing < 0 ? 5 : 10, wing < 0 ? 0.5 : 3, wing < 0 ? 3 : 0.5)) return 15;
+    if (inEllipse(x, y, 6, 6.5, 4, 2.4)) return 15; // body
+    if (x >= 1 && x <= 2 && y >= 6 && y <= 7) return 15; // tail
+    return -1;
+  };
+}
+
+/** The badger (20x13): grey, with a white face crossed by a dark stripe. */
+function badgerShape(step) {
+  const liftA = step === 'stepA' ? 1 : 0;
+  const liftB = step === 'stepB' ? 1 : 0;
+  return (x, y) => {
+    if (x === 18 && y === 7) return 0; // nose
+    if (inEllipse(x, y, 15.5, 6.8, 2.8, 2.3)) return y === 6 && x >= 14 ? 0 : 13; // face
+    if (x === 14 && y === 4) return 16; // ear
+    if (inEllipse(x, y, 9, 7.2, 6.3, 3.1)) return y <= 5 ? 16 : 17; // body
+    if (x === 2 && y === 6) return 16; // tail
+    if (y >= 10 && y <= 11 - liftA && (x === 5 || x === 6)) return 0; // legs
+    if (y >= 10 && y <= 11 - liftB && (x === 11 || x === 12)) return 0;
     return -1;
   };
 }
@@ -409,6 +451,9 @@ export function bakeWorldSprites() {
   for (const [shape, w, h] of [
     [ratShape, 16, 12],
     [foxShape, 20, 15],
+    [snakeShape, 18, 10],
+    [crowShape, 14, 12],
+    [badgerShape, 20, 13],
   ]) {
     const set = {};
     for (const step of POSES) set[step] = bakeSprite(w, h, shape(step));

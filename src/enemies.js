@@ -12,14 +12,21 @@ import { sfxPeck } from './sfx.js';
 
 export const RAT = 0;
 export const FOX = 1;
+export const SNAKE = 2;
+export const CROW = 3;
+export const BADGER = 4;
 
 /**
  * Enemy kinds. hp: health at player level 1 · speed: tiles per second · r: body radius (tiles)
- * · dmg: bite damage · colors: palette indices for the hit puff.
+ * · dmg: bite damage · colors: palette indices for the hit puff · flying: drawn in the air and
+ * only pushed apart from other flyers.
  */
 export const ENEMY_TYPES = [
   { name: 'rat', hp: 6, speed: 1.4, r: 0.32, dmg: 5, colors: [16, 17] },
   { name: 'fox', hp: 26, speed: 1.7, r: 0.45, dmg: 8, colors: [18, 13] },
+  { name: 'snake', hp: 5, speed: 2.3, r: 0.3, dmg: 6, colors: [12, 15] },
+  { name: 'crow', hp: 9, speed: 2, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
+  { name: 'badger', hp: 60, speed: 1.1, r: 0.55, dmg: 10, colors: [17, 13] },
 ];
 
 export const MAX_ENEMIES = 300;
@@ -47,6 +54,7 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   speed: 0,
   r: 0,
   dmg: 0,
+  flying: false,
   /** Seconds since it appeared. */
   age: 0,
   flash: 0,
@@ -121,6 +129,7 @@ export function spawnEnemy(kind, x, y) {
     speed: type.speed * (1 + (game.level - 1) / 100),
     r: type.r,
     dmg: type.dmg,
+    flying: !!type.flying,
     age: 0,
     flash: 0,
     biteCooldown: 0,
@@ -239,11 +248,13 @@ export function updateEnemies(dt) {
     }
   }
 
-  // Push overlapping predators apart (each pair once), then out of the hen so she stays visible.
+  // Push overlapping predators apart (each pair once; flyers only push flyers), then out of the
+  // hen so she stays visible.
   for (let i = 0; i < active.length; i++) {
     const a = active[i];
     for (let j = i + 1; j < active.length; j++) {
       const b = active[j];
+      if (a.flying !== b.flying) continue;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const min = a.r + b.r;

@@ -207,7 +207,9 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     const e = d.e;
     const set = enemySprites[e.kind];
     const pose = e.knockTime > 0 ? 'idle' : Math.floor(e.walkPhase) % 2 ? 'stepA' : 'stepB';
-    drawSprite(ctx, set[pose], d.sx, d.sy, e.facing, e.flash > 0.1);
+    // Flyers keep to the air above their shadow, bobbing with each wing beat.
+    const lift = e.flying ? 12 + Math.round(Math.sin(e.walkPhase * Math.PI) * 2) : 0;
+    drawSprite(ctx, set[pose], d.sx, d.sy - lift, e.facing, e.flash > 0.1);
   }
   if (game.started && !game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);
 
