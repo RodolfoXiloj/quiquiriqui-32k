@@ -17,6 +17,7 @@ import { particles, popups, rings, bolts, RING_LIFE, BOLT_LIFE } from './pool.js
 import { input, STICK_RADIUS } from './input.js';
 import { game, formatClock, xpToNext } from './state.js';
 import { weatherAt, DAWN_START, RUN_LENGTH } from './weather.js';
+import { profile, MAX_PERIL } from './profile.js';
 
 /** Every fixed on-screen string. A test checks that each fits the 320 px canvas. */
 export const HUD_STRINGS = {
@@ -63,6 +64,21 @@ export const HUD_SIZES = {
   newBest: 8,
   tutorial: 7,
 };
+
+/** Title screen rows that react to taps, as offsets (px) from the middle of the screen. */
+const TITLE_ROWS = { peril: 45 };
+
+/** The title row under canvas height `y` ('peril'), or null. */
+export function titleRowAt(y) {
+  for (const [row, dy] of Object.entries(TITLE_ROWS)) if (Math.abs(y - (HEIGHT / 2 + dy)) <= 5) return row;
+  return null;
+}
+
+/** The peril row of the title screen. */
+export function perilLine() {
+  const locked = MAX_PERIL - profile.perilUnlocked;
+  return `Z < PERIL ${profile.peril} > C` + (locked ? `   ${locked} LOCKED` : '');
+}
 
 /** Upgrade card layout, shared with main.js (taps) and the tests (text fit). */
 export const CARD_W = 92;
@@ -357,7 +373,7 @@ function drawTopBar(ctx, time) {
   ctx.fillStyle = PALETTE[full && Math.sin(time * 12) > 0 ? 13 : 10];
   ctx.fillRect(3, 3, full ? WIDTH - 6 : Math.floor(((WIDTH - 6) * Math.min(game.xp, need)) / need), 4);
   drawText(ctx, `LV ${game.level}`, 4, 14, 8, 13, 'left');
-  drawText(ctx, (game.day > 1 ? `DAY ${game.day}  ` : '') + formatClock(game.time), WIDTH / 2, 14, 8, 13);
+  drawText(ctx, (game.peril ? `P${game.peril} ` : '') + (game.day > 1 ? `DAY ${game.day}  ` : '') + formatClock(game.time), WIDTH / 2, 14, 8, 13);
   if (game.bannerTime > 0 && !game.over) drawText(ctx, game.banner, WIDTH / 2, HEIGHT / 2 - 40, 16, 10);
   drawText(ctx, `KILLS ${game.kills}`, WIDTH - 4, 14, 8, 13, 'right');
   // The strongest boss on the field: its name and health under the top bar.
@@ -437,6 +453,7 @@ function drawGameOver(ctx, time) {
   drawText(ctx, gameOverLine(game.time, game.kills, game.level), WIDTH / 2, statsY, 7, 13);
   if (game.newBest) drawText(ctx, S.newBest, WIDTH / 2, statsY + 14, Z.newBest, 10);
   else drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, statsY + 14, 7, 13);
+  if (game.unlockNote) drawText(ctx, game.unlockNote, WIDTH / 2, statsY + 25, 7, 10);
   if (game.overTime > 1.5 && game.dawnChoice) {
     // Keep going (left) or end the run (right)
     drawText(ctx, S.keepGoing, WIDTH / 4, cy + 62, Z.keepGoing, Math.sin(time * 5) > -0.3 ? 10 : 13);
@@ -449,12 +466,13 @@ function drawHud(ctx, time) {
   const Z = HUD_SIZES;
   const cy = HEIGHT / 2;
   if (!game.started) {
-    drawText(ctx, S.title, WIDTH / 2, cy - 44, Z.title, 10);
-    drawText(ctx, S.subtitle, WIDTH / 2, cy - 28, Z.subtitle, 13);
-    if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, cy - 14, 7, 10);
-    if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 46, Z.start, 13);
-    drawText(ctx, S.controls, WIDTH / 2, cy + 60, Z.controls, 13);
-    drawText(ctx, S.music, WIDTH / 2, cy + 72, Z.music, 13);
+    drawText(ctx, S.title, WIDTH / 2, cy - 58, Z.title, 10);
+    drawText(ctx, S.subtitle, WIDTH / 2, cy - 44, Z.subtitle, 13);
+    if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, cy - 32, 7, 10);
+    if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 22, Z.start, 13);
+    drawText(ctx, perilLine(), WIDTH / 2, cy + TITLE_ROWS.peril, 7, profile.peril ? 10 : 13);
+    drawText(ctx, S.controls, WIDTH / 2, cy + 67, Z.controls, 13);
+    drawText(ctx, S.music, WIDTH / 2, cy + 77, Z.music, 13);
     return;
   }
   drawTopBar(ctx, time);

@@ -36,8 +36,12 @@ export const game = {
   newBest: false,
   /** Seconds the title ignores input after a game over, so a held key does not restart at once. */
   titleLock: 0,
-  /** Longest run so far, in seconds (kept across runs, saved in localStorage). */
+  /** Longest run so far at this peril, in seconds (kept across runs, saved in localStorage). */
   best: 0,
+  /** The peril (difficulty tier) of this run, chosen on the title screen. */
+  peril: 0,
+  /** A line for the dawn screen when the dawn unlocked something ('PERIL 1 UNLOCKED!'). */
+  unlockNote: '',
 };
 
 /** Test and dev switches. They survive resetRun(). */
@@ -46,7 +50,8 @@ export const settings = {
   peaceful: false,
 };
 
-const BEST_KEY = 'qq_best';
+/** Where the best time of the current peril is kept (peril 0 keeps the original key). */
+const bestKey = () => 'qq_best' + (game.peril || '');
 
 export function resetGame() {
   game.started = false;
@@ -69,12 +74,13 @@ export function resetGame() {
   game.overTime = 0;
   game.newBest = false;
   game.titleLock = 0;
+  game.unlockNote = '';
 }
 
-/** Reads the saved best time (0 if storage is missing or blocked). */
+/** Reads the saved best time of the current peril (0 if storage is missing or blocked). */
 export function loadBest() {
   try {
-    game.best = Number(localStorage.getItem(BEST_KEY)) || 0;
+    game.best = Number(localStorage.getItem(bestKey())) || 0;
   } catch {
     game.best = 0;
   }
@@ -85,7 +91,7 @@ export function saveBest(seconds) {
   if (seconds <= game.best) return false;
   game.best = seconds;
   try {
-    localStorage.setItem(BEST_KEY, String(Math.floor(seconds)));
+    localStorage.setItem(bestKey(), String(Math.floor(seconds)));
   } catch {
     // Storage can be blocked (private mode); the best time then lasts for this visit only.
   }

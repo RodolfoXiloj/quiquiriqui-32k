@@ -7,6 +7,7 @@
 import { gameRand } from './rng.js';
 import { game, settings } from './state.js';
 import { RUN_LENGTH } from './weather.js';
+import { PERIL } from './profile.js';
 import { hen } from './hen.js';
 import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, spawnEnemy, spawnBoss, spawnPoint } from './enemies.js';
 
@@ -59,7 +60,7 @@ function spawnCrate() {
 }
 
 function startSpawner(event) {
-  const count = Math.round(event.count * (1 + MORE_PER_DAY * (game.day - 1)));
+  const count = Math.round(event.count * (1 + MORE_PER_DAY * (game.day - 1)) * (1 + PERIL.spawns * game.peril));
   spawners.push({ kinds: event.kinds, left: count, period: event.over / count, timer: 0 });
 }
 

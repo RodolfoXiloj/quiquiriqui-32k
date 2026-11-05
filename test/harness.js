@@ -10,6 +10,7 @@ import { enemies } from '../src/enemies.js';
 import { corn } from '../src/corn.js';
 import { pickups } from '../src/pickups.js';
 import { ITEM_BY_ID } from '../src/items.js';
+import { profile } from '../src/profile.js';
 import { createBot } from '../tools/browser/bot.js';
 
 export const SPEED = 5;
@@ -22,10 +23,11 @@ boot(document.createElement('canvas'));
 /**
  * Fresh title screen with no held input. Module state is shared, so every test calls this.
  * `peaceful` (the default) turns off the waves and the starting corn, for tests that only
- * look at movement or set up their own predators.
+ * look at movement or set up their own predators. `peril` picks the difficulty tier (0 by default).
  */
-export function resetRun({ peaceful = true, seed = SEED } = {}) {
+export function resetRun({ peaceful = true, seed = SEED, peril = 0 } = {}) {
   settings.peaceful = peaceful;
+  profile.peril = peril;
   releaseAllInput();
   resetGameRun(seed);
 }

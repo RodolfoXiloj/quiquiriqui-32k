@@ -25,6 +25,7 @@ import { ITEMS, ITEM_BY_ID, build, buildOrder, applyCard } from '/items.js';
 import { bakeHen, outfitOf } from '/sprites.js';
 import { cardRect } from '/render.js';
 import { music } from '/music.js';
+import { profile, saveProfile } from '/profile.js';
 import { createBot } from '/__dev/bot.js';
 
 const params = new URLSearchParams(location.search);
@@ -64,6 +65,8 @@ window.__qq = {
     won: game.won,
     dawnChoice: game.dawnChoice,
     day: game.day,
+    peril: game.peril,
+    profile: { ...profile },
     music: { on: music.on, mood: music.mood },
     time: game.time,
     level: game.level,
@@ -140,6 +143,11 @@ window.__qq = {
       while ((build[id] || 0) < level) applyCard({ id });
       syncHenStats();
       bakeHen(outfitOf(build));
+    },
+    /** Unlocks every peril level (for testing the menus). */
+    unlockAll() {
+      profile.perilUnlocked = 5;
+      saveProfile();
     },
     /** Every item at `level`: the fully dressed hen. */
     giveAll(level = 5) {

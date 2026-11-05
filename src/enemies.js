@@ -13,6 +13,7 @@ import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
 import { sfxPeck, sfxBoom, sfxKill } from './sfx.js';
+import { PERIL } from './profile.js';
 
 export const RAT = 0;
 export const FOX = 1;
@@ -138,8 +139,10 @@ export function spawnEnemy(kind, x, y) {
   const type = ENEMY_TYPES[kind];
   // Tougher as the hen levels up and as the run goes on, a little faster too; each endless day
   // adds their whole base health again and 10% speed (crates stay as they are).
+  // Peril adds its shares of health, speed and bite on top.
   const days = game.day - 1;
-  const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + (game.level - 1) / 12 + game.time / 240) * (1 + days));
+  const peril = type.prop ? 0 : game.peril;
+  const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + (game.level - 1) / 12 + game.time / 240) * (1 + days) * (1 + PERIL.hp * peril));
   Object.assign(e, {
     alive: true,
     kind,
@@ -149,9 +152,9 @@ export function spawnEnemy(kind, x, y) {
     prevY: y,
     hp,
     maxHp: hp,
-    speed: type.speed * (1 + (game.level - 1) / 100) * (1 + 0.1 * days),
+    speed: type.speed * (1 + (game.level - 1) / 100) * (1 + 0.1 * days) * (1 + PERIL.speed * peril),
     r: type.r,
-    dmg: type.dmg,
+    dmg: Math.round(type.dmg * (1 + PERIL.bite * peril)),
     flying: !!type.flying,
     boss: false,
     prop: !!type.prop,

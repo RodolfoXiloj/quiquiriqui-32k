@@ -12,6 +12,8 @@ export const STICK_RADIUS = 20;
 const DEAD_ZONE = 4;
 
 const keys = new Set();
+/** Keys that only work menus: M music, Z/C peril, Q/E hen, B shop, Escape. */
+export const MENU_KEYS = ['KeyM', 'KeyZ', 'KeyC', 'KeyQ', 'KeyE', 'KeyB', 'Escape'];
 /** Keys pressed since the last step; copied into input.pressed by updateInput. */
 const freshKeys = new Set();
 /** Click or tap since the last step, in canvas pixels; copied into input.tap. */
@@ -76,8 +78,8 @@ export function initInput(canvas) {
   addEventListener('keydown', (e) => {
     if (!e.repeat) freshKeys.add(e.code);
     keys.add(e.code);
-    // M only toggles the music: it does not start a run or close a screen.
-    if (e.code !== 'KeyM') input.anyAction = true;
+    // Menu keys (music, peril, hen, shop) do their own thing: they never start a run or close a screen.
+    if (!MENU_KEYS.includes(e.code)) input.anyAction = true;
     if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   });
   addEventListener('keyup', (e) => keys.delete(e.code));

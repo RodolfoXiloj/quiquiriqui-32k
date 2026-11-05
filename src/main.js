@@ -20,7 +20,8 @@ import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow, sfxChest } from './sfx.js';
 import { game, settings, resetGame, loadBest, saveBest, xpToNext } from './state.js';
 import { RUN_LENGTH, weatherAt } from './weather.js';
 import { updateMusic, loadMusicSetting, toggleMusic } from './music.js';
-import { renderScene, cardAt } from './render.js';
+import { renderScene, cardAt, titleRowAt } from './render.js';
+import { profile, loadProfile, choosePeril, unlockAfterDawn } from './profile.js';
 
 /** Real seconds before a card can be picked once the cards open. */
 const CARD_LOCK = 0.35;
@@ -56,7 +57,7 @@ export function boot(canvas) {
   bakeWorldSprites();
   initInput(canvas);
   addEventListener('blur', handleBlur);
-  loadBest();
+  loadProfile();
   loadMusicSetting();
   resetRun();
 }
@@ -76,6 +77,8 @@ function musicMood() {
 export function resetRun(seed = (Math.random() * 2 ** 31) | 0) {
   seedGame(seed);
   resetGame();
+  game.peril = profile.peril;
+  loadBest();
   resetHen();
   resetBuild();
   dressHen();
@@ -120,11 +123,32 @@ function winRun() {
   game.dawnChoice = true;
   game.overTime = 0;
   game.newBest = saveBest(RUN_LENGTH);
+  if (unlockAfterDawn(game.peril)) game.unlockNote = `PERIL ${game.peril + 1} UNLOCKED!`;
   sfxCrow();
   for (let k = 0; k < 30; k++) {
     const a = Math.random() * Math.PI * 2;
     spawnParticle(hen.x, hen.y, 10, Math.cos(a) * 2.5, Math.sin(a) * 2.5, 40 + Math.random() * 40, k % 3 ? 10 : 13, 2, 1.2);
   }
+}
+
+/**
+ * The title screen's menu rows: Z / C (or a tap on the left / right half of the row) choose the
+ * peril. Returns true if the input was for the menu, so it does not start the run.
+ */
+function titleMenu() {
+  const tap = input.tap;
+  const row = tap ? titleRowAt(tap.y) : null;
+  let step = 0;
+  if (input.pressed.has('KeyZ')) step = -1;
+  if (input.pressed.has('KeyC')) step = 1;
+  if (row === 'peril') step = tap.x < WIDTH / 2 ? -1 : 1;
+  if (step) {
+    choosePeril(profile.peril + step);
+    game.peril = profile.peril;
+    loadBest();
+  }
+  if (row) releasePointer();
+  return !!(step || row);
 }
 
 /** Shows `text` across the screen for a few seconds. */
@@ -235,6 +259,7 @@ export function update(dt) {
   }
 
   if (!game.started) {
+    if (titleMenu()) input.anyAction = false;
     if (game.titleLock > 0) {
       game.titleLock -= dt;
       input.anyAction = false;

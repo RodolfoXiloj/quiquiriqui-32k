@@ -43,6 +43,7 @@ import {
   gameOverLine,
   cardRect,
   cardAt,
+  perilLine,
 } from '../src/render.js';
 import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, fitScreen, screenScale } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
@@ -88,6 +89,7 @@ import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
+import { profile, PERIL, MAX_PERIL } from '../src/profile.js';
 import { audio, sfxKill, sfxLevelUp, sfxPeck, HIT_SOUNDS } from '../src/sfx.js';
 import { music, PARTS, notesAt, sectionLength } from '../src/music.js';
 
@@ -981,6 +983,84 @@ describe('quiquiriqui at 5x: endless days', () => {
   });
 });
 
+describe('quiquiriqui at 5x: peril levels', () => {
+  /** A fresh profile: only peril 0 unlocked. */
+  function freshProfile() {
+    localStorage.removeItem('qq_profile');
+    Object.assign(profile, { peril: 0, perilUnlocked: 0 });
+  }
+
+  it('peril makes predators tougher, faster, hungrier and more numerous', () => {
+    const born = (peril) => {
+      resetRun({ peaceful: false, peril });
+      start();
+      buildOrder.length = 0; // no weapons: everything born stays
+      while (game.time < 30) {
+        hen.hp = hen.maxHp = 1e6;
+        update(STEP);
+      }
+      return enemies.filter((e) => e.alive && !e.prop).length;
+    };
+    const calm = born(0);
+    const perilous = born(2);
+    assert.ok(perilous / calm > 1.3 && perilous / calm < 1.5, `${calm} -> ${perilous} predators`);
+    // Copy the values: the pool hands out the same object again after a reset
+    resetRun({ peril: 0 });
+    start();
+    const a = { ...spawnEnemy(RAT, 20, 0) };
+    resetRun({ peril: 2 });
+    start();
+    const b = { ...spawnEnemy(RAT, 20, 0) };
+    assert.equal(b.maxHp, Math.floor(ENEMY_TYPES[RAT].hp * (1 + 2 * PERIL.hp)));
+    assert.ok(Math.abs(b.speed / a.speed - (1 + 2 * PERIL.speed)) < 1e-9);
+    assert.equal(b.dmg, Math.round(ENEMY_TYPES[RAT].dmg * (1 + 2 * PERIL.bite)));
+  });
+
+  it('a dawn at the highest peril unlocks the next; Z and C stay within it and never start a run', () => {
+    freshProfile();
+    resetRun();
+    tapKey('KeyC');
+    assert.equal(profile.peril, 0, 'chose a locked peril');
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    game.time = RUN_LENGTH - 0.05;
+    for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
+    assert.equal(profile.perilUnlocked, 1);
+    assert.equal(game.unlockNote, 'PERIL 1 UNLOCKED!');
+    assert.equal(JSON.parse(localStorage.getItem('qq_profile')).perilUnlocked, 1);
+    steps(1.6);
+    tapKey('Digit2');
+    assert.equal(game.started, false);
+    steps(0.7); // past the title lock
+    tapKey('KeyC');
+    assert.equal(profile.peril, 1);
+    assert.equal(game.peril, 1);
+    tapKey('KeyC');
+    assert.equal(profile.peril, 1, 'went past the highest unlocked');
+    tapKey('KeyZ');
+    assert.equal(profile.peril, 0);
+    assert.equal(game.started, false, 'a menu key started the run');
+    // A tap on the right half of the peril row also raises it, without starting
+    tapAt(WIDTH * 0.75, HEIGHT / 2 + 45);
+    update(STEP);
+    assert.equal(profile.peril, 1);
+    assert.equal(game.started, false, 'a tap on the menu started the run');
+    freshProfile();
+  });
+
+  it('each peril keeps its own best time', () => {
+    localStorage.removeItem('qq_best');
+    localStorage.removeItem('qq_best1');
+    resetRun({ peril: 1 });
+    start();
+    game.time = 77;
+    damageHen(1e9, hen.x + 1, hen.y);
+    assert.equal(localStorage.getItem('qq_best1'), '77');
+    assert.equal(localStorage.getItem('qq_best'), null);
+    resetRun({ peril: 0 });
+  });
+});
+
 describe('quiquiriqui at 5x: the bot and a long run', () => {
   it('the bot survives the first minute', () => {
     resetRun({ peaceful: false });
@@ -1179,6 +1259,10 @@ describe('quiquiriqui: text and layout', () => {
       assert.ok(estimateTextWidth(text, HUD_SIZES[key]) <= WIDTH - 16, `${key} is too wide`);
     }
     assert.ok(estimateTextWidth(gameOverLine(599, 9999, 99), 7) <= WIDTH - 16, 'game over line');
+    const peril = profile.perilUnlocked;
+    profile.perilUnlocked = 0;
+    assert.ok(estimateTextWidth(perilLine(), 7) <= WIDTH - 16, 'peril line');
+    profile.perilUnlocked = peril;
   });
 
   it('every card name and description fits its card', () => {
