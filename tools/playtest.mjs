@@ -30,6 +30,11 @@ const KEYS = {
   KeyS: ['s', 83],
   KeyX: ['x', 88],
   KeyM: ['m', 77],
+  KeyE: ['e', 69],
+  KeyQ: ['q', 81],
+  KeyC: ['c', 67],
+  KeyZ: ['z', 90],
+  KeyB: ['b', 66],
   Space: [' ', 32],
   Digit1: ['1', 49],
   Digit2: ['2', 50],
@@ -518,8 +523,49 @@ async function musicScenario(page, base) {
   });
 }
 
+async function progressScenarios(page, base) {
+  await check('21. the title menu: E picks a hen, C a peril, B opens the shop and 1 buys', async () => {
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+    await page.evaluate('localStorage.removeItem("qq_profile"), window.__qq.cheat.unlockAll(), window.__qq.cheat.eggs(50)');
+    await page.tapKey('KeyE', 50);
+    await page.tapKey('KeyC', 50);
+    await sleep(150);
+    let s = await page.snapshot();
+    expect(s.henChoice === 1 && s.peril === 1, `hen ${s.henChoice}, peril ${s.peril}`);
+    await page.screenshot('21-title.png');
+    await page.tapKey('KeyB', 50);
+    await page.waitFor('window.__qq.snapshot().shopOpen', 2000);
+    const eggs = s.profile.eggs;
+    await page.tapKey('Digit1', 50);
+    await page.waitFor('window.__qq.snapshot().profile.shop[0] === 1', 2000);
+    await page.screenshot('22-shop.png');
+    await page.tapKey('KeyB', 50);
+    await page.waitFor('!window.__qq.snapshot().shopOpen', 2000);
+    s = await page.snapshot();
+    expect(!s.started, 'a menu key started the run');
+    expect(s.profile.eggs === eggs - 10, `${eggs} eggs became ${s.profile.eggs}, not ${eggs - 10}`);
+    // Leave the profile as it was for the scenarios that follow
+    await page.evaluate('localStorage.removeItem("qq_profile")');
+  });
+
+  await check('22. at dawn, the real key 1 keeps going into day 2', async () => {
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+    await page.tapKey('KeyD', 100);
+    await page.evaluate('window.__qq.cheat.setTime(598)');
+    await page.waitFor('window.__qq.snapshot().dawnChoice', 4000);
+    await sleep(500); // the choice waits ~1.5 s of game time
+    await page.tapKey('Digit1', 50);
+    await page.waitFor('window.__qq.snapshot().day === 2 && !window.__qq.snapshot().over', 3000);
+    await sleep(300);
+    await page.screenshot('23-day2.png');
+    const s = await page.snapshot();
+    expect(s.time > 600, `the clock is at ${s.time}`);
+    await page.evaluate('localStorage.removeItem("qq_profile")');
+  });
+}
+
 async function mobileScenario(page, client, base) {
-  await check('21. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
+  await check('23. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
     await client.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     try {
@@ -563,7 +609,7 @@ async function mobileScenario(page, client, base) {
 }
 
 async function distScenario(page) {
-  await check('22. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
+  await check('24. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
     await access(DIST).catch(() => {
       throw new Error('dist/index.html is missing: run npm run build first');
     });
@@ -604,10 +650,11 @@ async function main() {
     await dayScenarios(page, base);
     await musicScenario(page, base);
     await soundBoardScenario(page, base);
+    await progressScenarios(page, base);
     await mobileScenario(page, client, base);
     await distScenario(page);
     results.push({
-      name: '23. no exceptions, console errors or failed loads',
+      name: '25. no exceptions, console errors or failed loads',
       ok: problems.length === 0,
       error: problems.slice(0, 5).join(' | '),
     });

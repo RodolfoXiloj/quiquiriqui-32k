@@ -66,7 +66,7 @@ window.__qq = {
     dawnChoice: game.dawnChoice,
     day: game.day,
     peril: game.peril,
-    hen: game.hen,
+    henChoice: game.hen,
     profile: JSON.parse(JSON.stringify(profile)),
     shopOpen: game.shopOpen,
     runEggs: game.eggs,
