@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quiquiriqui wardrobe</title>
+    <style>
+      body {
+        margin: 0;
+        background: #1d1a2f;
+        color: #fff;
+        font: bold 12px monospace;
+      }
+      p {
+        text-align: center;
+        margin: 8px;
+      }
+      canvas {
+        display: block;
+        margin: 0 auto 16px;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Dev-only wardrobe: every worn item at its three looks (levels 1-2, 3-4, 5), then the full outfit walking.</p>
+    <canvas id="w"></canvas>
+    <script type="module">
+      // Dev-only (served by tools/dev.mjs from tools/browser/, never bundled). It imports the game's
+      // own sprite code, so it shows exactly what the game draws.
+      import { PALETTE } from '/palette.js';
+      import { bakeHen, bakeWorldSprites, henSprites, WORN_ITEMS, eggSprites, chickSprite, iconSprites } from '/sprites.js';
+      import { ITEM_BY_ID } from '/items.js';
+
+      const SCALE = 3;
+      const CELL = 28;
+      const LABEL = 112;
+      const rows = WORN_ITEMS.length + 3;
+      const canvas = document.getElementById('w');
+      canvas.width = LABEL + CELL * 4;
+      canvas.height = rows * CELL + 6;
+      canvas.style.width = canvas.width * SCALE + 'px';
+      canvas.style.height = canvas.height * SCALE + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = PALETTE[2];
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = 'bold 7px monospace';
+      ctx.textBaseline = 'middle';
+
+      bakeWorldSprites();
+      /** Bakes an outfit and returns its idle and walking canvases (bakeHen replaces henSprites). */
+      function look(outfit) {
+        bakeHen(outfit);
+        return { idle: henSprites.idle.normal, stepA: henSprites.stepA.normal, stepB: henSprites.stepB.normal };
+      }
+      function label(text, row) {
+        ctx.fillStyle = PALETTE[0];
+        ctx.fillText(text, 21, row * CELL + 17);
+        ctx.fillStyle = PALETTE[13];
+        ctx.fillText(text, 20, row * CELL + 16);
+      }
+      const cellX = (col) => LABEL + col * CELL + 2;
+
+      label('BARE', 0);
+      ctx.drawImage(look({}).idle, cellX(0), 2);
+
+      WORN_ITEMS.forEach((id, i) => {
+        const row = i + 1;
+        ctx.drawImage(iconSprites[id].normal, 2, row * CELL + 7);
+        label(ITEM_BY_ID[id].name, row);
+        for (const tier of [1, 2, 3]) ctx.drawImage(look({ [id]: tier }).idle, cellX(tier - 1), row * CELL + 2);
+      });
+
+      const full = (tier) => Object.fromEntries(WORN_ITEMS.map((id) => [id, tier]));
+      let row = WORN_ITEMS.length + 1;
+      label('ALL, 3 LOOKS', row);
+      for (const tier of [1, 2, 3]) ctx.drawImage(look(full(tier)).idle, cellX(tier - 1), row * CELL + 2);
+      row++;
+      label('WALK, EGGS, CHICK', row);
+      const walking = look(full(3));
+      ctx.drawImage(walking.stepA, cellX(0), row * CELL + 2);
+      ctx.drawImage(walking.stepB, cellX(1), row * CELL + 2);
+      eggSprites.forEach((egg, k) => ctx.drawImage(egg.normal, cellX(2) + k * 9, row * CELL + 10));
+      ctx.drawImage(chickSprite.normal, cellX(3) + 6, row * CELL + 12);
+
+      window.__wardrobeRows = WORN_ITEMS.length;
+      window.__wardrobeReady = true;
+    </script>
+  </body>
+</html>

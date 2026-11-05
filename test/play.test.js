@@ -3,212 +3,644 @@ import assert from 'node:assert/strict';
 import {
   resetRun,
   play,
-  combatBot,
+  start,
+  tapKey,
+  playWithBot,
   update,
   STEP,
-  player,
-  enemies,
-  altars,
-  waveState,
-  tapAttack,
-  tapDash,
+  handleBlur,
   holdKey,
+  releaseAllInput,
+  input,
+  hen,
+  game,
+  enemies,
+  corn,
 } from './harness.js';
-import { damagePlayer } from '../src/player.js';
-import { popups } from '../src/pool.js';
-import { arenaGrid, buildArena, rebakeFloorCanvas, scarCanvas, TILE_VOID } from '../src/bake.js';
-import { startWave } from '../src/enemy.js';
-import { input, releaseAllInput } from '../src/input.js';
+import { tapAt } from '../src/input.js';
+import { toIsoX, toIsoY } from '../src/iso.js';
+import { groundTileAt, GROUND_PALETTE_INDICES } from '../src/ground.js';
 import {
-  WIDTH,
-  HERO_PALETTE_INDICES,
-  FLOOR_PALETTE_INDICES,
+  HEN_PALETTE_INDICES,
+  ENEMY_PALETTE_INDICES,
+  HEN_SIZE,
+  WORN_ITEMS,
+  henShape,
+  henLook,
+  outfitOf,
+  outfitKey,
+  iconSprites,
+  eggSprites,
+  chickSprite,
+} from '../src/sprites.js';
+import {
   HUD_STRINGS,
+  HUD_SIZES,
+  CARD_W,
+  CARD_NAME_SIZE,
+  CARD_TEXT_SIZE,
   estimateTextWidth,
+  gameOverLine,
+  cardRect,
+  cardAt,
 } from '../src/render.js';
+import { WIDTH, HEIGHT } from '../src/screen.js';
+import { formatClock, xpToNext } from '../src/state.js';
+import { RAT, FOX, MAX_ENEMIES, spawnEnemy, hitEnemy, screenOffset, countEnemies } from '../src/enemies.js';
+import { spawnCorn } from '../src/corn.js';
+import { ITEMS, ITEM_BY_ID, MAX_ITEM_LEVEL, SLOTS, build, buildOrder, applyCard, rollCards, cardText, stats, weaponDamage } from '../src/items.js';
+import { projectiles, chicks, KERNEL } from '../src/weapons.js';
+import { damageHen, syncHenStats } from '../src/hen.js';
+import { particles, popups, bolts } from '../src/pool.js';
 
-describe('quiquiriqui at 5x', () => {
+/** Holds `code` for `seconds` of scenario time and returns the hen's screen-space shift. */
+function walk(code, seconds) {
+  const x0 = toIsoX(hen.x, hen.y);
+  const y0 = toIsoY(hen.x, hen.y);
+  holdKey(code, true);
+  play(seconds);
+  holdKey(code, false);
+  return { dx: toIsoX(hen.x, hen.y) - x0, dy: toIsoY(hen.x, hen.y) - y0 };
+}
+
+/** A predator that cannot die, for tests about movement and contact. */
+function sturdy(kind, x, y) {
+  const e = spawnEnemy(kind, x, y);
+  e.hp = e.maxHp = 1e9;
+  return e;
+}
+
+const alive = (pool) => pool.filter((item) => item.alive);
+
+/** Feeds the hen exactly enough corn for her first level-up and steps until the cards open. */
+function openFirstCards() {
+  for (let i = 0; i < xpToNext(1); i++) spawnCorn(hen.x + 0.5, hen.y, 1, 0);
+  for (let i = 0; i < 300 && !game.cards.length; i++) update(STEP);
+  assert.equal(game.cards.length, 3, 'the cards did not open');
+}
+
+/** Steps `seconds` of game time one fixed step at a time. */
+function steps(seconds) {
+  for (let i = 0; i < Math.round(seconds / STEP); i++) update(STEP);
+}
+
+/** Starts a run whose only weapon is `id`, so other weapons do not interfere. */
+function armedWith(id) {
+  start();
+  for (const key of Object.keys(build)) delete build[key];
+  buildOrder.length = 0;
+  applyCard({ id });
+}
+
+/** The hen's 24x24 shape as a flat array of palette indices, for one pose and outfit. */
+function henGrid(outfit, step = 'idle') {
+  const shape = henShape(step, outfit);
+  const grid = [];
+  for (let y = 1; y < HEN_SIZE - 1; y++) for (let x = 1; x < HEN_SIZE - 1; x++) grid.push(shape(x, y));
+  return grid.join(',');
+}
+
+describe('quiquiriqui at 5x: moving around', () => {
   beforeEach(() => {
     resetRun();
   });
 
-  it('boots wave 1 with five embers', () => {
-    assert.equal(player.embers, 5);
-    assert.equal(player.kneeling, true);
-    assert.equal(waveState.wave, 1);
-    assert.equal(waveState.score, 0);
-    assert.equal(enemies.filter((e) => e.kind === 'husk').length, 2);
-    assert.equal(enemies.filter((e) => e.kind === 'archer').length, 1);
+  it('boots on the title screen with a healthy hen at the origin', () => {
+    assert.equal(game.started, false);
+    assert.equal(game.time, 0);
+    assert.equal(hen.hp, hen.maxHp);
+    assert.equal(hen.x, 0);
+    assert.equal(hen.y, 0);
   });
 
-  it('wakes on the first attack', () => {
-    tapAttack();
-    update(STEP);
-    assert.equal(player.kneeling, false);
+  it('waits on the title screen until the first input', () => {
+    play(1);
+    assert.equal(game.started, false);
+    assert.equal(game.time, 0);
   });
 
-  it('a slash in range wounds a husk', () => {
-    const husk = enemies.find((e) => e.kind === 'husk');
-    const hp = husk.hp;
-    player.kneeling = false;
-    player.x = husk.x - 0.8;
-    player.y = husk.y;
-    player.dirX = 1;
-    player.dirY = 0;
-    tapAttack();
-    update(STEP);
-    assert.ok(husk.hp < hp);
+  it('the first move starts the run and the clock', () => {
+    holdKey('KeyD', true);
+    play(1);
+    assert.equal(game.started, true);
+    assert.ok(game.time > 4.9 && game.time <= 5.01, `time ${game.time}`);
   });
 
-  it('the bot kills, then an altar grants its upgrade', () => {
-    // 8 scenario seconds is 40s of gameplay. Altars appear after wave 2 falls with no upgrade.
-    play(8, combatBot);
-    assert.ok(waveState.score > 0);
-    assert.ok(enemies.some((e) => e.dead) || waveState.wave > 1 || altars.length > 0);
+  it('D walks screen-right and W walks screen-up', () => {
+    const right = walk('KeyD', 0.2);
+    assert.ok(right.dx > 10, `dx ${right.dx}`);
+    assert.ok(Math.abs(right.dy) < 1e-6, `dy ${right.dy}`);
+    const up = walk('KeyW', 0.2);
+    assert.ok(up.dy < -5, `dy ${up.dy}`);
+    assert.ok(Math.abs(up.dx) < 1e-6, `dx ${up.dx}`);
+  });
 
-    let guard = 0;
-    while (altars.length < 3 && guard < 24 && !player.dead) {
-      play(1, combatBot);
-      guard += 1;
+  it('the hen faces the way she walks', () => {
+    walk('KeyA', 0.1);
+    assert.equal(hen.facing, -1);
+    walk('KeyD', 0.1);
+    assert.equal(hen.facing, 1);
+  });
+
+  it('the meadow is stable per cell and varied across cells', () => {
+    const counts = new Map();
+    let cells = 0;
+    for (let cy = -20; cy < 20; cy++) {
+      for (let cx = -20; cx < 20; cx++) {
+        const type = groundTileAt(cx, cy);
+        assert.equal(groundTileAt(cx, cy), type);
+        counts.set(type, (counts.get(type) || 0) + 1);
+        cells++;
+      }
     }
-    assert.equal(player.dead, false);
-    assert.equal(altars.length, 3);
+    assert.ok(counts.size >= 4, `only ${counts.size} tile types`);
+    for (const n of counts.values()) assert.ok(n / cells < 0.7);
+  });
 
-    const altar = altars[0];
-    player.x = altar.x;
-    player.y = altar.y + 0.4;
-    player.dirX = 0;
-    player.dirY = -1;
-    player.slashTimer = 0;
-    tapAttack();
+  it('losing focus pauses the clock until the next input', () => {
+    holdKey('KeyD', true);
+    play(0.2);
+    handleBlur();
+    assert.equal(game.paused, true);
+    const t = game.time;
+    const x = hen.x;
+    play(1);
+    assert.equal(game.time, t);
+    assert.equal(hen.x, x);
+    input.anyAction = true;
     update(STEP);
-    assert.equal(player.upgrade, altar.kind);
-    assert.equal(altars.length, 0);
+    assert.equal(game.paused, false);
   });
 
-  it('five hits claim the player, and an attack rises again at wave 1', () => {
-    player.kneeling = false;
-    waveState.score = 80;
-    waveState.wave = 2;
-    for (let i = 0; i < 5; i++) {
-      player.iframes = 0;
-      damagePlayer(1, player.x, player.y + 1);
-    }
-    assert.equal(player.dead, true);
-    assert.equal(player.embers, 0);
-
-    tapAttack();
-    update(STEP);
-    assert.equal(player.dead, false);
-    assert.equal(waveState.wave, 1);
-    assert.equal(waveState.score, 0);
-    assert.equal(player.embers, 5);
+  it('losing focus on the title screen does not pause', () => {
+    handleBlur();
+    assert.equal(game.paused, false);
   });
 
-  it('shadow dash grants iframes', () => {
-    player.kneeling = false;
-    holdKey('KeyW', true);
-    tapDash();
-    update(STEP);
-    assert.ok(player.iframes > 0);
-    assert.ok(player.dashTimer > 0);
-    holdKey('KeyW', false);
-  });
-
-  it('hero palette indices never overlap stone floor indices', () => {
-    for (const idx of HERO_PALETTE_INDICES) {
-      assert.equal(FLOOR_PALETTE_INDICES.includes(idx), false);
-    }
-  });
-
-  it('on-screen HUD and prompt strings fit inside the 320 px canvas without clipping', () => {
-    assert.ok(estimateTextWidth(HUD_STRINGS.title, 14) <= WIDTH - 24);
-    assert.ok(estimateTextWidth(HUD_STRINGS.controls, 7) <= WIDTH - 24);
-    assert.ok(estimateTextWidth(HUD_STRINGS.wakeVerb, 8) <= WIDTH - 24);
-    assert.ok(estimateTextWidth(HUD_STRINGS.driftHint, 6) <= WIDTH - 24);
-    assert.ok(estimateTextWidth(HUD_STRINGS.deathTitle, 12) <= WIDTH - 24);
-    assert.ok(estimateTextWidth(HUD_STRINGS.deathVerb, 8) <= WIDTH - 24);
-  });
-
-  it('attacks leave a lingering slash smear and spawn combat callouts', () => {
-    const husk = enemies.find((e) => e.kind === 'husk');
-    player.kneeling = false;
-    player.x = husk.x - 0.8;
-    player.y = husk.y;
-    player.dirX = 1;
-    player.dirY = 0;
-    tapAttack();
-    update(STEP);
-    assert.ok(player.slashSmear.timer > 0);
-    assert.ok(popups.some((p) => p.alive && p.text.length > 0));
-
-    player.iframes = 0;
-    damagePlayer(1, husk.x, husk.y);
-    assert.ok(player.hurtTimer > 0);
-    assert.ok(popups.some((p) => p.alive && p.text === '-1 EMBER'));
-  });
-
-  it('battle scars survive a slab rebake and clear only for a fresh arena', () => {
-    const clears = scarCanvas.clears;
-    rebakeFloorCanvas();
-    assert.equal(scarCanvas.clears, clears);
-    buildArena(2026);
-    assert.equal(scarCanvas.clears, clears + 1);
-  });
-
-  it('the Sovereign crumbles an edge slab in phase II without wiping the scars', () => {
-    const countVoid = () => arenaGrid.flat().filter((t) => t === TILE_VOID).length;
-    startWave(3);
-    const sovereign = enemies.find((e) => e.kind === 'sovereign');
-    sovereign.hp = sovereign.maxHp * 0.4;
-    player.kneeling = false;
-    const voids = countVoid();
-    const clears = scarCanvas.clears;
-    update(STEP);
-    assert.equal(sovereign.phase2, true);
-    assert.equal(countVoid(), voids + 1);
-    assert.equal(scarCanvas.clears, clears);
-  });
-
-  it('a piercing shard wounds each foe it passes through exactly once', () => {
-    // Clear lane along y = 5.5: the pillars stand at y = 3.5 and y = 7.5.
-    const husk = enemies.find((e) => e.kind === 'husk');
-    husk.x = husk.prevX = 5.5;
-    husk.y = husk.prevY = 5.5;
-    player.kneeling = false;
-    player.x = player.prevX = 3.5;
-    player.y = player.prevY = 5.5;
-    player.dirX = 1;
-    player.dirY = 0;
-    player.drift = 100;
-    input.driftTapped = true;
-    for (let i = 0; i < 36; i++) update(STEP);
-    assert.equal(player.drift, 55);
-    assert.equal(husk.maxHp - husk.hp, 24);
-  });
-
-  it('the Twin Shadow dash blast kills a foe it drops to zero', () => {
-    const husk = enemies.find((e) => e.kind === 'husk');
-    husk.x = husk.prevX = 5.5;
-    husk.y = husk.prevY = 5.5;
-    husk.hp = 5;
-    player.kneeling = false;
-    player.upgrade = 'shadow';
-    player.x = player.prevX = 4.8;
-    player.y = player.prevY = 5.5;
-    tapDash();
-    update(STEP);
-    assert.equal(husk.dead, true);
-    assert.equal(waveState.score, 100);
-  });
-
-  it('losing window focus releases held keys', () => {
-    holdKey('KeyW', true);
-    update(STEP);
-    assert.notEqual(input.moveX, 0);
+  it('releasing all input stops the hen', () => {
+    holdKey('KeyS', true);
+    play(0.1);
     releaseAllInput();
     update(STEP);
+    assert.equal(hen.moving, false);
     assert.equal(input.moveX, 0);
-    assert.equal(input.moveY, 0);
+  });
+});
+
+describe('quiquiriqui at 5x: predators', () => {
+  beforeEach(() => {
+    resetRun({ peaceful: false });
+  });
+
+  it('predators appear just outside the screen and close in on the hen', () => {
+    start();
+    play(0.4); // 2 s of play: the first rats are out
+    const fresh = alive(enemies);
+    assert.ok(fresh.length >= 2, `only ${fresh.length} predators`);
+    const newest = fresh.filter((e) => e.age < 0.6);
+    assert.ok(newest.length > 0);
+    for (const e of newest) {
+      const { sx, sy } = screenOffset(e.x, e.y);
+      assert.ok(Math.abs(sx) > WIDTH / 2 - 4 || Math.abs(sy) > HEIGHT / 2 - 4, `spawned on screen at ${sx}, ${sy}`);
+    }
+    const watched = fresh[0];
+    const d0 = Math.hypot(watched.x - hen.x, watched.y - hen.y);
+    play(0.4);
+    if (watched.alive) assert.ok(Math.hypot(watched.x - hen.x, watched.y - hen.y) < d0, 'the rat did not come closer');
+  });
+
+  it('a crowd spreads out instead of stacking on one spot', () => {
+    resetRun();
+    start();
+    for (let i = 0; i < 30; i++) sturdy(RAT, 5 + i * 0.001, 5);
+    play(0.2);
+    const crowd = alive(enemies);
+    let closest = Infinity;
+    for (let i = 0; i < crowd.length; i++) {
+      for (let j = i + 1; j < crowd.length; j++) {
+        closest = Math.min(closest, Math.hypot(crowd[i].x - crowd[j].x, crowd[i].y - crowd[j].y));
+      }
+    }
+    assert.ok(closest > 0.3, `two rats only ${closest.toFixed(3)} tiles apart`);
+  });
+
+  it('enemy colors never match the meadow', () => {
+    for (const idx of ENEMY_PALETTE_INDICES) assert.equal(GROUND_PALETTE_INDICES.includes(idx), false, `index ${idx}`);
+  });
+
+  it('the hen never wears meadow colors', () => {
+    for (const idx of HEN_PALETTE_INDICES) assert.equal(GROUND_PALETTE_INDICES.includes(idx), false);
+  });
+
+  it('a predator bites at most every 0.5 s, and Pot Helmet takes the edge off', () => {
+    resetRun();
+    start();
+    buildOrder.length = 0; // no weapons: nothing knocks the rat away
+    const rat = sturdy(RAT, hen.x + 0.2, hen.y);
+    play(0.2); // 1 s of contact
+    const bites = (100 - hen.hp) / rat.dmg;
+    assert.ok(Number.isInteger(bites) && bites >= 2 && bites <= 3, `${bites} bites in 1 s`);
+    applyCard({ id: 'helmet' });
+    applyCard({ id: 'helmet' });
+    const before = hen.hp;
+    damageHen(5, rat.x, rat.y);
+    assert.equal(before - hen.hp, 3);
+  });
+
+  it('the predator pool never overflows', () => {
+    resetRun();
+    start();
+    for (let i = 0; i < MAX_ENEMIES + 20; i++) spawnEnemy(FOX, 20, 0);
+    assert.equal(countEnemies(), MAX_ENEMIES);
+  });
+});
+
+describe('quiquiriqui at 5x: weapons, corn and cards', () => {
+  beforeEach(() => {
+    resetRun();
+  });
+
+  it('Egg Toss kills a rat that comes close', () => {
+    start();
+    spawnEnemy(RAT, hen.x + 4, hen.y - 4);
+    play(0.6);
+    assert.equal(game.kills, 1);
+    assert.equal(countEnemies(), 0);
+  });
+
+  it('most kills drop corn', () => {
+    start();
+    let drops = 0;
+    for (let i = 0; i < 100; i++) {
+      const before = alive(corn).length;
+      const rat = spawnEnemy(RAT, hen.x + 30 + i, hen.y);
+      rat.hp = 1;
+      hitEnemy(rat, 5, hen.x, hen.y);
+      if (alive(corn).length > before) drops++;
+    }
+    assert.ok(drops >= 80 && drops < 100, `${drops} drops in 100 kills`);
+  });
+
+  it('the magnet pulls nearby corn in and fills the XP bar', () => {
+    start();
+    spawnCorn(hen.x + 1.5, hen.y, 1, 0);
+    spawnCorn(hen.x + 12, hen.y, 1, 0);
+    play(0.2);
+    assert.equal(game.xp, 1);
+    assert.equal(alive(corn).length, 1, 'far corn should stay put');
+  });
+
+  it('reaching the XP target freezes the run on three weapon cards; a number key picks one', () => {
+    start();
+    openFirstCards();
+    assert.equal(game.level, 2);
+    assert.ok(game.cards.every((c) => ITEM_BY_ID[c.id].weapon), 'the first level-up offers weapons only');
+    assert.equal(new Set(game.cards.map((c) => c.id)).size, 3, 'cards repeat');
+    const t = game.time;
+    play(0.5);
+    assert.equal(game.time, t, 'the clock ran while choosing');
+    const chosen = game.cards[1];
+    tapKey('Digit2');
+    assert.equal(game.cards.length, 0);
+    assert.equal(build[chosen.id], chosen.level);
+    play(0.1);
+    assert.ok(game.time > t, 'the run did not resume');
+  });
+
+  it('a key pressed as the cards open does not pick one by accident', () => {
+    start();
+    openFirstCards();
+    tapKey('Digit1');
+    assert.equal(game.cards.length, 3, 'picked during the lock');
+    steps(0.5);
+    tapKey('Digit1');
+    assert.equal(game.cards.length, 0, 'a key after the lock did not pick');
+  });
+
+  it('a click or tap on a card picks it; a tap beside the cards does not', () => {
+    start();
+    openFirstCards();
+    steps(0.5);
+    const chosen = game.cards[2];
+    const r = cardRect(2, 3);
+    assert.equal(cardAt(r.x + 5, r.y + 5, 3), 2);
+    assert.equal(cardAt(2, 2, 3), -1);
+    tapAt(2, 2);
+    update(STEP);
+    assert.equal(game.cards.length, 3, 'a tap outside the cards picked one');
+    tapAt(r.x + r.w / 2, r.y + r.h / 2);
+    update(STEP);
+    assert.equal(game.cards.length, 0);
+    assert.equal(build[chosen.id], chosen.level);
+  });
+
+  it('cards respect the six weapon slots, never offer a maxed item, and owned items reach the top', () => {
+    start();
+    for (let level = 2; level < 80; level++) {
+      const cards = rollCards(false);
+      if (!cards.length) break;
+      assert.equal(new Set(cards.map((c) => c.id)).size, cards.length);
+      for (const c of cards) assert.ok(c.level <= MAX_ITEM_LEVEL);
+      applyCard(cards[0]);
+      const weapons = buildOrder.filter((id) => ITEM_BY_ID[id].weapon).length;
+      assert.ok(weapons <= SLOTS, `${weapons} weapons`);
+    }
+    for (const id of buildOrder) assert.equal(build[id], MAX_ITEM_LEVEL, id);
+    const weapons = ITEMS.filter((item) => item.weapon);
+    assert.equal(buildOrder.filter((id) => ITEM_BY_ID[id].weapon).length, Math.min(SLOTS, weapons.length));
+    assert.equal(rollCards(false).length, 0);
+  });
+
+  it('Sunglasses scale every weapon hit', () => {
+    start();
+    assert.equal(weaponDamage('egg'), 10);
+    applyCard({ id: 'shades' });
+    applyCard({ id: 'shades' });
+    assert.equal(weaponDamage('egg'), 12);
+  });
+
+  it('Hero Cape raises max health and heals what it adds', () => {
+    start();
+    hen.hp = 50;
+    applyCard({ id: 'cape' });
+    syncHenStats();
+    assert.equal(hen.maxHp, 120);
+    assert.equal(hen.hp, 70);
+  });
+
+  it('Lucky Bandana dodges about 6% of bites per level', () => {
+    start();
+    for (let i = 0; i < 3; i++) applyCard({ id: 'bandana' });
+    hen.hp = hen.maxHp = 1e6;
+    let dodged = 0;
+    for (let i = 0; i < 2000; i++) {
+      const before = hen.hp;
+      damageHen(5, hen.x + 1, hen.y);
+      if (hen.hp === before) dodged++;
+    }
+    assert.ok(dodged / 2000 > 0.14 && dodged / 2000 < 0.22, `${dodged / 20}% dodged`);
+  });
+
+  it('Corn Spray fires a fan of kernels at a foe on screen', () => {
+    armedWith('corn');
+    const rat = sturdy(RAT, hen.x + 4, hen.y - 4);
+    rat.speed = 0;
+    steps(0.5);
+    assert.equal(projectiles.filter((p) => p.alive && p.kind === KERNEL).length, 3);
+  });
+
+  it('Wing Gust hurts and shoves back every foe close by', () => {
+    armedWith('gust');
+    const ring = [];
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2;
+      ring.push(sturdy(RAT, hen.x + Math.cos(a), hen.y + Math.sin(a)));
+    }
+    for (let i = 0; i < 90 && ring.every((e) => e.hp === e.maxHp); i++) update(STEP);
+    steps(0.15);
+    for (const e of ring) {
+      assert.ok(e.hp < e.maxHp, 'a rat was not hurt');
+      assert.ok(Math.hypot(e.x - hen.x, e.y - hen.y) > 1.6, 'a rat was not pushed back');
+    }
+  });
+
+  it('Chick Orbit chicks nip what they touch, each foe at most every 0.5 s', () => {
+    armedWith('chicks');
+    update(STEP);
+    assert.equal(chicks.count, 1);
+    const rat = sturdy(RAT, chicks.list[0].x, chicks.list[0].y);
+    rat.speed = 0;
+    for (let i = 0; i < 60; i++) {
+      // Keep the rat right on the chick for 1 s
+      rat.x = chicks.list[0].x;
+      rat.y = chicks.list[0].y;
+      update(STEP);
+    }
+    const nips = (rat.maxHp - rat.hp) / weaponDamage('chicks');
+    assert.ok(nips >= 2 && nips <= 3, `${nips} nips in 1 s`);
+  });
+
+  it('Thunder Comb strikes foes on screen, never off it', () => {
+    armedWith('thunder');
+    const near = sturdy(RAT, hen.x + 3, hen.y - 3);
+    const far = sturdy(RAT, hen.x + 14, hen.y - 14);
+    near.speed = far.speed = 0;
+    for (let i = 0; i < 60 && near.hp === near.maxHp; i++) update(STEP);
+    assert.ok(near.hp < near.maxHp, 'the rat on screen was not struck');
+    assert.ok(bolts.some((b) => b.alive), 'no bolt drawn');
+    steps(3);
+    assert.equal(far.hp, far.maxHp, 'a rat off screen was struck');
+  });
+
+  it('passives add up into the stats', () => {
+    const speed = stats.speed;
+    applyCard({ id: 'boots' });
+    applyCard({ id: 'boots' });
+    assert.ok(Math.abs(stats.speed - (speed + 0.16)) < 1e-9);
+    applyCard({ id: 'basket' });
+    assert.ok(stats.magnet > 2.2);
+  });
+
+  it('Feather Darts fly behind the hen', () => {
+    start();
+    applyCard({ id: 'darts' });
+    holdKey('KeyD', true);
+    play(0.05);
+    holdKey('KeyD', false);
+    sturdy(RAT, hen.x - 6, hen.y + 6); // something on screen to shoot at
+    play(0.1);
+    const darts = projectiles.filter((p) => p.alive && p.kind === 1);
+    assert.ok(darts.length > 0, 'no darts');
+    for (const p of darts) assert.ok(toIsoX(p.vx, p.vy) < 0, 'a dart flew forward');
+  });
+});
+
+describe('quiquiriqui: the hen dresses up', () => {
+  beforeEach(() => {
+    resetRun();
+  });
+
+  it('every item has an icon, and Egg Toss and Chick Orbit have their own looks', () => {
+    for (const item of ITEMS) assert.ok(iconSprites[item.id], `no icon for ${item.id}`);
+    assert.equal(eggSprites.length, 3);
+    assert.ok(chickSprite);
+    for (const item of ITEMS) {
+      if (item.id === 'egg' || item.id === 'chicks') continue;
+      assert.ok(WORN_ITEMS.includes(item.id), `${item.id} is not worn`);
+    }
+  });
+
+  it('every worn item changes the hen, and each of its three looks is different', () => {
+    const bare = henGrid({});
+    for (const id of WORN_ITEMS) {
+      const looks = [1, 2, 3].map((tier) => henGrid({ [id]: tier }));
+      assert.notEqual(looks[0], bare, `${id} does not show`);
+      assert.notEqual(looks[1], looks[0], `${id}: tier 2 looks like tier 1`);
+      assert.notEqual(looks[2], looks[1], `${id}: tier 3 looks like tier 2`);
+    }
+  });
+
+  it('no outfit ever uses a meadow color', () => {
+    for (const tier of [1, 2, 3]) {
+      const outfits = [Object.fromEntries(WORN_ITEMS.map((id) => [id, tier])), ...WORN_ITEMS.map((id) => ({ [id]: tier }))];
+      for (const outfit of outfits) {
+        for (const step of ['idle', 'stepA', 'stepB']) {
+          for (const c of henGrid(outfit, step).split(',').map(Number)) {
+            assert.equal(GROUND_PALETTE_INDICES.includes(c), false, `${JSON.stringify(outfit)} uses ${c}`);
+          }
+        }
+      }
+    }
+  });
+
+  it('item levels map to three looks: 1-2, 3-4 and 5', () => {
+    const tiers = [1, 2, 3, 4, 5].map((level) => outfitOf({ helmet: level }).helmet);
+    assert.deepEqual(tiers, [1, 1, 2, 2, 3]);
+  });
+
+  it('picking a card re-bakes the hen only when her look changes', () => {
+    start();
+    openFirstCards();
+    steps(0.5);
+    for (let i = 0; i < game.cards.length; i++) {
+      const card = game.cards[i];
+      const changes = outfitKey(outfitOf({ ...build, [card.id]: card.level })) !== henLook.key;
+      const bakes = henLook.bakes;
+      tapKey(`Digit${i + 1}`);
+      assert.equal(henLook.bakes - bakes, changes ? 1 : 0, `${card.id} level ${card.level}`);
+      return;
+    }
+  });
+});
+
+describe('quiquiriqui at 5x: the end of a run', () => {
+  beforeEach(() => {
+    resetRun();
+  });
+
+  it('falling shows the game over; a key after a moment goes back to the title and keeps the best time', () => {
+    localStorage.removeItem('qq_best');
+    game.best = 0;
+    start();
+    play(1);
+    const survived = game.time;
+    damageHen(1000, hen.x + 1, hen.y);
+    assert.equal(game.over, true);
+    assert.equal(game.newBest, true);
+    assert.equal(localStorage.getItem('qq_best'), String(Math.floor(survived)));
+    tapKey('Space');
+    assert.equal(game.over, true, 'left the game over at once');
+    play(0.4);
+    tapKey('Space');
+    assert.equal(game.started, false);
+    assert.equal(game.over, false);
+    assert.ok(game.best >= Math.floor(survived));
+    // A key still held from the last run does not restart it at once
+    holdKey('KeyD', true);
+    play(0.05);
+    assert.equal(game.started, false, 'restarted during the title lock');
+    play(0.2);
+    holdKey('KeyD', false);
+    assert.equal(game.started, true);
+  });
+
+  it('a new run starts clean', () => {
+    resetRun({ peaceful: false });
+    start();
+    play(4);
+    assert.ok(game.kills > 0 && countEnemies() > 0);
+    resetRun({ peaceful: false });
+    assert.equal(countEnemies(), 0);
+    assert.equal(alive(corn).length, 0);
+    assert.equal(alive(projectiles).length, 0);
+    assert.equal(alive(particles).length, 0);
+    assert.equal(alive(popups).length, 0);
+    assert.deepEqual(buildOrder, ['egg']);
+    assert.equal(henLook.key, outfitKey({}), 'the hen kept her outfit');
+    assert.equal(game.level, 1);
+    assert.equal(game.xp, 0);
+    assert.equal(game.kills, 0);
+    assert.equal(game.cards.length, 0);
+  });
+
+  it('the same seed replays the same run', () => {
+    const runOnce = () => {
+      resetRun({ peaceful: false, seed: 42 });
+      playWithBot(3);
+      return [game.time, game.kills, game.level, hen.x, hen.y, countEnemies()].join(',');
+    };
+    assert.equal(runOnce(), runOnce());
+  });
+});
+
+describe('quiquiriqui at 5x: the bot and a long run', () => {
+  it('the bot survives the first minute', () => {
+    resetRun({ peaceful: false });
+    playWithBot(20, { onFrame: () => game.over || game.time >= 60 });
+    assert.equal(game.over, false, `the bot fell at ${formatClock(game.time)}`);
+    assert.ok(game.time >= 59, `only ${game.time} s`);
+    assert.ok(game.level >= 4, `level ${game.level}`);
+    assert.ok(game.kills >= 30, `${game.kills} kills`);
+  });
+
+  it('ten minutes with a full horde stay inside every pool and the frame budget', () => {
+    resetRun({ peaceful: false });
+    let peak = 0;
+    let worst = 0;
+    playWithBot(150, {
+      onFrame() {
+        hen.hp = hen.maxHp = 1e6; // a soak test: keep her standing to see the whole timeline
+        peak = Math.max(peak, countEnemies());
+        return game.time >= 600;
+      },
+    });
+    assert.ok(game.time >= 600, `stopped at ${game.time}`);
+    assert.equal(peak, MAX_ENEMIES, 'the horde never reached the cap');
+    // Time a step with the full horde
+    const t0 = performance.now();
+    for (let i = 0; i < 120; i++) update(STEP);
+    worst = (performance.now() - t0) / 120;
+    assert.ok(worst < 4, `${worst.toFixed(2)} ms per step`);
+  });
+});
+
+describe('quiquiriqui: text and layout', () => {
+  it('every HUD string fits the 320 px canvas', () => {
+    for (const [key, text] of Object.entries(HUD_STRINGS)) {
+      assert.ok(HUD_SIZES[key], `no size for ${key}`);
+      assert.ok(estimateTextWidth(text, HUD_SIZES[key]) <= WIDTH - 16, `${key} is too wide`);
+    }
+    assert.ok(estimateTextWidth(gameOverLine(599, 9999, 99), 7) <= WIDTH - 16, 'game over line');
+  });
+
+  it('every card name and description fits its card', () => {
+    for (const item of ITEMS) {
+      assert.ok(estimateTextWidth(item.name, CARD_NAME_SIZE) <= CARD_W - 6, `${item.id} name`);
+      for (let level = 1; level <= MAX_ITEM_LEVEL; level++) {
+        for (const line of cardText({ id: item.id, level })) {
+          assert.ok(estimateTextWidth(line, CARD_TEXT_SIZE) <= CARD_W - 6, `${item.id}: "${line}"`);
+        }
+      }
+      if (item.weapon) for (const key of Object.keys(item.lv)) assert.equal(item.lv[key].length, MAX_ITEM_LEVEL);
+    }
+  });
+
+  it('three cards fit side by side on screen', () => {
+    const first = cardRect(0, 3);
+    const last = cardRect(2, 3);
+    assert.ok(first.x >= 4 && last.x + last.w <= WIDTH - 4);
+    assert.ok(first.y + first.h <= HEIGHT - 4);
+  });
+
+  it('formats the clock as MM:SS', () => {
+    assert.equal(formatClock(0), '00:00');
+    assert.equal(formatClock(65.9), '01:05');
+    assert.equal(formatClock(600), '10:00');
+  });
+
+  it('the XP curve grows, but slower than linear', () => {
+    assert.equal(xpToNext(1), 4);
+    for (let l = 1; l < 30; l++) assert.ok(xpToNext(l + 1) >= xpToNext(l));
+    assert.ok(xpToNext(21) < 20 * xpToNext(2) / 2);
   });
 });
