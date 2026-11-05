@@ -16,12 +16,12 @@ import { resetWaves, updateWaves } from './waves.js';
 import { resetWeapons, updateWeapons, updateProjectiles } from './weapons.js';
 import { juice, snapCamera, updateJuice } from './juice.js';
 import { clearPools, updatePools, spawnParticle, spawnPuff, spawnPopup } from './pool.js';
-import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow, sfxChest } from './sfx.js';
+import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow, sfxChest, sfxSplat } from './sfx.js';
 import { game, settings, resetGame, loadBest, saveBest, xpToNext } from './state.js';
 import { RUN_LENGTH, weatherAt } from './weather.js';
 import { updateMusic, loadMusicSetting, toggleMusic } from './music.js';
-import { renderScene, cardAt, titleRowAt } from './render.js';
-import { profile, loadProfile, choosePeril, chooseHen, unlockAfterDawn, HENS } from './profile.js';
+import { renderScene, cardAt, titleRowAt, shopRowAt } from './render.js';
+import { profile, loadProfile, choosePeril, chooseHen, unlockAfterDawn, HENS, eggsEarned, bankEggs, buyUpgrade, SHOP } from './profile.js';
 
 /** Real seconds before a card can be picked once the cards open. */
 const CARD_LOCK = 0.35;
@@ -82,6 +82,7 @@ export function resetRun(seed = (Math.random() * 2 ** 31) | 0) {
   loadBest();
   resetHen();
   resetBuild(HENS[game.hen].start);
+  syncHenStats(); // the shop's Tough Hide
   dressHen();
   resetWaves();
   resetWeapons();
@@ -154,8 +155,33 @@ function titleMenu() {
     resetBuild(HENS[game.hen].start);
     dressHen();
   }
+  if (press('KeyB') || row === 'shop') game.shopOpen = true;
   if (row) releasePointer();
-  return !!(peril || hen || row);
+  return !!(peril || hen || row || game.shopOpen);
+}
+
+/** The shop, on the title screen: 1-5 (or a tap on a row) buy; B, Escape or BACK close it. */
+function shopMenu() {
+  const tap = input.tap;
+  const row = tap ? shopRowAt(tap.y) : -1;
+  input.anyAction = false;
+  releasePointer();
+  let pick = row >= 0 && row < SHOP.length ? row : -1;
+  SHOP.forEach((_, i) => {
+    if (input.pressed.has(`Digit${i + 1}`) || input.pressed.has(`Numpad${i + 1}`)) pick = i;
+  });
+  if (pick >= 0) (buyUpgrade(pick) ? sfxChest : sfxSplat)();
+  if (input.pressed.has('KeyB') || input.pressed.has('Escape') || row === SHOP.length) {
+    game.shopOpen = false;
+    game.titleLock = 0.3; // a key still held does not start the run at once
+  }
+}
+
+/** Adds to the profile the golden eggs the run has earned and not banked yet. */
+function bankRunEggs() {
+  const earned = eggsEarned(game.time, game.kills, game.won, game.peril);
+  if (earned > game.eggs) bankEggs(earned - game.eggs);
+  game.eggs = earned;
 }
 
 /** Shows `text` across the screen for a few seconds. */
@@ -266,6 +292,11 @@ export function update(dt) {
   }
 
   if (!game.started) {
+    if (game.shopOpen) {
+      shopMenu();
+      updateJuice(dt, hen.x, hen.y);
+      return;
+    }
     if (titleMenu()) input.anyAction = false;
     if (game.titleLock > 0) {
       game.titleLock -= dt;
@@ -281,6 +312,7 @@ export function update(dt) {
 
   if (game.over) {
     // The hen lies still, feathers settle and the predators wander off.
+    if (game.overTime === 0) bankRunEggs();
     game.overTime += dt;
     updateJuice(dt, hen.x, hen.y);
     updateEnemies(dt);

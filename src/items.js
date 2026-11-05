@@ -2,6 +2,7 @@
 // stats they add up to, and the three cards offered at each level-up. All names are our own.
 // Each item is also something she visibly wears or carries (sprites.js, OUTFIT_LAYERS).
 import { gameRand } from './rng.js';
+import { profile, SHOP } from './profile.js';
 
 export const MAX_ITEM_LEVEL = 5;
 /** Slots per kind: at most this many different weapons and passives. */
@@ -140,9 +141,10 @@ export const ITEM_BY_ID = Object.fromEntries([...ITEMS, ...BOONS].map((item) => 
 
 /**
  * Base stats before passives: speed multiplier, corn magnet radius (tiles), flat armor, damage
- * multiplier, extra max health, dodge chance, and haste (weapon cooldowns are divided by it).
+ * multiplier, extra max health, dodge chance, haste (weapon cooldowns are divided by it) and the
+ * XP multiplier. The shop's permanent upgrades are added on top.
  */
-const BASE_STATS = { speed: 1, magnet: 3, armor: 0, damage: 1, maxHp: 0, dodge: 0, haste: 1 };
+const BASE_STATS = { speed: 1, magnet: 3, armor: 0, damage: 1, maxHp: 0, dodge: 0, haste: 1, xp: 1 };
 export const stats = { ...BASE_STATS };
 
 /** Owned item levels by id, and the order they were taken in (for the HUD). */
@@ -153,6 +155,7 @@ export const boons = {};
 
 function recomputeStats() {
   Object.assign(stats, BASE_STATS);
+  SHOP.forEach((upgrade, i) => (stats[upgrade.stat] += upgrade.per * profile.shop[i]));
   for (const id of buildOrder) {
     const item = ITEM_BY_ID[id];
     if (item.stat) stats[item.stat] += item.per * build[id];

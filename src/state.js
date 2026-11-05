@@ -43,6 +43,10 @@ export const game = {
   hen: 0,
   /** A line for the dawn screen when the dawn unlocked something ('PERIL 1 UNLOCKED!'). */
   unlockNote: '',
+  /** Golden eggs this run has earned (already added to the profile). */
+  eggs: 0,
+  /** True while the shop is open on the title screen. */
+  shopOpen: false,
 };
 
 /** Test and dev switches. They survive resetRun(). */
@@ -76,6 +80,8 @@ export function resetGame() {
   game.newBest = false;
   game.titleLock = 0;
   game.unlockNote = '';
+  game.eggs = 0;
+  game.shopOpen = false;
 }
 
 /** Reads the saved best time of the current peril (0 if storage is missing or blocked). */

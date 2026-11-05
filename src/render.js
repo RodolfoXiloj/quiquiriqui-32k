@@ -17,7 +17,7 @@ import { particles, popups, rings, bolts, RING_LIFE, BOLT_LIFE } from './pool.js
 import { input, STICK_RADIUS } from './input.js';
 import { game, formatClock, xpToNext } from './state.js';
 import { weatherAt, DAWN_START, RUN_LENGTH } from './weather.js';
-import { profile, MAX_PERIL, HENS, henUnlocked } from './profile.js';
+import { profile, MAX_PERIL, HENS, henUnlocked, SHOP, SHOP_COSTS } from './profile.js';
 
 /** Every fixed on-screen string. A test checks that each fits the 320 px canvas. */
 export const HUD_STRINGS = {
@@ -66,12 +66,47 @@ export const HUD_SIZES = {
 };
 
 /** Title screen rows that react to taps, as offsets (px) from the middle of the screen. */
-const TITLE_ROWS = { hen: 34, peril: 45 };
+const TITLE_ROWS = { hen: 34, peril: 45, shop: 56 };
 
 /** The title row under canvas height `y` ('peril'), or null. */
 export function titleRowAt(y) {
   for (const [row, dy] of Object.entries(TITLE_ROWS)) if (Math.abs(y - (HEIGHT / 2 + dy)) <= 5) return row;
   return null;
+}
+
+/** The shop row of the title screen. */
+export function shopLine() {
+  return `B: SHOP   ${profile.eggs} GOLDEN EGGS`;
+}
+
+/** Shop rows: the upgrades, then BACK, as offsets (px) from the middle of the screen. */
+const shopRowY = (i) => HEIGHT / 2 - 32 + i * 13;
+
+/** The shop row under canvas height `y`: an upgrade index, SHOP.length for BACK, or -1. */
+export function shopRowAt(y) {
+  for (let i = 0; i <= SHOP.length; i++) if (Math.abs(y - shopRowY(i)) <= 5) return i;
+  return -1;
+}
+
+/** One line of the shop: key, name, level and what the next level costs. */
+export function shopItemLine(i) {
+  const level = profile.shop[i];
+  const cost = level < SHOP_COSTS.length ? `${SHOP_COSTS[level]} EGGS` : 'MAX';
+  return `${i + 1} ${SHOP[i].name}  ${SHOP[i].text}  LV ${level}  ${cost}`;
+}
+
+function drawShop(ctx) {
+  const cy = HEIGHT / 2;
+  ctx.fillStyle = PALETTE[15];
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  drawText(ctx, 'SHOP', WIDTH / 2, cy - 64, 12, 10);
+  drawText(ctx, `${profile.eggs} GOLDEN EGGS`, WIDTH / 2, cy - 49, 7, 10);
+  SHOP.forEach((_, i) => {
+    const level = profile.shop[i];
+    const dear = level < SHOP_COSTS.length && profile.eggs < SHOP_COSTS[level];
+    drawText(ctx, shopItemLine(i), WIDTH / 2, shopRowY(i), 7, level >= SHOP_COSTS.length ? 10 : dear ? 8 : 13);
+  });
+  drawText(ctx, 'B: BACK', WIDTH / 2, shopRowY(SHOP.length) + 4, 7, 13);
 }
 
 /** The hen row of the title screen. */
@@ -457,8 +492,9 @@ function drawGameOver(ctx, time) {
   }
   const statsY = cy + (won ? 26 : -10);
   drawText(ctx, gameOverLine(game.time, game.kills, game.level), WIDTH / 2, statsY, 7, 13);
-  if (game.newBest) drawText(ctx, S.newBest, WIDTH / 2, statsY + 14, Z.newBest, 10);
-  else drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, statsY + 14, 7, 13);
+  const eggs = game.eggs ? `   +${game.eggs} GOLDEN EGGS` : '';
+  if (game.newBest) drawText(ctx, S.newBest + eggs, WIDTH / 2, statsY + 14, Z.newBest, 10);
+  else drawText(ctx, `BEST ${formatClock(game.best)}` + eggs, WIDTH / 2, statsY + 14, 7, 13);
   if (game.unlockNote) drawText(ctx, game.unlockNote, WIDTH / 2, statsY + 25, 7, 10);
   if (game.overTime > 1.5 && game.dawnChoice) {
     // Keep going (left) or end the run (right)
@@ -478,8 +514,10 @@ function drawHud(ctx, time) {
     if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 22, Z.start, 13);
     drawText(ctx, henLine(), WIDTH / 2, cy + TITLE_ROWS.hen, 7, 13);
     drawText(ctx, perilLine(), WIDTH / 2, cy + TITLE_ROWS.peril, 7, profile.peril ? 10 : 13);
+    drawText(ctx, shopLine(), WIDTH / 2, cy + TITLE_ROWS.shop, 7, 10);
     drawText(ctx, S.controls, WIDTH / 2, cy + 67, Z.controls, 13);
     drawText(ctx, S.music, WIDTH / 2, cy + 77, Z.music, 13);
+    if (game.shopOpen) drawShop(ctx);
     return;
   }
   drawTopBar(ctx, time);

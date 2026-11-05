@@ -120,7 +120,7 @@ export function updateCorn(dt) {
       c.y += c.vy * dt;
       if (d < EAT_RADIUS) {
         c.alive = false;
-        game.xp += c.value;
+        game.xp += c.value * stats.xp;
         spawnParticle(hen.x, hen.y, 10, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, 25, 10, 1, 0.3);
         sfxPickup();
       }

@@ -67,7 +67,9 @@ window.__qq = {
     day: game.day,
     peril: game.peril,
     hen: game.hen,
-    profile: { ...profile },
+    profile: JSON.parse(JSON.stringify(profile)),
+    shopOpen: game.shopOpen,
+    runEggs: game.eggs,
     music: { on: music.on, mood: music.mood },
     time: game.time,
     level: game.level,
@@ -144,6 +146,11 @@ window.__qq = {
       while ((build[id] || 0) < level) applyCard({ id });
       syncHenStats();
       bakeHen(outfitOf(build));
+    },
+    /** Adds `n` golden eggs. */
+    eggs(n = 100) {
+      profile.eggs += n;
+      saveProfile();
     },
     /** Unlocks every peril level (for testing the menus). */
     unlockAll() {

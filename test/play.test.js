@@ -45,6 +45,9 @@ import {
   cardAt,
   perilLine,
   henLine,
+  shopLine,
+  shopItemLine,
+  shopRowAt,
 } from '../src/render.js';
 import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, fitScreen, screenScale } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
@@ -90,7 +93,7 @@ import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
-import { profile, PERIL, MAX_PERIL, HENS, unlockAfterDawn } from '../src/profile.js';
+import { profile, PERIL, MAX_PERIL, HENS, SHOP, SHOP_COSTS, unlockAfterDawn, eggsEarned, buyUpgrade } from '../src/profile.js';
 import { audio, sfxKill, sfxLevelUp, sfxPeck, HIT_SOUNDS } from '../src/sfx.js';
 import { music, PARTS, notesAt, sectionLength } from '../src/music.js';
 
@@ -1099,6 +1102,91 @@ describe('quiquiriqui at 5x: peril levels', () => {
   });
 });
 
+describe('quiquiriqui at 5x: golden eggs and the shop', () => {
+  it('a run earns eggs for time, kills, dawn and peril, banked once', () => {
+    assert.equal(eggsEarned(600, 400, true, 2), Math.floor((20 + 10 + 10) * 2));
+    assert.equal(eggsEarned(59, 39, false, 0), 1);
+    profile.eggs = 0;
+    resetRun();
+    start();
+    game.time = 125;
+    game.kills = 85;
+    damageHen(1e9, hen.x + 1, hen.y);
+    update(STEP);
+    steps(0.5);
+    assert.equal(game.eggs, 4 + 2);
+    assert.equal(profile.eggs, 6, 'banked twice or not at all');
+  });
+
+  it('dawn banks the eggs so far; a later fall banks only the rest', () => {
+    profile.eggs = 0;
+    resetRun();
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    game.time = RUN_LENGTH - 0.05;
+    for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
+    update(STEP);
+    const atDawn = eggsEarned(RUN_LENGTH, game.kills, true, 0);
+    assert.equal(profile.eggs, atDawn);
+    steps(1.6);
+    tapKey('Digit1');
+    game.time += 60;
+    damageHen(1e9, hen.x + 1, hen.y);
+    update(STEP);
+    assert.equal(profile.eggs, eggsEarned(game.time, game.kills, true, 0));
+  });
+
+  it('buying costs eggs and raises the level; no eggs, no sale; five levels at most', () => {
+    profile.eggs = 35;
+    profile.shop = [0, 0, 0, 0, 0];
+    assert.equal(buyUpgrade(0), true);
+    assert.equal(buyUpgrade(0), true);
+    assert.deepEqual([profile.eggs, profile.shop[0]], [35 - SHOP_COSTS[0] - SHOP_COSTS[1], 2]);
+    assert.equal(buyUpgrade(0), false, 'sold without enough eggs');
+    profile.eggs = 1e6;
+    for (let k = 0; k < 10; k++) buyUpgrade(1);
+    assert.equal(profile.shop[1], SHOP_COSTS.length);
+    assert.equal(JSON.parse(localStorage.getItem('qq_profile')).shop[1], SHOP_COSTS.length);
+    profile.eggs = 0;
+  });
+
+  it('upgrades apply to every run: health, speed, damage, reach and XP', () => {
+    resetRun({ shop: [2, 1, 1, 1, 1] });
+    assert.equal(hen.maxHp, 120);
+    assert.equal(hen.hp, 120);
+    assert.ok(Math.abs(stats.speed - 1.03) < 1e-9);
+    assert.ok(Math.abs(stats.damage - 1.05) < 1e-9);
+    assert.ok(Math.abs(stats.magnet - 3.25) < 1e-9);
+    start();
+    spawnCorn(hen.x + 0.5, hen.y, 1, 0);
+    steps(0.3);
+    assert.ok(Math.abs(game.xp - 1.05) < 1e-9, `xp ${game.xp}`);
+    resetRun();
+  });
+
+  it('on the title, B opens the shop, a number buys, B closes, and none of it starts a run', () => {
+    resetRun();
+    profile.eggs = 15;
+    tapKey('KeyB');
+    assert.equal(game.shopOpen, true);
+    holdKey('KeyD', true); // walking does not leave the shop
+    update(STEP);
+    holdKey('KeyD', false);
+    tapKey('Digit3');
+    assert.equal(profile.shop[2], 1);
+    assert.equal(profile.eggs, 5);
+    tapKey('Digit3'); // too dear now: nothing happens
+    assert.equal(profile.shop[2], 1);
+    tapAt(WIDTH / 2, HEIGHT / 2 - 32 + 13 * SHOP.length);
+    update(STEP);
+    assert.equal(game.shopOpen, false, 'BACK did not close the shop');
+    assert.equal(game.started, false);
+    assert.equal(shopRowAt(HEIGHT / 2 - 32), 0);
+    profile.eggs = 0;
+    resetRun();
+  });
+});
+
 describe('quiquiriqui at 5x: the bot and a long run', () => {
   it('the bot survives the first minute', () => {
     resetRun({ peaceful: false });
@@ -1303,6 +1391,14 @@ describe('quiquiriqui: text and layout', () => {
     for (let i = 0; i < HENS.length; i++) {
       profile.hen = i;
       assert.ok(estimateTextWidth(henLine(), 7) <= WIDTH - 16, 'hen line');
+    }
+    profile.eggs = 99999;
+    assert.ok(estimateTextWidth(shopLine(), 7) <= WIDTH - 16, 'shop line');
+    for (let i = 0; i < SHOP.length; i++) {
+      for (const level of [0, SHOP_COSTS.length]) {
+        profile.shop = SHOP.map(() => level);
+        assert.ok(estimateTextWidth(shopItemLine(i), 7) <= WIDTH - 16, `shop: "${shopItemLine(i)}"`);
+      }
     }
     Object.assign(profile, saved);
   });
