@@ -15,8 +15,10 @@ export const game = {
   cards: [],
   /** Seconds before a card can be picked, so a stray tap or key does not choose one. */
   cardLock: 0,
-  /** True once the hen falls; `overTime` counts the seconds since. */
+  /** True once the run ends (the hen falls, or dawn comes); `overTime` counts the seconds since. */
   over: false,
+  /** True when the run ended at dawn: she survived. */
+  won: false,
   overTime: 0,
   /** True on the game-over screen when this run beat the best time. */
   newBest: false,
@@ -44,6 +46,7 @@ export function resetGame() {
   game.cards = [];
   game.cardLock = 0;
   game.over = false;
+  game.won = false;
   game.overTime = 0;
   game.newBest = false;
   game.titleLock = 0;

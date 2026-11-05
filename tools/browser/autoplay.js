@@ -59,6 +59,7 @@ window.__qq = {
     started: game.started,
     paused: game.paused,
     over: game.over,
+    won: game.won,
     time: game.time,
     level: game.level,
     xp: game.xp,

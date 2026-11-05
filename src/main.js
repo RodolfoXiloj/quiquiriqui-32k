@@ -15,8 +15,9 @@ import { resetWaves, updateWaves } from './waves.js';
 import { resetWeapons, updateWeapons, updateProjectiles } from './weapons.js';
 import { juice, snapCamera, updateJuice } from './juice.js';
 import { clearPools, updatePools, spawnParticle, spawnPuff, spawnPopup } from './pool.js';
-import { sfxCluck, sfxLevelUp, sfxPickup } from './sfx.js';
-import { game, settings, resetGame, loadBest, xpToNext } from './state.js';
+import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow } from './sfx.js';
+import { game, settings, resetGame, loadBest, saveBest, xpToNext } from './state.js';
+import { RUN_LENGTH } from './weather.js';
 import { renderScene, cardAt } from './render.js';
 
 /** Real seconds before a card can be picked once the cards open. */
@@ -91,6 +92,20 @@ function startRun() {
   sfxCluck();
   spawnPuff(hen.x, hen.y, 10, 4, 1.4);
   if (!settings.peaceful) scatterStartingCorn();
+}
+
+/** Dawn: she made it. The rooster crows and the predators run away. */
+function winRun() {
+  game.time = RUN_LENGTH;
+  game.over = true;
+  game.won = true;
+  game.overTime = 0;
+  game.newBest = saveBest(RUN_LENGTH);
+  sfxCrow();
+  for (let k = 0; k < 30; k++) {
+    const a = Math.random() * Math.PI * 2;
+    spawnParticle(hen.x, hen.y, 10, Math.cos(a) * 2.5, Math.sin(a) * 2.5, 40 + Math.random() * 40, k % 3 ? 10 : 13, 2, 1.2);
+  }
 }
 
 /** Opens the level-up cards (or heals when nothing is left to upgrade). */
@@ -183,6 +198,10 @@ export function update(dt) {
   const simDt = updateJuice(dt, hen.x, hen.y);
   if (simDt <= 0) return;
   game.time += simDt;
+  if (game.time >= RUN_LENGTH) {
+    winRun();
+    return;
+  }
   updateWaves(simDt);
   updateHen(simDt);
   updateWeapons(simDt);

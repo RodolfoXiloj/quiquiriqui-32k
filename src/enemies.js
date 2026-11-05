@@ -224,8 +224,8 @@ export function updateEnemies(dt) {
       e.x += e.knockX * dt;
       e.y += e.knockY * dt;
     } else {
-      // Chase; after the hen falls, wander off.
-      const s = (game.over ? -0.5 : 1) * e.speed * dt;
+      // Chase; after the hen falls, wander off; at dawn, run away.
+      const s = (game.over ? (game.won ? -1.4 : -0.5) : 1) * e.speed * dt;
       e.x += (dx / d) * s;
       e.y += (dy / d) * s;
       e.walkPhase += dt * 8;

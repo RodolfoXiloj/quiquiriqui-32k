@@ -52,6 +52,7 @@ import { ITEMS, ITEM_BY_ID, MAX_ITEM_LEVEL, SLOTS, build, buildOrder, applyCard,
 import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
+import { weatherAt, RUN_LENGTH } from '../src/weather.js';
 
 /** Holds `code` for `seconds` of scenario time and returns the hen's screen-space shift. */
 function walk(code, seconds) {
@@ -570,6 +571,44 @@ describe('quiquiriqui at 5x: the end of a run', () => {
       return [game.time, game.kills, game.level, hen.x, hen.y, countEnemies()].join(',');
     };
     assert.equal(runOnce(), runOnce());
+  });
+});
+
+describe('quiquiriqui: the day arc', () => {
+  beforeEach(() => {
+    resetRun();
+  });
+
+  it('the weather follows the clock with soft fades', () => {
+    assert.deepEqual(weatherAt(60), { rain: 0, snow: 0, night: 0, dawn: 0 });
+    assert.equal(weatherAt(200).rain, 1);
+    const fading = weatherAt(152.5).rain;
+    assert.ok(fading > 0.4 && fading < 0.6, `rain ${fading} while fading in`);
+    assert.equal(weatherAt(360).snow, 1);
+    assert.equal(weatherAt(500).night, 1);
+    assert.equal(weatherAt(RUN_LENGTH).dawn, 1);
+    assert.equal(weatherAt(RUN_LENGTH).night, 0);
+  });
+
+  it('surviving ten minutes wins at dawn: the predators run, the best time is kept, a key goes back', () => {
+    localStorage.removeItem('qq_best');
+    game.best = 0;
+    start();
+    const rat = sturdy(RAT, hen.x + 3, hen.y);
+    game.time = RUN_LENGTH - 0.05;
+    steps(0.2);
+    assert.equal(game.won, true);
+    assert.equal(game.over, true);
+    assert.equal(game.time, RUN_LENGTH);
+    assert.equal(localStorage.getItem('qq_best'), String(RUN_LENGTH));
+    const away = () => Math.hypot(rat.x - hen.x, rat.y - hen.y);
+    const d0 = away();
+    steps(0.5);
+    assert.ok(away() > d0, 'the rat did not run away');
+    steps(1.5);
+    tapKey('Space');
+    assert.equal(game.started, false);
+    assert.equal(game.won, false);
   });
 });
 

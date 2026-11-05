@@ -15,6 +15,7 @@ import { juice } from './juice.js';
 import { particles, popups, rings, bolts, RING_LIFE, BOLT_LIFE } from './pool.js';
 import { input, STICK_RADIUS } from './input.js';
 import { game, formatClock, xpToNext } from './state.js';
+import { weatherAt, DAWN_START, RUN_LENGTH } from './weather.js';
 
 /** Every fixed on-screen string. A test checks that each fits the 320 px canvas. */
 export const HUD_STRINGS = {
@@ -27,6 +28,8 @@ export const HUD_STRINGS = {
   levelUp: 'LEVEL UP!',
   choose: 'CHOOSE ONE: 1, 2, 3, CLICK OR TAP',
   gameOver: 'GAME OVER',
+  dawn: 'DAWN!',
+  crow: 'THE ROOSTER CROWS',
   newBest: 'NEW BEST!',
   tutorial: 'PICK UP CORN TO LEVEL UP',
 };
@@ -42,6 +45,8 @@ export const HUD_SIZES = {
   levelUp: 12,
   choose: 7,
   gameOver: 16,
+  dawn: 16,
+  crow: 8,
   newBest: 8,
   tutorial: 7,
 };
@@ -128,7 +133,7 @@ function drawHen(ctx, sx, sy, time) {
     bob += Math.round((hen.peckX + hen.peckY) * 1);
   }
   const white = hen.hurtTime > 0 && Math.floor(hen.hurtTime * 30) % 2 === 0;
-  drawSprite(ctx, henSprites[pose], sx + ox, sy + bob, hen.facing, white, game.over);
+  drawSprite(ctx, henSprites[pose], sx + ox, sy + bob, hen.facing, white, game.over && !game.won);
 }
 
 function drawHealthBar(ctx, sx, sy) {
@@ -204,7 +209,7 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     const pose = e.knockTime > 0 ? 'idle' : Math.floor(e.walkPhase) % 2 ? 'stepA' : 'stepB';
     drawSprite(ctx, set[pose], d.sx, d.sy, e.facing, e.flash > 0.1);
   }
-  if (!game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);
+  if (game.started && !game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);
 
   // Eggs arc through the air; darts are short streaks.
   for (const p of projectiles) {
@@ -355,12 +360,20 @@ function drawGameOver(ctx, time) {
   const S = HUD_STRINGS;
   const Z = HUD_SIZES;
   if (game.overTime < 0.8) return;
-  dim(ctx, 0.55);
-  drawText(ctx, S.gameOver, WIDTH / 2, 56, Z.gameOver, 9);
-  drawText(ctx, gameOverLine(game.time, game.kills, game.level), WIDTH / 2, 80, 7, 13);
-  if (game.newBest) drawText(ctx, S.newBest, WIDTH / 2, 95, Z.newBest, 10);
-  else drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, 95, 7, 13);
-  if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, 130, Z.resume, 13);
+  // At dawn the hen stays in sight between the title and the stats; after a fall the stats cover her.
+  const won = game.won;
+  dim(ctx, won ? 0.12 : 0.55);
+  if (won) {
+    drawText(ctx, S.dawn, WIDTH / 2, 38, Z.dawn, 10);
+    drawText(ctx, S.crow, WIDTH / 2, 55, Z.crow, 13);
+  } else {
+    drawText(ctx, S.gameOver, WIDTH / 2, 56, Z.gameOver, 9);
+  }
+  const statsY = won ? 116 : 80;
+  drawText(ctx, gameOverLine(game.time, game.kills, game.level), WIDTH / 2, statsY, 7, 13);
+  if (game.newBest) drawText(ctx, S.newBest, WIDTH / 2, statsY + 14, Z.newBest, 10);
+  else drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, statsY + 14, 7, 13);
+  if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, won ? 152 : 130, Z.resume, 13);
 }
 
 function drawHud(ctx, time) {
@@ -387,6 +400,92 @@ function drawHud(ctx, time) {
   }
 }
 
+/** Stable pseudo-random value in [0, 1) for particle `i`, channel `k` (weather only). */
+function noise(i, k) {
+  const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+/** Paints `alpha` of palette color `color` over the whole screen. */
+function tint(ctx, color, alpha) {
+  if (alpha <= 0) return;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = PALETTE[color];
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.globalAlpha = 1;
+}
+
+/**
+ * The day arc over the world: rain streaks, snowflakes, the night with a pool of light around the
+ * hen and fireflies, then a warm dawn with the sun coming up. (hx, hy): the hen on screen.
+ */
+function drawWeather(ctx, time, hx, hy) {
+  const w = weatherAt(game.time);
+  if (w.rain > 0) {
+    tint(ctx, 15, 0.25 * w.rain);
+    ctx.globalAlpha = 0.75 * w.rain;
+    ctx.fillStyle = PALETTE[12];
+    for (let i = 0; i < 90; i++) {
+      const x = (noise(i, 1) * (WIDTH + 40) - time * 40) % (WIDTH + 40);
+      const y = (noise(i, 2) * (HEIGHT + 20) + time * (200 + noise(i, 3) * 80)) % (HEIGHT + 20);
+      const px = Math.round(x < 0 ? x + WIDTH + 40 : x) - 20;
+      const py = Math.round(y) - 10;
+      ctx.fillRect(px, py, 1, 3);
+      ctx.fillRect(px - 1, py + 3, 1, 2);
+    }
+  }
+  if (w.snow > 0) {
+    tint(ctx, 13, 0.14 * w.snow);
+    ctx.globalAlpha = 0.9 * w.snow;
+    ctx.fillStyle = PALETTE[13];
+    for (let i = 0; i < 80; i++) {
+      const x = noise(i, 4) * WIDTH + Math.sin(time * 1.3 + i) * 6;
+      const y = (noise(i, 5) * (HEIGHT + 10) + time * (16 + noise(i, 6) * 18)) % (HEIGHT + 10);
+      const size = noise(i, 7) > 0.7 ? 2 : 1;
+      ctx.fillRect(Math.round(x), Math.round(y) - 5, size, size);
+    }
+  }
+  if (w.night > 0) {
+    // Three soft steps of darkness, each with a hole around the hen.
+    ctx.fillStyle = PALETTE[0];
+    for (const [r, a] of [[96, 0.32], [74, 0.26], [54, 0.2]]) {
+      ctx.globalAlpha = a * w.night;
+      ctx.beginPath();
+      ctx.rect(0, 0, WIDTH, HEIGHT);
+      ctx.ellipse(hx, hy - 6, r, r * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill('evenodd');
+    }
+    ctx.fillStyle = PALETTE[10];
+    for (let i = 0; i < 22; i++) {
+      ctx.globalAlpha = w.night * (0.5 + 0.5 * Math.sin(time * 3 + i * 1.7));
+      const x = noise(i, 8) * WIDTH + Math.sin(time * 0.6 + i) * 14;
+      const y = noise(i, 9) * HEIGHT + Math.cos(time * 0.5 + i * 2) * 10;
+      ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+    }
+  }
+  if (w.dawn > 0) {
+    tint(ctx, 18, 0.16 * w.dawn);
+    // The sun comes up over the top edge as the last half minute runs out.
+    const p = Math.min(1, (game.time - DAWN_START) / (RUN_LENGTH - DAWN_START));
+    const sx = WIDTH - 44;
+    const sy = Math.round(-14 + p * 40);
+    ctx.globalAlpha = 0.35 * w.dawn;
+    ctx.fillStyle = PALETTE[10];
+    ctx.beginPath();
+    ctx.arc(sx, sy, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = w.dawn;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = PALETTE[13];
+    ctx.beginPath();
+    ctx.arc(sx - 2, sy - 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
 export function renderScene(ctx, alpha, time) {
   const camX = Math.round(juice.camX + juice.shakeX);
   const camY = Math.round(juice.camY + juice.shakeY);
@@ -396,6 +495,11 @@ export function renderScene(ctx, alpha, time) {
   drawGround(ctx, camX, camY);
   drawWorld(ctx, camX, camY, alpha, time);
   drawEffects(ctx, camX, camY);
+  if (game.started) {
+    const x = hen.prevX + (hen.x - hen.prevX) * alpha;
+    const y = hen.prevY + (hen.y - hen.prevY) * alpha;
+    drawWeather(ctx, time, Math.round(toIsoX(x, y) - camX), Math.round(toIsoY(x, y) - camY));
+  }
   drawStick(ctx);
   drawHud(ctx, time);
 }

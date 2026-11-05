@@ -105,6 +105,17 @@ export function sfxThunder() {
   if (gate('thunder')) playTone({ freq: 1400, endFreq: 60, dur: 0.2, noise: 0.75, vol: 0.28, mod: 30 });
 }
 
+/** The rooster at dawn: "qui-qui-ri-QUI", four nasal notes rising to a long last one. */
+export function sfxCrow() {
+  const notes = [
+    [700, 760, 0.1, 0],
+    [780, 840, 0.1, 0.14],
+    [880, 980, 0.12, 0.28],
+    [1150, 620, 0.55, 0.45],
+  ];
+  for (const [freq, endFreq, dur, delay] of notes) playTone({ freq, endFreq, dur, noise: 0.12, vol: 0.26, mod: 55, delay });
+}
+
 /** A falling squawk and a thud when the hen goes down. */
 export function sfxDeath() {
   playTone({ freq: 900, endFreq: 200, dur: 0.45, noise: 0.3, vol: 0.32, mod: 60 });
