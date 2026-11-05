@@ -10,7 +10,8 @@
     "build:fast": "node tools/build.mjs --fast",
     "size": "node tools/build.mjs --check",
     "test": "node --test test/play.test.js",
-    "playtest": "node tools/build.mjs && node tools/playtest.mjs"
+    "playtest": "node tools/build.mjs && node tools/playtest.mjs",
+    "balance": "node tools/balance.mjs"
   },
   "engines": {
     "node": ">=18"
