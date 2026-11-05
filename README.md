@@ -50,7 +50,7 @@
 
 A lone hen in an endless sunny meadow. Predators close in from every side, wave after wave, while the day turns to rain, snow and night. Her weapons fire on their own; **you only move**. Every level-up offers three upgrades, and **every upgrade is something she wears or carries**: a pot helmet, running boots, sunglasses, a feed basket, a cape. Glance at the hen and you see your build.
 
-Rats arrive from the first second and foxes after a minute; snakes join at 3:00, crows at 5:00 and badgers at 7:00, and the last minute brings everything. Three predators do more than chase: the **weasel** (from 2:00) stops, blinks and lunges in a straight line; the **magpie** (from 4:00) keeps its distance, circles and throws pebbles you can dodge; the **skunk** (from 6:00) leaves a stink cloud where it falls. Now and then a predator comes as a golden **elite** (much tougher; it drops a chest and golden eggs), and from 3:00 a rare **rainbow** one cycles through every color and drops a chest of three. A **boss** (a big, tough version of a predator) comes on most minutes and drops a **chest** with one or three upgrades. Every 20 seconds a **crate** appears; broken, it leaves a magnet (pulls in every kernel), a bomb (clears the screen), food or corn. The day turns to rain, snow and night, and at 10:00 the sun comes up.
+Rats arrive from the first second and foxes from 0:30; snakes join at 3:00, crows at 5:00 and badgers at 7:00, and the last minute brings everything. Three predators do more than chase: the **weasel** (from 1:00) stops, blinks and lunges in a straight line; the **magpie** (from 4:00) keeps its distance, circles and throws pebbles you can dodge; the **skunk** (from 6:00) leaves a stink cloud where it falls. Now and then a predator comes as a golden **elite** (much tougher; it drops a chest and golden eggs), and from 3:00 a rare **rainbow** one cycles through every color and drops a chest of three. A **boss** (a big, tough version of a predator) comes on most minutes and drops a **chest** with one or three upgrades. Every 20 seconds a **crate** appears; broken, it leaves a magnet (pulls in every kernel), a bomb (clears the screen), food or corn. The day turns to rain, snow and night, and at 10:00 the sun comes up.
 
 She starts with **Egg Toss** and can carry six of seven weapons and all six passives:
 
@@ -72,13 +72,13 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 
 Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden).
 
-From 1:30, every 45 to 75 seconds, a **random event** turns the heat up for a few seconds:
+At 0:50 a ring of rats closes in around her (break out of it!); after that, every 45 to 75 seconds, a **random event** turns the heat up for a few seconds:
 
 | Event | What happens |
 |-------|--------------|
 | **HAWK!** | A hawk's shadow hunts the hen, holds still inside a closing red ring, and the hawk dives there. Four dives: keep moving. It hits predators too. |
 | **STAMPEDE!** | A band of rats runs straight across the meadow at twice their speed. |
-| **SURROUNDED!** | A ring of foxes (badgers late in the day) appears around her and closes in. |
+| **SURROUNDED!** | A ring of predators appears around her and closes in: rats at first, then foxes, badgers late in the day. |
 | **FRENZY!** | For ten seconds the waves come three times as fast and every predator runs faster. A red frame pulses. |
 
 Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the predators flee. Then choose: end the run, or **keep going** into day 2, 3, 4... where the timeline starts over with tougher, faster and more numerous predators each day, until she falls.
@@ -86,9 +86,28 @@ Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the pr
 ### Playing again and again
 
 - **Levels never end.** Each level costs more corn than the last. Once every item is maxed, level-ups offer **boons** (more damage, speed, reach, health or fire rate, or a warm meal) with no limit.
-- **Peril 0 to 5.** A dawn unlocks the next peril: more predator health, speed, numbers and bite. Each peril keeps its own best time.
+- **Peril 0 to 5.** A dawn unlocks the next peril. Each level adds 10% predator health and bite, and **a rule of its own**, keeping the ones below it (see [Difficulty](#difficulty)). Each peril keeps its own best time.
 - **Three hens.** The white hen starts with Egg Toss; the speckled hen (unlocked by your first dawn) with Peck; the black hen (a dawn at peril 2) with Feather Darts. Locked hens can be browsed on the title screen: they show with a padlock and how to unlock them, but cannot start a run.
-- **Golden eggs and the shop.** Every run earns golden eggs (time, kills, dawn, peril, and elites). Spend them on five permanent upgrades, each with its own icon and five levels: Tough Hide, Strong Legs, Sharp Eye, Big Crop and Quick Learner.
+- **Golden eggs and the shop.** Every run earns golden eggs (time, kills, dawn, peril, and elites). Spend them on five permanent upgrades, each with its own icon and five levels: Tough Hide (+20 health a level), Strong Legs (+4% speed), Sharp Eye (+8% damage), Big Crop (+0.25 reach) and Quick Learner (+8% XP). The shop is how a hen earns her first dawn.
+
+### Difficulty
+
+Quiquiriqui is **hard by default**: a new player usually falls between minutes 4 and 6 at peril 0, and the first dawn comes after a few runs, some shop upgrades and learning the dangers. What makes it hard:
+
+- **Pressure from the first minute.** Foxes from 0:30, weasels from 1:00, and a ring of rats at 0:50.
+- **A quota on the meadow.** Each minute sets the fewest predators that must be around the hen; below it, more are born at once. Clearing the screen fast only brings more.
+- **Toughness follows the clock, not her level**, so every level-up is pure gain. Predators are born more often ahead of where she runs.
+- **Peril adds rules**, one per level and cumulative:
+
+| Peril | Rule |
+|-------|------|
+| 1 | **MORE EVENTS**: an event every 30 to 50 s |
+| 2 | **ELITES X2**: an elite every 20 to 30 s; rainbow ones from 2:00 |
+| 3 | **TWO BOSSES**: every boss comes with another |
+| 4 | **TWO CARDS**: level-ups offer two cards, not three |
+| 5 | **NO MERCY**: a fuller meadow and faster predators |
+
+`npm run balance` measures it: the bot plays many seeds and reports when it fell, when it was first hurt, how calm the run was and the eggs it earned. With an empty shop at peril 0 the bot falls at about 4:40 (median of 16 seeds); with the full shop it lasts about 9:00 and sometimes sees the dawn. A person dodges better than the bot.
 
 ```mermaid
 flowchart LR
@@ -159,6 +178,7 @@ Only the shipped file is gated: `dist/index.html` after Terser **and** Roadrolle
 | Endless days, peril, hens, shop, boons (measured Nov 5, 2026) | 55,254 B | 23,347 B (71.2%) |
 | Pixel font (measured Nov 5, 2026) | 56,085 B | 23,791 B (72.6%) |
 | Shop icons, locked hens, special predators, elites, events (measured Nov 5, 2026) | 66,116 B | 26,954 B (82.3%) |
+| Hard by default: quota, peril rules (measured Nov 5, 2026) | 66,650 B | 27,198 B (83.0%) |
 | **Final target** | n/a | **≤ 32,768 bytes** |
 
 ---
@@ -179,7 +199,7 @@ npm run size        # re-check the size of dist/index.html
 
 The build **fails** if `dist/index.html` would be over **32,768 bytes** or references any external resource. A failed build leaves the previous `dist/index.html` untouched.
 
-To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?autoplay`. The bot dodges, collects corn, picks cards and starts over after a game over. Add `&speed=N` for another speed, or `&peaceful` to walk around with no predators. The wardrobe, `http://localhost:8080/__dev/wardrobe.html`, shows every worn item at each of its looks, and the sound board, `http://localhost:8080/__dev/sounds.html`, plays every sound effect and each part of the music. The playtest needs Node 22+ and Chrome or Edge (`CHROME_PATH` to override). All test tooling is dev-only and never shipped.
+To measure the difficulty, `npm run balance -- --seeds 16 --peril 0 --shop 0` plays the bot on 16 seeds (`--peril 0,1,2` for several levels, `--shop 3` or `--shop 5,0,0,2,0` for shop levels). To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?autoplay`. The bot dodges, collects corn, picks cards and starts over after a game over. Add `&speed=N` for another speed, or `&peaceful` to walk around with no predators. The wardrobe, `http://localhost:8080/__dev/wardrobe.html`, shows every worn item at each of its looks, and the sound board, `http://localhost:8080/__dev/sounds.html`, plays every sound effect and each part of the music. The playtest needs Node 22+ and Chrome or Edge (`CHROME_PATH` to override). All test tooling is dev-only and never shipped.
 
 ---
 
