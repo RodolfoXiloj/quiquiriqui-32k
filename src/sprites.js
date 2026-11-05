@@ -148,9 +148,9 @@ const FRONT_LAYERS = [
   [
     'shades',
     (x, y, t) => {
-      if (y === 5 && x >= 12 && x <= 14) return t >= 2 && x === 12 ? 13 : 0; // dark lens, with a shine
-      if (y === 5 && x === 11) return t === 3 ? 10 : 0; // arm
-      if (y === 4 && x >= 12 && x <= 14 && t === 3) return 10; // gold frame
+      if ((y === 4 || y === 5) && x >= 12 && x <= 15) return t >= 2 && x === 13 && y === 4 ? 13 : 0; // dark lenses, with a shine
+      if (y === 4 && (x === 10 || x === 11)) return t === 3 ? 10 : 0; // arm
+      if (y === 3 && x >= 12 && x <= 15 && t === 3) return 10; // gold frame
       return -1;
     },
   ],
@@ -176,10 +176,19 @@ const FRONT_LAYERS = [
   [
     'corn',
     (x, y, t) => {
-      // A bandolier of kernels across her body
+      // A bandolier of kernels across her body, thicker from tier 2, all gold at tier 3
       const d = x + y - 18;
       if (y < 8 || y > 13 || d < 0 || d > (t >= 2 ? 1 : 0)) return -1;
-      return y % 2 ? 10 : t === 3 ? 13 : 19;
+      if (t === 3) return (x + y) % 2 ? 10 : 13;
+      return y % 2 ? 10 : 19;
+    },
+  ],
+  [
+    'boots',
+    (x, y, t) => {
+      // Boot cuffs at the bottom of her body (the boots themselves are her legs, see henBody)
+      if (t >= 2 && y === 14 && (x === 6 || x === 7 || x === 9 || x === 10)) return t === 3 ? 10 : 13;
+      return -1;
     },
   ],
 ];
@@ -191,12 +200,12 @@ function capeLayer(x, y, t) {
   return t === 3 && !inEllipse(x, y, 5.2, 10.6, 4.6, ry - 0.9) ? 10 : 9;
 }
 
-/** Wing ellipse per Wing Gust tier: bigger and lifted as it levels. */
+/** Wing ellipse per Wing Gust tier, plus how many columns of flight feathers show. */
 const WINGS = [
-  [7.5, 10, 3.2, 2],
-  [7.3, 9.8, 3.7, 2.3],
-  [7, 9.3, 4.3, 2.7],
-  [7, 9.3, 4.3, 2.7],
+  [7.5, 10, 3.2, 2, 0],
+  [7.3, 9.8, 3.7, 2.3, 1.5],
+  [7, 9.3, 4.3, 2.7, 2.5],
+  [6.8, 8.8, 4.8, 3.1, 3],
 ];
 
 /** The hen's body in profile, facing right (18x18 design), reshaped by the items she owns. */
@@ -218,7 +227,7 @@ function henBody(x, y, step, o) {
   // Folded wing; Wing Gust makes it bigger with sky-blue flight feathers
   const wing = WINGS[o.gust || 0];
   if (inEllipse(x, y, wing[0], wing[1], wing[2], wing[3])) {
-    if (o.gust && x <= wing[0] - wing[2] + 1.5) return o.gust === 3 ? 13 : 12;
+    if (o.gust && x <= wing[0] - wing[2] + wing[4]) return o.gust === 3 && x % 2 ? 13 : 12;
     return y <= 9 ? 7 : 8;
   }
   // Round body, shaded underneath
@@ -227,7 +236,7 @@ function henBody(x, y, step, o) {
   if (o.boots) {
     const left = (x === 6 || x === 7) && y >= 15 && y <= 16 - liftL;
     const right = (x === 9 || x === 10) && y >= 15 && y <= 16 - liftR;
-    if (left || right) return o.boots >= 2 && y === 15 ? 13 : 9;
+    if (left || right) return 9;
     if (y === 16 && ((x === 8 && !liftL) || (x === 11 && !liftR))) return 9;
     if (o.boots === 3 && y === 15 && (x === 5 || x === 8)) return 10;
     return -1;
@@ -269,16 +278,17 @@ export function bakeHen(outfit = {}) {
 /** Palette indices the predators use. None may overlap GROUND_PALETTE_INDICES (test). */
 export const ENEMY_PALETTE_INDICES = [0, 8, 9, 10, 12, 13, 15, 16, 17, 18, 19];
 
-/** The rat in profile, facing right (16x12). */
+/** The rat in profile, facing right (18x12): dark back, cream belly, a long curled tail. */
 function ratShape(step) {
   const liftA = step === 'stepA' ? 1 : 0;
   const liftB = step === 'stepB' ? 1 : 0;
-  return (x, y) => {
+  return (px, y) => {
+    const x = px - 2;
     if (x === 14 && y === 6) return 9; // nose
     if (inEllipse(x, y, 10.5, 3.3, 1.2, 1.1)) return 8; // ear
-    if (inEllipse(x, y, 11.8, 5.8, 2.4, 2)) return x === 12 && y === 5 ? 0 : 16; // head
-    if (inEllipse(x, y, 7, 6.5, 4.6, 2.8)) return y >= 8 ? 17 : 16; // body
-    if ((y === 7 && x >= 1 && x <= 2) || (y === 6 && x === 1)) return 17; // tail
+    if (inEllipse(x, y, 11.8, 5.8, 2.4, 2)) return x === 12 && y === 5 ? 0 : x === 13 && y === 5 ? 13 : 16; // head, eye and glint
+    if (inEllipse(x, y, 7, 6.5, 4.6, 2.8)) return y <= 5 ? 17 : y >= 8 ? 8 : 16; // body
+    if ((y === 7 && (x === 2 || x === 1)) || (y === 6 && x === 0) || (y >= 4 && y <= 5 && x === -1)) return 17; // tail
     if (y >= 9 && y <= 10 - liftA && x === 5) return 17; // legs
     if (y >= 9 && y <= 10 - liftB && x === 9) return 17;
     return -1;
@@ -504,7 +514,7 @@ const ICON_SHAPES = {
 export function bakeWorldSprites() {
   enemySprites.length = 0;
   for (const [shape, w, h] of [
-    [ratShape, 16, 12],
+    [ratShape, 18, 12],
     [foxShape, 20, 15],
     [snakeShape, 18, 10],
     [crowShape, 14, 12],
