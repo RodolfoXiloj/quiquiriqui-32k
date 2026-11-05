@@ -8,6 +8,7 @@ import { hen } from '../src/hen.js';
 import { game, settings } from '../src/state.js';
 import { enemies } from '../src/enemies.js';
 import { corn } from '../src/corn.js';
+import { pickups } from '../src/pickups.js';
 import { ITEM_BY_ID } from '../src/items.js';
 import { createBot } from '../tools/browser/bot.js';
 
@@ -56,6 +57,7 @@ export function botWorld() {
     hen,
     enemies,
     corn,
+    pickups,
     game,
     cards: game.cards.map((card) => ({ ...card, weapon: !!ITEM_BY_ID[card.id].weapon })),
   };
@@ -86,4 +88,4 @@ export function playWithBot(seconds, { bot = createBot(), onFrame } = {}) {
   if (tapped) holdKey(tapped, false);
 }
 
-export { update, STEP, handleBlur, holdKey, releaseAllInput, input, hen, game, settings, enemies, corn };
+export { update, STEP, handleBlur, holdKey, releaseAllInput, input, hen, game, settings, enemies, corn, pickups };

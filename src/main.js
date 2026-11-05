@@ -6,11 +6,12 @@ import { WIDTH, HEIGHT } from './screen.js';
 import { bakeGround } from './ground.js';
 import { bakeHen, bakeWorldSprites, outfitOf, outfitKey, henLook } from './sprites.js';
 import { initInput, updateInput, releaseAllInput, releasePointer, input } from './input.js';
-import { seedGame } from './rng.js';
+import { seedGame, gameRand } from './rng.js';
 import { hen, resetHen, updateHen, syncHenStats } from './hen.js';
 import { build, resetBuild, rollCards, applyCard } from './items.js';
 import { clearEnemies, updateEnemies } from './enemies.js';
 import { clearCorn, scatterStartingCorn, updateCorn } from './corn.js';
+import { clearPickups, updatePickups } from './pickups.js';
 import { resetWaves, updateWaves } from './waves.js';
 import { resetWeapons, updateWeapons, updateProjectiles } from './weapons.js';
 import { juice, snapCamera, updateJuice } from './juice.js';
@@ -26,6 +27,10 @@ const CARD_LOCK = 0.35;
 const GAME_OVER_WAIT = 1.5;
 /** Health restored instead of cards when every upgrade is maxed. */
 const MAXED_HEAL = 25;
+/** Real seconds the chest screen ignores input. */
+const REWARD_LOCK = 0.6;
+/** Chance that a chest holds three upgrades instead of one. */
+const BIG_CHEST = 0.3;
 
 let ctx = null;
 let time = 0;
@@ -66,6 +71,7 @@ export function resetRun(seed = (Math.random() * 2 ** 31) | 0) {
   resetWeapons();
   clearEnemies();
   clearCorn();
+  clearPickups();
   clearPools();
   juice.hitstop = 0;
   juice.shakeTime = 0;
@@ -117,6 +123,32 @@ function openCards() {
     hen.hp = Math.min(hen.maxHp, hen.hp + MAXED_HEAL);
     spawnPopup(hen.x, hen.y, `+${MAXED_HEAL} HP`, 10);
   }
+}
+
+/**
+ * A chest: one upgrade, or three now and then, chosen for her (favoring what she already has)
+ * and applied at once. The run waits on the CHEST! screen until a key or a tap.
+ */
+function openChest() {
+  const reward = [];
+  const count = gameRand() < BIG_CHEST ? 3 : 1;
+  for (let k = 0; k < count; k++) {
+    const cards = rollCards(false);
+    if (!cards.length) break;
+    const card = cards.find((c) => build[c.id]) || cards[0];
+    applyCard(card);
+    reward.push(card);
+  }
+  syncHenStats();
+  dressHen();
+  sfxLevelUp();
+  if (!reward.length) {
+    hen.hp = Math.min(hen.maxHp, hen.hp + MAXED_HEAL);
+    spawnPopup(hen.x, hen.y, `+${MAXED_HEAL} HP`, 10);
+    return;
+  }
+  game.reward = reward;
+  game.rewardLock = REWARD_LOCK;
 }
 
 /** Card `i` was picked with a key, a click or a tap. */
@@ -195,6 +227,16 @@ export function update(dt) {
     return;
   }
 
+  if (game.reward.length) {
+    // Frozen on the chest screen until a key or a tap.
+    game.rewardLock -= dt;
+    if (game.rewardLock <= 0 && (input.pressed.size > 0 || input.tap)) {
+      game.reward = [];
+      releasePointer();
+    }
+    return;
+  }
+
   const simDt = updateJuice(dt, hen.x, hen.y);
   if (simDt <= 0) return;
   game.time += simDt;
@@ -208,13 +250,18 @@ export function update(dt) {
   updateProjectiles(simDt);
   updateEnemies(simDt);
   updateCorn(simDt);
+  updatePickups(simDt);
   // Little dust kicks while walking
   if (hen.moving && Math.random() < 0.15) {
     spawnParticle(hen.x, hen.y, 1, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, 10, 6, 1, 0.3);
   }
   updatePools(simDt);
 
-  if (!game.over && game.xp >= xpToNext(game.level)) {
+  if (game.over) return;
+  if (game.chests > 0) {
+    game.chests--;
+    openChest();
+  } else if (game.xp >= xpToNext(game.level)) {
     game.xp -= xpToNext(game.level);
     game.level++;
     openCards();

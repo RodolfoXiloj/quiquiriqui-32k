@@ -345,8 +345,63 @@ function badgerShape(step) {
   };
 }
 
+/** A wooden crate (14x14): planks with dark seams and a cross brace. */
+function crateShape() {
+  return (x, y) => {
+    if (x < 2 || x > 11 || y < 2 || y > 11) return -1;
+    if (x === 2 || x === 11 || y === 2 || y === 11 || x === y || x === 13 - y) return 19;
+    return y % 3 === 0 ? 19 : 8;
+  };
+}
+
 /** Baked predator poses, by enemy kind: [{ idle, stepA, stepB }, ...], facing right. */
 export const enemySprites = [];
+
+/** Prizes on the ground, by pickups.js kind: chest, magnet, bomb, food (a heart). */
+export const pickupSprites = [];
+const PICKUP_SHAPES = [
+  [
+    16,
+    13,
+    (x, y) => {
+      if (x < 2 || x > 13 || y < 2 || y > 11) return -1;
+      if (y === 6 || x === 2 || x === 13) return 10; // gold bands
+      if ((x === 7 || x === 8) && y >= 6 && y <= 8) return 13; // lock
+      return y < 6 ? 18 : 19;
+    },
+  ],
+  [
+    12,
+    12,
+    (x, y) => {
+      const r = Math.hypot(x - 5.5, y - 4.5);
+      if (y >= 4.5 && r >= 2 && r <= 4.3) return 9; // the U
+      if (y < 4.5 && y >= 1 && ((x >= 1.5 && x <= 3) || (x >= 8 && x <= 9.5))) return y <= 2 ? 13 : 9; // arms with white tips
+      return -1;
+    },
+  ],
+  [
+    12,
+    13,
+    (x, y) => {
+      if (x === 8 && y <= 2) return 13; // spark
+      if (x === 7 && y >= 2 && y <= 4) return 10; // fuse
+      if (inEllipse(x, y, 5.5, 7.5, 4, 4)) return x <= 4 && y <= 6 ? 16 : 15;
+      return -1;
+    },
+  ],
+  [
+    12,
+    11,
+    (x, y) => {
+      // Two round lobes with a notch between them, tapering to a point
+      if (y <= 2 && (x === 5 || x === 6)) return -1;
+      const heart = inEllipse(x, y, 3.5, 3.5, 2.3, 2.2) || inEllipse(x, y, 7.5, 3.5, 2.3, 2.2) || inTaper(x, y, 5.5, 4, 9, 4.6, 0);
+      if (!heart) return -1;
+      return x === 3 && y === 3 ? 13 : 9;
+    },
+  ],
+];
 
 // --- Pickups, projectiles, companions and upgrade icons ------------------------------------------
 
@@ -454,11 +509,14 @@ export function bakeWorldSprites() {
     [snakeShape, 18, 10],
     [crowShape, 14, 12],
     [badgerShape, 20, 13],
+    [crateShape, 14, 14],
   ]) {
     const set = {};
     for (const step of POSES) set[step] = bakeSprite(w, h, shape(step));
     enemySprites.push(set);
   }
+  pickupSprites.length = 0;
+  for (const [w, h, shape] of PICKUP_SHAPES) pickupSprites.push(bakeSprite(w, h, shape));
   cornSprites.length = 0;
   for (const color of CORN_TIER_COLORS) {
     cornSprites.push(bakeSprite(7, 8, (x, y) => (inEllipse(x, y, 3, 3.8, 1.8, 2.6) ? (x === 2 && y === 2 ? 13 : color) : -1)));

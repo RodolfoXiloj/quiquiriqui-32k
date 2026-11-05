@@ -15,6 +15,11 @@ export const game = {
   cards: [],
   /** Seconds before a card can be picked, so a stray tap or key does not choose one. */
   cardLock: 0,
+  /** Chests picked up and not opened yet. */
+  chests: 0,
+  /** What the last chest gave ([{ id, level }]); the run is frozen while it is shown. */
+  reward: [],
+  rewardLock: 0,
   /** True once the run ends (the hen falls, or dawn comes); `overTime` counts the seconds since. */
   over: false,
   /** True when the run ended at dawn: she survived. */
@@ -45,6 +50,9 @@ export function resetGame() {
   game.kills = 0;
   game.cards = [];
   game.cardLock = 0;
+  game.chests = 0;
+  game.reward = [];
+  game.rewardLock = 0;
   game.over = false;
   game.won = false;
   game.overTime = 0;

@@ -18,8 +18,9 @@ import { game, settings, formatClock, xpToNext } from '/state.js';
 import { hen, damageHen, syncHenStats } from '/hen.js';
 import { holdKey } from '/input.js';
 import { toIsoX, toIsoY } from '/iso.js';
-import { enemies, spawnEnemy, countEnemies, ENEMY_TYPES } from '/enemies.js';
+import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, CRATE } from '/enemies.js';
 import { corn } from '/corn.js';
+import { pickups, spawnPickup } from '/pickups.js';
 import { ITEMS, ITEM_BY_ID, build, buildOrder, applyCard } from '/items.js';
 import { bakeHen, outfitOf } from '/sprites.js';
 import { cardRect } from '/render.js';
@@ -69,7 +70,13 @@ window.__qq = {
     cardLock: game.cardLock,
     build: buildOrder.map((id) => [id, build[id]]),
     enemies: countEnemies(),
+    bosses: enemies.filter((e) => e.alive && e.boss).length,
+    crates: enemies.filter((e) => e.alive && e.prop).length,
     corn: corn.filter((c) => c.alive).length,
+    pickups: pickups.filter((p) => p.alive).map((p) => p.kind),
+    chests: game.chests,
+    reward: game.reward.map((c) => [c.id, c.level]),
+    rewardLock: game.rewardLock,
     hen: {
       x: hen.x,
       y: hen.y,
@@ -98,6 +105,18 @@ window.__qq = {
     spawn(kind = 'rat', n = 1) {
       const index = Math.max(0, ENEMY_TYPES.findIndex((type) => type.name === kind));
       for (let i = 0; i < n; i++) spawnEnemy(index);
+    },
+    /** Spawns a boss of `kind` just off-screen. */
+    boss(kind = 'fox') {
+      spawnBoss(Math.max(0, ENEMY_TYPES.findIndex((type) => type.name === kind)));
+    },
+    /** Puts a crate a little in front of the hen. */
+    crate() {
+      spawnEnemy(CRATE, hen.x + 1.5, hen.y - 1.5);
+    },
+    /** Drops prize `kind` (0 chest, 1 magnet, 2 bomb, 3 food) under the hen, or (dx, dy) tiles away. */
+    prize(kind = 0, dx = 0, dy = 0) {
+      spawnPickup(kind, hen.x + dx, hen.y + dy);
     },
     /** Spawns one predator of each kind in a row in front of the hen, standing still. */
     lineup() {
@@ -143,7 +162,7 @@ if (!externalDriver) {
       holdKey(tapped, false);
       tapped = null;
     }
-    const { keys, tap } = bot.decide({ hen, enemies, corn, game, cards: cardsWithKind() });
+    const { keys, tap } = bot.decide({ hen, enemies, corn, pickups, game, cards: cardsWithKind() });
     for (const code of MOVE_KEYS) holdKey(code, keys.includes(code));
     if (tap) {
       holdKey(tap, true);

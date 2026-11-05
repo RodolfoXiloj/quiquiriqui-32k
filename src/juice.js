@@ -13,6 +13,9 @@ export const juice = {
   shakeVY: 0,
   shakeTime: 0,
   shakeDur: 0.12,
+  /** Seconds left of a full-screen white flash (the bomb), and its length. */
+  flash: 0,
+  flashDur: 0.25,
   /** Top-left of the view in isometric pixels (before rounding). */
   camX: 0,
   camY: 0,
@@ -21,6 +24,11 @@ export const juice = {
 /** Freezes the simulation for `seconds`. Never shortens a running hitstop. */
 export function triggerHitstop(seconds = 0.05) {
   if (seconds > juice.hitstop) juice.hitstop = seconds;
+}
+
+/** Flashes the whole screen white for `seconds`. */
+export function triggerFlash(seconds = 0.25) {
+  juice.flash = juice.flashDur = seconds;
 }
 
 /** Kicks the camera along screen direction (dx, dy). */
@@ -47,6 +55,7 @@ export function snapCamera(wx, wy) {
  * simulation dt: 0 during hitstop, otherwise `rawDt`.
  */
 export function updateJuice(rawDt, wx, wy) {
+  juice.flash = Math.max(0, juice.flash - rawDt);
   if (juice.shakeTime > 0) {
     juice.shakeTime = Math.max(0, juice.shakeTime - rawDt);
     const k = Math.cos(juice.shakeTime * 75) * (juice.shakeTime / juice.shakeDur);

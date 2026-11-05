@@ -4,9 +4,10 @@
 // It imports nothing from the game, so the browser and Node can each hand it their own module
 // instances: decide() reads a plain snapshot of the world and answers which keys to hold and which
 // key to tap. Strategy: try the 8 screen directions, score each by how close it would bring the
-// hen to predators (looking a little ahead) and how well it heads for the nearest corn, and keep
-// the current direction unless another one is clearly better. Cards: new weapons first, then
-// weapon levels, then passives. After a game over it waits a moment and starts again.
+// hen to predators (looking a little ahead) and how well it heads for the nearest prize or corn,
+// and keep the current direction unless another one is clearly better. Cards: new weapons first,
+// then weapon levels, then passives. It closes the chest screen, and after a game over (or the
+// dawn win) it waits a moment and starts again.
 
 /** The 8 screen directions as [screen x, screen y, keys to hold]. */
 const DIRECTIONS = [
@@ -32,6 +33,7 @@ const LOOK_NEAR = 1.2; // tiles
 const LOOK_FAR = 2.8;
 const DANGER_RANGE = 8;
 const CORN_RANGE = 10;
+const PRIZE_RANGE = 14;
 const STAY_BONUS = 0.04;
 
 /** Danger at world point (px, py): every predator in range adds weight / distance². */
@@ -46,10 +48,11 @@ function dangerAt(px, py, enemies) {
   return danger;
 }
 
-function nearestCorn(hen, corn) {
+/** The nearest alive item of `list` within `range` tiles of the hen, or null. */
+function nearest(hen, list, range) {
   let best = null;
-  let bestD = CORN_RANGE * CORN_RANGE;
-  for (const c of corn) {
+  let bestD = range * range;
+  for (const c of list) {
     if (!c.alive) continue;
     const d2 = (c.x - hen.x) ** 2 + (c.y - hen.y) ** 2;
     if (d2 < bestD) {
@@ -78,16 +81,20 @@ export function createBot() {
   let held = 0;
   return {
     /**
-     * world: { hen, enemies, corn, game, cards } where cards carry { id, level, weapon }.
+     * world: { hen, enemies, corn, pickups, game, cards } where cards carry { id, level, weapon }.
      * Returns { keys, tap }: the movement keys to hold now, and a key to tap once (or null).
      */
     decide(world) {
-      const { hen, enemies, corn, game, cards } = world;
+      const { hen, enemies, corn, pickups = [], game, cards } = world;
       if (game.over) return { keys: [], tap: game.overTime > 2 ? 'Space' : null };
       if (cards.length) return { keys: [], tap: game.cardLock <= 0 ? `Digit${pickCard(cards) + 1}` : null };
+      if (game.reward && game.reward.length) return { keys: [], tap: game.rewardLock <= 0 ? 'Space' : null };
 
       const here = dangerAt(hen.x, hen.y, enemies);
-      const food = nearestCorn(hen, corn);
+      // Prizes (chests, magnets, bombs, food) are worth more than corn.
+      const prize = nearest(hen, pickups, PRIZE_RANGE);
+      const food = prize || nearest(hen, corn, CORN_RANGE);
+      const pull = prize ? 2 : 1;
       let bestScore = -Infinity;
       let best = held;
       DIRECTIONS.forEach((d, i) => {
@@ -98,7 +105,7 @@ export function createBot() {
           const fy = food.y - hen.y;
           const fd = Math.hypot(fx, fy) || 1;
           // Corn matters less when predators are close.
-          score += ((d.x * fx + d.y * fy) / fd) * (here < 0.3 ? 0.6 : 0.15);
+          score += ((d.x * fx + d.y * fy) / fd) * (here < 0.3 ? 0.6 : 0.15) * pull;
         }
         if (i === held) score += STAY_BONUS;
         if (score > bestScore) {

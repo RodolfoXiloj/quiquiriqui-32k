@@ -95,6 +95,11 @@ export function sfxSplat() {
   if (gate('splat')) playTone({ freq: 300, endFreq: 120, dur: 0.08, noise: 0.7, vol: 0.18 });
 }
 
+/** A deep boom: a bomb, or a boss going down. */
+export function sfxBoom() {
+  if (gate('boom')) playTone({ freq: 160, endFreq: 40, dur: 0.5, noise: 0.8, vol: 0.34 });
+}
+
 /** A soft whoosh for Wing Gust. */
 export function sfxGust() {
   if (gate('gust')) playTone({ freq: 220, endFreq: 90, dur: 0.22, noise: 0.85, vol: 0.2 });

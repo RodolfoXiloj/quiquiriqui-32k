@@ -46,7 +46,26 @@ import {
 } from '../src/render.js';
 import { WIDTH, HEIGHT } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
-import { RAT, FOX, SNAKE, CROW, BADGER, ENEMY_TYPES, MAX_ENEMIES, spawnEnemy, hitEnemy, screenOffset, countEnemies } from '../src/enemies.js';
+import {
+  RAT,
+  FOX,
+  SNAKE,
+  CROW,
+  BADGER,
+  CRATE,
+  ENEMY_TYPES,
+  MAX_ENEMIES,
+  BOSS_HP,
+  BOSS_SIZE,
+  BOSS_BITE,
+  spawnEnemy,
+  spawnBoss,
+  hitEnemy,
+  screenOffset,
+  countEnemies,
+} from '../src/enemies.js';
+import { pickups, spawnPickup, CHEST, MAGNET, BOMB, FOOD } from '../src/pickups.js';
+import { TIMELINE, CRATE_EVERY } from '../src/waves.js';
 import { spawnCorn } from '../src/corn.js';
 import { ITEMS, ITEM_BY_ID, MAX_ITEM_LEVEL, SLOTS, build, buildOrder, applyCard, rollCards, cardText, stats, weaponDamage } from '../src/items.js';
 import { projectiles, chicks, KERNEL } from '../src/weapons.js';
@@ -83,6 +102,11 @@ function openFirstCards() {
 /** Steps `seconds` of game time one fixed step at a time. */
 function steps(seconds) {
   for (let i = 0; i < Math.round(seconds / STEP); i++) update(STEP);
+}
+
+/** Kills every predator, kernel and prize (between checks in one test). */
+function clearAll() {
+  for (const pool of [enemies, corn, pickups]) for (const item of pool) item.alive = false;
 }
 
 /** Starts a run whose only weapon is `id`, so other weapons do not interfere. */
@@ -571,6 +595,134 @@ describe('quiquiriqui at 5x: the end of a run', () => {
       return [game.time, game.kills, game.level, hen.x, hen.y, countEnemies()].join(',');
     };
     assert.equal(runOnce(), runOnce());
+  });
+});
+
+describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
+  beforeEach(() => {
+    resetRun();
+  });
+
+  it('bosses come on minutes 1, 3, 4, 5, 7 and 8, and three at once on minute 9', () => {
+    const bosses = TIMELINE.filter((event) => event.boss !== undefined).map((event) => event.at);
+    assert.deepEqual(bosses, [60, 180, 240, 300, 420, 480, 540, 540, 540]);
+  });
+
+  it('a boss is a big, tough version of its kind and drops a chest', () => {
+    start();
+    const boss = spawnBoss(FOX);
+    const type = ENEMY_TYPES[FOX];
+    assert.equal(boss.boss, true);
+    assert.equal(boss.maxHp, type.hp * BOSS_HP);
+    assert.equal(boss.r, type.r * BOSS_SIZE);
+    assert.equal(boss.dmg, type.dmg * BOSS_BITE);
+    const kills = game.kills;
+    hitEnemy(boss, boss.hp, hen.x, hen.y);
+    assert.equal(game.kills, kills + 1);
+    assert.ok(pickups.some((p) => p.alive && p.kind === CHEST), 'no chest');
+  });
+
+  it('a boss always gets in, even when the predator pool is full', () => {
+    start();
+    for (let i = 0; i < MAX_ENEMIES; i++) spawnEnemy(RAT, 20 + i * 0.01, 0);
+    assert.equal(countEnemies(), MAX_ENEMIES);
+    assert.ok(spawnBoss(BADGER), 'the boss did not fit');
+  });
+
+  it('a chest gives one or three upgrades at once, and the run waits until a key', () => {
+    start();
+    const levels = () => Object.values(build).reduce((a, b) => a + b, 0);
+    const before = levels();
+    spawnPickup(CHEST, hen.x + 0.3, hen.y);
+    for (let i = 0; i < 120 && !game.reward.length; i++) update(STEP);
+    const n = game.reward.length;
+    assert.ok(n === 1 || n === 3, `${n} upgrades`);
+    assert.equal(levels(), before + n);
+    const t = game.time;
+    steps(0.3);
+    tapKey('Space');
+    assert.equal(game.reward.length, n, 'closed during the lock');
+    assert.equal(game.time, t, 'the clock ran on the chest screen');
+    steps(0.5);
+    tapKey('Space');
+    assert.equal(game.reward.length, 0);
+  });
+
+  it('chests hold three upgrades now and then', () => {
+    let big = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      resetRun({ seed });
+      start();
+      spawnPickup(CHEST, hen.x, hen.y);
+      for (let i = 0; i < 60 && !game.reward.length; i++) update(STEP);
+      if (game.reward.length === 3) big++;
+    }
+    assert.ok(big >= 5 && big <= 22, `${big} of 40 chests held three`);
+  });
+
+  it('a crate shows up every 20 s, never bites and is not a kill', () => {
+    resetRun({ peaceful: false });
+    start();
+    buildOrder.length = 0; // nothing breaks the crates
+    hen.hp = hen.maxHp = 1e6;
+    // Bites freeze the action for a moment, so wait on the game clock, not on steps.
+    while (game.time < CRATE_EVERY * 2 + 1) update(STEP);
+    assert.equal(enemies.filter((e) => e.alive && e.prop).length, 2);
+    resetRun();
+    start();
+    const box = spawnEnemy(CRATE, hen.x + 0.2, hen.y);
+    steps(1);
+    assert.equal(hen.hp, hen.maxHp, 'a crate bit the hen');
+    const kills = game.kills;
+    hitEnemy(box, 99, hen.x, hen.y);
+    assert.equal(game.kills, kills, 'a crate counted as a kill');
+  });
+
+  it('a broken crate always leaves something', () => {
+    start();
+    for (let i = 0; i < 30; i++) {
+      const before = alive(pickups).length + alive(corn).length;
+      const box = spawnEnemy(CRATE, hen.x + 40, hen.y - 40 - i);
+      hitEnemy(box, 99, box.x, box.y);
+      assert.ok(alive(pickups).length + alive(corn).length > before, 'empty crate');
+      clearAll();
+    }
+  });
+
+  it('the magnet pulls every kernel on the map', () => {
+    start();
+    spawnCorn(hen.x + 20, hen.y - 20, 1, 0);
+    spawnCorn(hen.x - 25, hen.y + 10, 2, 0);
+    spawnPickup(MAGNET, hen.x, hen.y);
+    steps(4);
+    assert.equal(alive(corn).length, 0);
+    assert.equal(game.xp, 3);
+  });
+
+  it('the bomb clears the screen and hurts bosses', () => {
+    start();
+    buildOrder.length = 0;
+    const near = [0, 1, 2].map((k) => spawnEnemy(RAT, hen.x + 2 + k, hen.y - 2));
+    for (const e of near) e.speed = 0;
+    const far = spawnEnemy(FOX, hen.x + 14, hen.y - 14);
+    far.speed = 0;
+    const boss = spawnBoss(BADGER);
+    boss.x = hen.x - 3;
+    boss.y = hen.y + 3;
+    boss.speed = 0;
+    spawnPickup(BOMB, hen.x, hen.y);
+    steps(0.1);
+    for (const e of near) assert.equal(e.alive, false, 'a rat on screen survived');
+    assert.equal(far.alive, true, 'a fox off screen died');
+    assert.ok(boss.alive && boss.hp < boss.maxHp, 'the boss was not hurt (or died)');
+  });
+
+  it('food heals', () => {
+    start();
+    hen.hp = 50;
+    spawnPickup(FOOD, hen.x, hen.y);
+    steps(0.1);
+    assert.equal(hen.hp, 80);
   });
 });
 

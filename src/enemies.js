@@ -1,6 +1,8 @@
 // Predators: they appear just outside the screen, chase the hen in a straight line, push each
 // other apart so a horde reads as a crowd instead of one blob, and bite on contact. Hits flash
 // them, knock them back and float a damage number; a kill drops corn most of the time.
+// Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
+// stand still, never bite, are not kills, and break into a prize.
 import { HALF_W, HALF_H, screenToWorld } from './iso.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
@@ -8,13 +10,16 @@ import { game } from './state.js';
 import { hen, HEN_RADIUS, damageHen } from './hen.js';
 import { spawnCorn } from './corn.js';
 import { spawnParticle, spawnPopup } from './pool.js';
-import { sfxPeck } from './sfx.js';
+import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
+import { triggerShake } from './juice.js';
+import { sfxPeck, sfxBoom } from './sfx.js';
 
 export const RAT = 0;
 export const FOX = 1;
 export const SNAKE = 2;
 export const CROW = 3;
 export const BADGER = 4;
+export const CRATE = 5;
 
 /**
  * Enemy kinds. hp: health at player level 1 · speed: tiles per second · r: body radius (tiles)
@@ -27,7 +32,15 @@ export const ENEMY_TYPES = [
   { name: 'snake', hp: 5, speed: 2.3, r: 0.3, dmg: 6, colors: [12, 15] },
   { name: 'crow', hp: 9, speed: 2, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
   { name: 'badger', hp: 60, speed: 1.1, r: 0.55, dmg: 10, colors: [17, 13] },
+  { name: 'crate', hp: 5, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
 ];
+
+/** Bosses: this many times the health, radius and bite of their kind. */
+export const BOSS_HP = 10;
+export const BOSS_SIZE = 2;
+export const BOSS_BITE = 3;
+/** Knockback a boss still takes, as a share of a regular predator's. */
+const BOSS_KNOCK = 0.25;
 
 export const MAX_ENEMIES = 300;
 /** Seconds between two bites of the same predator. */
@@ -55,6 +68,9 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   r: 0,
   dmg: 0,
   flying: false,
+  boss: false,
+  /** Crates: still, harmless, not counted as kills. */
+  prop: false,
   /** Seconds since it appeared. */
   age: 0,
   flash: 0,
@@ -115,8 +131,8 @@ export function spawnEnemy(kind, x, y) {
   if (!e) return null;
   if (x === undefined) ({ x, y } = spawnPoint());
   const type = ENEMY_TYPES[kind];
-  // Tougher as the hen levels up, a little faster too.
-  const hp = Math.floor(type.hp * (1 + (game.level - 1) / 10));
+  // Tougher as the hen levels up, a little faster too (crates stay as they are).
+  const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + (game.level - 1) / 10));
   Object.assign(e, {
     alive: true,
     kind,
@@ -130,6 +146,8 @@ export function spawnEnemy(kind, x, y) {
     r: type.r,
     dmg: type.dmg,
     flying: !!type.flying,
+    boss: false,
+    prop: !!type.prop,
     age: 0,
     flash: 0,
     biteCooldown: 0,
@@ -139,6 +157,37 @@ export function spawnEnemy(kind, x, y) {
     walkPhase: gameRand() * 2,
   });
   return e;
+}
+
+/**
+ * Spawns a boss of `kind` just off-screen. If the pool is full, the farthest regular predator
+ * makes room: a boss always arrives.
+ */
+export function spawnBoss(kind) {
+  if (!enemies.some((e) => !e.alive)) {
+    let far = null;
+    let farD = -1;
+    for (const e of enemies) {
+      const d = (e.x - hen.x) ** 2 + (e.y - hen.y) ** 2;
+      if (!e.boss && d > farD) {
+        farD = d;
+        far = e;
+      }
+    }
+    if (far) far.alive = false;
+  }
+  const e = spawnEnemy(kind);
+  if (!e) return null;
+  e.boss = true;
+  e.hp = e.maxHp = e.hp * BOSS_HP;
+  e.r *= BOSS_SIZE;
+  e.dmg *= BOSS_BITE;
+  return e;
+}
+
+/** The on-screen name of a boss. */
+export function bossName(e) {
+  return `BIG ${ENEMY_TYPES[e.kind].name.toUpperCase()}`;
 }
 
 export function clearEnemies() {
@@ -182,27 +231,42 @@ export function hitEnemy(e, dmg, fromX, fromY, knock = 6, alwaysKnock = false) {
   }
   sfxPeck();
   const killed = e.hp <= 0;
-  if (killed || alwaysKnock || gameRand() < KNOCKBACK_CHANCE) {
+  if (!e.prop && (killed || alwaysKnock || gameRand() < KNOCKBACK_CHANCE)) {
     const dx = e.x - fromX;
     const dy = e.y - fromY;
     const len = Math.hypot(dx, dy) || 1;
-    e.knockX = (dx / len) * knock;
-    e.knockY = (dy / len) * knock;
+    const k = knock * (e.boss ? BOSS_KNOCK : 1);
+    e.knockX = (dx / len) * k;
+    e.knockY = (dy / len) * k;
     e.knockTime = 0.15;
   }
   if (killed) killEnemy(e);
 }
 
+/** What a broken crate leaves: a magnet or a bomb, else food when she is hurt, else corn. */
+function crateDrop(e) {
+  if (gameRand() < 0.3) spawnPickup(gameRand() < 0.5 ? MAGNET : BOMB, e.x, e.y);
+  else if (hen.hp < hen.maxHp && gameRand() < 0.8) spawnPickup(FOOD, e.x, e.y);
+  else spawnCorn(e.x, e.y, 3);
+}
+
 function killEnemy(e) {
   e.alive = false;
-  game.kills++;
+  if (!e.prop) game.kills++;
   const type = ENEMY_TYPES[e.kind];
-  for (let i = 0; i < 8; i++) {
+  const puffs = e.boss ? 30 : 8;
+  for (let i = 0; i < puffs; i++) {
     const a = Math.random() * Math.PI * 2;
-    spawnParticle(e.x, e.y, 4, Math.cos(a) * 1.5, Math.sin(a) * 1.5, 10 + Math.random() * 25, type.colors[i % 2], 1, 0.3 + Math.random() * 0.3);
+    const s = e.boss ? 3 : 1.5;
+    spawnParticle(e.x, e.y, 4, Math.cos(a) * s, Math.sin(a) * s, 10 + Math.random() * 25, type.colors[i % 2], e.boss ? 2 : 1, 0.3 + Math.random() * 0.3);
   }
+  if (e.boss) {
+    spawnPickup(CHEST, e.x, e.y);
+    triggerShake(1, 0, 3, 0.2);
+    sfxBoom();
+  } else if (e.prop) crateDrop(e);
   // Corn is worth more the longer the run lasts.
-  if (gameRand() < DROP_CHANCE) spawnCorn(e.x, e.y, Math.floor(1 + game.time / 200));
+  else if (gameRand() < DROP_CHANCE) spawnCorn(e.x, e.y, Math.floor(1 + game.time / 200));
 }
 
 export function updateEnemies(dt) {
@@ -219,6 +283,12 @@ export function updateEnemies(dt) {
     const dx = hen.x - e.x;
     const dy = hen.y - e.y;
     const d = Math.hypot(dx, dy) || 1;
+
+    if (e.prop) {
+      // Crates stay put; one left far behind is gone.
+      if (d > FAR_AWAY) e.alive = false;
+      continue;
+    }
 
     if (d > FAR_AWAY && !game.over) {
       // Left far behind: come back from the edge of the screen.
@@ -252,9 +322,10 @@ export function updateEnemies(dt) {
   // hen so she stays visible.
   for (let i = 0; i < active.length; i++) {
     const a = active[i];
+    if (a.prop) continue;
     for (let j = i + 1; j < active.length; j++) {
       const b = active[j];
-      if (a.flying !== b.flying) continue;
+      if (a.flying !== b.flying || b.prop) continue;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const min = a.r + b.r;

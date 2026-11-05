@@ -5,9 +5,10 @@ import { PALETTE } from './palette.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
-import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, outfitTier } from './sprites.js';
+import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier } from './sprites.js';
 import { hen } from './hen.js';
-import { enemies } from './enemies.js';
+import { enemies, bossName } from './enemies.js';
+import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
 import { ITEM_BY_ID, build, buildOrder, cardText } from './items.js';
@@ -27,6 +28,8 @@ export const HUD_STRINGS = {
   resume: 'PRESS ANY KEY',
   levelUp: 'LEVEL UP!',
   choose: 'CHOOSE ONE: 1, 2, 3, CLICK OR TAP',
+  chest: 'CHEST!',
+  chestNote: 'NEW GEAR FOR THE HEN',
   gameOver: 'GAME OVER',
   dawn: 'DAWN!',
   crow: 'THE ROOSTER CROWS',
@@ -44,6 +47,8 @@ export const HUD_SIZES = {
   resume: 8,
   levelUp: 12,
   choose: 7,
+  chest: 12,
+  chestNote: 7,
   gameOver: 16,
   dawn: 16,
   crow: 8,
@@ -112,11 +117,14 @@ function screenPos(e, alpha, camX, camY) {
 
 const visible = (sx, sy) => sx > -24 && sx < WIDTH + 24 && sy > -24 && sy < HEIGHT + 32;
 
-/** Draws `sprite` (normal or flash) with its feet at (sx, sy), mirrored when `facing` < 0. */
-function drawSprite(ctx, sprite, sx, sy, facing, white = false, upsideDown = false) {
+/**
+ * Draws `sprite` (normal or flash) with its feet at (sx, sy), mirrored when `facing` < 0 and
+ * enlarged `scale` times (bosses).
+ */
+function drawSprite(ctx, sprite, sx, sy, facing, white = false, upsideDown = false, scale = 1) {
   ctx.save();
   ctx.translate(sx, upsideDown ? sy - sprite.h / 2 : sy);
-  ctx.scale(facing < 0 ? -1 : 1, upsideDown ? -1 : 1);
+  ctx.scale((facing < 0 ? -1 : 1) * scale, (upsideDown ? -1 : 1) * scale);
   ctx.drawImage(white ? sprite.flash : sprite.normal, -sprite.w / 2, upsideDown ? -sprite.h / 2 : -sprite.footY - 1);
   ctx.restore();
 }
@@ -153,6 +161,27 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     if (!visible(sx, sy)) continue;
     const bob = c.state === 0 ? 0 : Math.round(c.z);
     ctx.drawImage(cornSprites[cornTier(c.value)].normal, sx - 3, sy - 6 - bob);
+  }
+
+  // Prizes bob above the grass; a chest sits still and glints.
+  for (const p of pickups) {
+    if (!p.alive) continue;
+    const sx = Math.round(toIsoX(p.x, p.y) - camX);
+    const sy = Math.round(toIsoY(p.x, p.y) - camY);
+    if (!visible(sx, sy)) continue;
+    const sprite = pickupSprites[p.kind];
+    const bob = Math.round(p.z + (p.kind === CHEST ? 0 : 1.5 + Math.sin(time * 4 + p.x) * 1.5));
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = PALETTE[0];
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, sprite.w / 2 - 1, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.drawImage(sprite.normal, sx - sprite.w / 2, sy - sprite.footY - 1 - bob);
+    if (p.kind === CHEST && Math.sin(time * 5 + p.x) > 0.9) {
+      ctx.fillStyle = PALETTE[13];
+      ctx.fillRect(sx + 3, sy - 11, 1, 1);
+    }
   }
 
   // One path for every soft shadow.
@@ -208,8 +237,8 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     const set = enemySprites[e.kind];
     const pose = e.knockTime > 0 ? 'idle' : Math.floor(e.walkPhase) % 2 ? 'stepA' : 'stepB';
     // Flyers keep to the air above their shadow, bobbing with each wing beat.
-    const lift = e.flying ? 12 + Math.round(Math.sin(e.walkPhase * Math.PI) * 2) : 0;
-    drawSprite(ctx, set[pose], d.sx, d.sy - lift, e.facing, e.flash > 0.1);
+    const lift = e.flying ? (e.boss ? 20 : 12) + Math.round(Math.sin(e.walkPhase * Math.PI) * 2) : 0;
+    drawSprite(ctx, set[pose], d.sx, d.sy - lift, e.facing, e.flash > 0.1, false, e.boss ? 2 : 1);
   }
   if (game.started && !game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);
 
@@ -318,6 +347,18 @@ function drawTopBar(ctx, time) {
   drawText(ctx, `LV ${game.level}`, 4, 14, 8, 13, 'left');
   drawText(ctx, formatClock(game.time), WIDTH / 2, 14, 8, 13);
   drawText(ctx, `KILLS ${game.kills}`, WIDTH - 4, 14, 8, 13, 'right');
+  // The strongest boss on the field: its name and health under the top bar.
+  let boss = null;
+  for (const e of enemies) if (e.alive && e.boss && (!boss || e.hp > boss.hp)) boss = e;
+  const menu = game.over || game.cards.length || game.reward.length;
+  if (boss && !menu) {
+    drawText(ctx, bossName(boss), WIDTH / 2, 25, 6, 13);
+    ctx.fillStyle = PALETTE[0];
+    ctx.fillRect(WIDTH / 2 - 50, 30, 100, 4);
+    ctx.fillStyle = PALETTE[9];
+    ctx.fillRect(WIDTH / 2 - 49, 31, Math.ceil((98 * boss.hp) / boss.maxHp), 2);
+  }
+
   // Owned upgrades: weapons on the first row, passives on the second, each with level pips.
   const column = [0, 0];
   for (const id of buildOrder) {
@@ -330,16 +371,20 @@ function drawTopBar(ctx, time) {
   }
 }
 
-function drawCards(ctx, time) {
+/**
+ * A row of upgrade cards under a title: the level-up choice (numbered, `lock` slides them in) or
+ * the chest's reward (`numbered` false).
+ */
+function drawCards(ctx, time, cards, title, note, lock, numbered) {
   const S = HUD_STRINGS;
   const Z = HUD_SIZES;
   dim(ctx, 0.55);
   // Slide in while the pick lock runs down
-  const slide = Math.round(Math.max(0, game.cardLock) * 60);
-  drawText(ctx, S.levelUp, WIDTH / 2, 24 - slide, Z.levelUp, 10);
-  drawText(ctx, S.choose, WIDTH / 2, 36 - slide, Z.choose, 13);
-  const n = game.cards.length;
-  game.cards.forEach((card, i) => {
+  const slide = Math.round(Math.max(0, lock) * 60);
+  drawText(ctx, S[title], WIDTH / 2, 24 - slide, Z[title], 10);
+  drawText(ctx, S[note], WIDTH / 2, 36 - slide, Z[note], 13);
+  const n = cards.length;
+  cards.forEach((card, i) => {
     const item = ITEM_BY_ID[card.id];
     const r = cardRect(i, n);
     const y = r.y + slide;
@@ -348,7 +393,7 @@ function drawCards(ctx, time) {
     ctx.fillRect(r.x, y, r.w, r.h);
     ctx.fillStyle = PALETTE[15];
     ctx.fillRect(r.x + 2, y + 2, r.w - 4, r.h - 4);
-    drawText(ctx, String(i + 1), r.x + 8, y + 9, 7, 10);
+    if (numbered) drawText(ctx, String(i + 1), r.x + 8, y + 9, 7, 10);
     ctx.drawImage(iconSprites[card.id].normal, cx - 14, y + 10 + Math.round(Math.sin(time * 4 + i) * 1.5), 28, 28);
     drawText(ctx, item.name, cx, y + 50, CARD_NAME_SIZE, 13);
     drawText(ctx, card.level === 1 ? 'NEW!' : `LV ${card.level}`, cx, y + 61, 7, card.level === 1 ? 10 : 12);
@@ -390,11 +435,15 @@ function drawHud(ctx, time) {
     return;
   }
   drawTopBar(ctx, time);
-  if (game.level === 1 && !game.over && Math.sin(time * 4) > -0.5) {
+  if (game.level === 1 && !game.over && !game.cards.length && !game.reward.length && Math.sin(time * 4) > -0.5) {
     drawText(ctx, S.tutorial, WIDTH / 2, HEIGHT - 12, Z.tutorial, 10);
   }
   if (game.over) drawGameOver(ctx, time);
-  else if (game.cards.length) drawCards(ctx, time);
+  else if (game.cards.length) drawCards(ctx, time, game.cards, 'levelUp', 'choose', game.cardLock, true);
+  else if (game.reward.length) {
+    drawCards(ctx, time, game.reward, 'chest', 'chestNote', game.rewardLock, false);
+    if (game.rewardLock <= 0 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, HEIGHT - 16, Z.resume, 13);
+  }
   if (game.paused) {
     dim(ctx, 0.5);
     drawText(ctx, S.paused, WIDTH / 2, 80, Z.paused, 10);
@@ -502,6 +551,7 @@ export function renderScene(ctx, alpha, time) {
     const y = hen.prevY + (hen.y - hen.prevY) * alpha;
     drawWeather(ctx, time, Math.round(toIsoX(x, y) - camX), Math.round(toIsoY(x, y) - camY));
   }
+  tint(ctx, 13, (juice.flash / juice.flashDur) * 0.7);
   drawStick(ctx);
   drawHud(ctx, time);
 }

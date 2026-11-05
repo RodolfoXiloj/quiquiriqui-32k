@@ -56,6 +56,16 @@ export function spawnCorn(x, y, value = 1, bounce = 30) {
   Object.assign(c, { alive: true, x, y, prevX: x, prevY: y, z: 0, vz: bounce, vx: 0, vy: 0, value, state: IDLE, timer: 0 });
 }
 
+/** The magnet prize: every kernel on the map starts flying to the hen. */
+export function pullAllCorn() {
+  for (const c of corn) {
+    if (!c.alive || c.state !== IDLE) continue;
+    c.state = HOP;
+    c.timer = HOP_TIME;
+    c.vz = 40;
+  }
+}
+
 export function clearCorn() {
   for (const c of corn) c.alive = false;
 }
