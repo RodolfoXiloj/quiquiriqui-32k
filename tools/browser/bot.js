@@ -86,7 +86,8 @@ export function createBot() {
      */
     decide(world) {
       const { hen, enemies, corn, pickups = [], game, cards } = world;
-      if (game.over) return { keys: [], tap: game.overTime > 2 ? 'Space' : null };
+      // After a fall, start over; at dawn, keep going (endless).
+      if (game.over) return { keys: [], tap: game.overTime > 2 ? (game.dawnChoice ? 'Digit1' : 'Space') : null };
       if (cards.length) return { keys: [], tap: game.cardLock <= 0 ? `Digit${pickCard(cards) + 1}` : null };
       if (game.reward && game.reward.length) return { keys: [], tap: game.rewardLock <= 0 ? 'Space' : null };
 

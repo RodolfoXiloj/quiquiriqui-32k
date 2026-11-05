@@ -22,8 +22,15 @@ export const game = {
   rewardLock: 0,
   /** True once the run ends (the hen falls, or dawn comes); `overTime` counts the seconds since. */
   over: false,
-  /** True when the run ended at dawn: she survived. */
+  /** True once she has seen the first dawn: the run is won (it may go on, endless). */
   won: false,
+  /** True while the dawn screen asks whether to keep going. */
+  dawnChoice: false,
+  /** Which day of the run it is: 1, then 2, 3... after each dawn in endless play. */
+  day: 1,
+  /** A short message across the screen ('DAY 2'), and the seconds it stays. */
+  banner: '',
+  bannerTime: 0,
   overTime: 0,
   /** True on the game-over screen when this run beat the best time. */
   newBest: false,
@@ -55,6 +62,10 @@ export function resetGame() {
   game.rewardLock = 0;
   game.over = false;
   game.won = false;
+  game.dawnChoice = false;
+  game.day = 1;
+  game.banner = '';
+  game.bannerTime = 0;
   game.overTime = 0;
   game.newBest = false;
   game.titleLock = 0;

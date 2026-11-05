@@ -64,7 +64,7 @@ export function boot(canvas) {
 /** Which part of the music fits the moment, or null for silence. */
 function musicMood() {
   if (!game.started) return null;
-  if (game.over) return game.won ? 'dawn' : null;
+  if (game.over) return game.dawnChoice ? 'dawn' : null;
   if (enemies.some((e) => e.alive && e.boss)) return 'boss';
   return weatherAt(game.time).night > 0.5 ? 'night' : 'day';
 }
@@ -112,11 +112,12 @@ function startRun() {
   if (!settings.peaceful) scatterStartingCorn();
 }
 
-/** Dawn: she made it. The rooster crows and the predators run away. */
+/** The first dawn: she made it. The rooster crows, the predators run, and she may keep going. */
 function winRun() {
   game.time = RUN_LENGTH;
   game.over = true;
   game.won = true;
+  game.dawnChoice = true;
   game.overTime = 0;
   game.newBest = saveBest(RUN_LENGTH);
   sfxCrow();
@@ -124,6 +125,26 @@ function winRun() {
     const a = Math.random() * Math.PI * 2;
     spawnParticle(hen.x, hen.y, 10, Math.cos(a) * 2.5, Math.sin(a) * 2.5, 40 + Math.random() * 40, k % 3 ? 10 : 13, 2, 1.2);
   }
+}
+
+/** Shows `text` across the screen for a few seconds. */
+function showBanner(text) {
+  game.banner = text;
+  game.bannerTime = 2.5;
+}
+
+/** Endless play: the next day begins (after the dawn screen, or at each later dawn). */
+function newDay() {
+  game.day++;
+  showBanner(`DAY ${game.day}`);
+  sfxCrow();
+}
+
+/** On the dawn screen: 1 or a tap on the left half keeps going; any other key or tap ends the run. */
+function dawnPicked() {
+  const tap = input.tap;
+  if (input.pressed.has('Digit1') || input.pressed.has('Numpad1') || (tap && tap.x < WIDTH / 2)) return 'keep';
+  return input.pressed.size > 0 || tap ? 'end' : null;
 }
 
 /** Opens the level-up cards (or heals when nothing is left to upgrade). */
@@ -232,9 +253,18 @@ export function update(dt) {
     updateJuice(dt, hen.x, hen.y);
     updateEnemies(dt);
     updatePools(dt);
-    if (game.overTime > GAME_OVER_WAIT && (input.pressed.size > 0 || input.tap)) {
-      resetRun();
-      game.titleLock = 0.6;
+    if (game.overTime > GAME_OVER_WAIT) {
+      const pick = game.dawnChoice ? dawnPicked() : input.pressed.size > 0 || input.tap ? 'end' : null;
+      if (pick === 'keep') {
+        // Endless: the predators come back, harder, and the timeline starts over.
+        game.over = false;
+        game.dawnChoice = false;
+        releasePointer();
+        newDay();
+      } else if (pick === 'end') {
+        resetRun();
+        game.titleLock = 0.6;
+      }
     }
     return;
   }
@@ -260,9 +290,13 @@ export function update(dt) {
   const simDt = updateJuice(dt, hen.x, hen.y);
   if (simDt <= 0) return;
   game.time += simDt;
-  if (game.time >= RUN_LENGTH) {
-    winRun();
-    return;
+  game.bannerTime = Math.max(0, game.bannerTime - simDt);
+  if (game.time >= RUN_LENGTH * game.day) {
+    if (game.day === 1) {
+      winRun();
+      return;
+    }
+    newDay();
   }
   updateWaves(simDt);
   updateHen(simDt);

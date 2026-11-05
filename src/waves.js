@@ -2,14 +2,18 @@
 // `count` predators spread evenly over `over` seconds, picking each one's kind at random from
 // `kinds` (repeat a kind to make it more common). Snakes join at 3:00, crows at 5:00 and
 // badgers at 7:00; the last minute brings everything. Events with `boss` send one boss of that
-// kind. A crate appears every 20 seconds near the edge of the screen.
+// kind. A crate appears every 20 seconds near the edge of the screen. In endless play the timeline
+// starts over each day, with half as many predators again per day gone by.
 import { gameRand } from './rng.js';
 import { game, settings } from './state.js';
+import { RUN_LENGTH } from './weather.js';
 import { hen } from './hen.js';
 import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, spawnEnemy, spawnBoss, spawnPoint } from './enemies.js';
 
 /** Seconds between two crates. */
 export const CRATE_EVERY = 20;
+/** Each day gone by adds this share of predators to every wave. */
+export const MORE_PER_DAY = 0.5;
 
 export const TIMELINE = [
   { at: 0, kinds: [RAT], count: 4, over: 2 },
@@ -38,11 +42,14 @@ export const TIMELINE = [
 const spawners = [];
 let nextEvent = 0;
 let nextCrateAt = CRATE_EVERY;
+/** The day the timeline is playing; a new day starts it over. */
+let waveDay = 1;
 
 export function resetWaves() {
   spawners.length = 0;
   nextEvent = 0;
   nextCrateAt = CRATE_EVERY;
+  waveDay = 1;
 }
 
 /** A crate just inside the edge of the screen. */
@@ -52,12 +59,18 @@ function spawnCrate() {
 }
 
 function startSpawner(event) {
-  spawners.push({ kinds: event.kinds, left: event.count, period: event.over / event.count, timer: 0 });
+  const count = Math.round(event.count * (1 + MORE_PER_DAY * (game.day - 1)));
+  spawners.push({ kinds: event.kinds, left: count, period: event.over / count, timer: 0 });
 }
 
 export function updateWaves(dt) {
   if (settings.peaceful) return;
-  while (nextEvent < TIMELINE.length && game.time >= TIMELINE[nextEvent].at) {
+  if (game.day !== waveDay) {
+    waveDay = game.day;
+    nextEvent = 0;
+  }
+  const local = game.time - RUN_LENGTH * (game.day - 1);
+  while (nextEvent < TIMELINE.length && local >= TIMELINE[nextEvent].at) {
     const event = TIMELINE[nextEvent++];
     if (event.boss !== undefined) spawnBoss(event.boss);
     else startSpawner(event);

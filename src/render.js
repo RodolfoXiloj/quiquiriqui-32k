@@ -35,6 +35,8 @@ export const HUD_STRINGS = {
   dawn: 'DAWN!',
   crow: 'THE ROOSTER CROWS',
   nod: 'HOLDING OUT FOR A HEN',
+  keepGoing: '1: KEEP GOING',
+  endRun: '2: END RUN',
   newBest: 'NEW BEST!',
   tutorial: 'PICK UP CORN TO LEVEL UP',
 };
@@ -56,6 +58,8 @@ export const HUD_SIZES = {
   dawn: 16,
   crow: 8,
   nod: 7,
+  keepGoing: 8,
+  endRun: 8,
   newBest: 8,
   tutorial: 7,
 };
@@ -353,7 +357,8 @@ function drawTopBar(ctx, time) {
   ctx.fillStyle = PALETTE[full && Math.sin(time * 12) > 0 ? 13 : 10];
   ctx.fillRect(3, 3, full ? WIDTH - 6 : Math.floor(((WIDTH - 6) * Math.min(game.xp, need)) / need), 4);
   drawText(ctx, `LV ${game.level}`, 4, 14, 8, 13, 'left');
-  drawText(ctx, formatClock(game.time), WIDTH / 2, 14, 8, 13);
+  drawText(ctx, (game.day > 1 ? `DAY ${game.day}  ` : '') + formatClock(game.time), WIDTH / 2, 14, 8, 13);
+  if (game.bannerTime > 0 && !game.over) drawText(ctx, game.banner, WIDTH / 2, HEIGHT / 2 - 40, 16, 10);
   drawText(ctx, `KILLS ${game.kills}`, WIDTH - 4, 14, 8, 13, 'right');
   // The strongest boss on the field: its name and health under the top bar.
   let boss = null;
@@ -432,7 +437,11 @@ function drawGameOver(ctx, time) {
   drawText(ctx, gameOverLine(game.time, game.kills, game.level), WIDTH / 2, statsY, 7, 13);
   if (game.newBest) drawText(ctx, S.newBest, WIDTH / 2, statsY + 14, Z.newBest, 10);
   else drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, statsY + 14, 7, 13);
-  if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, cy + (won ? 62 : 40), Z.resume, 13);
+  if (game.overTime > 1.5 && game.dawnChoice) {
+    // Keep going (left) or end the run (right)
+    drawText(ctx, S.keepGoing, WIDTH / 4, cy + 62, Z.keepGoing, Math.sin(time * 5) > -0.3 ? 10 : 13);
+    drawText(ctx, S.endRun, (WIDTH * 3) / 4, cy + 62, Z.endRun, 13);
+  } else if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, cy + 40, Z.resume, 13);
 }
 
 function drawHud(ctx, time) {
@@ -531,8 +540,10 @@ function drawWeather(ctx, time, hx, hy) {
   }
   if (w.dawn > 0) {
     tint(ctx, 18, 0.16 * w.dawn);
-    // The sun comes up over the top edge as the last half minute runs out.
-    const p = Math.min(1, (game.time - DAWN_START) / (RUN_LENGTH - DAWN_START));
+    // The sun comes up over the top edge as the last half minute runs out (and stays up while a
+    // new day's morning glow fades).
+    const local = game.time % RUN_LENGTH;
+    const p = local >= DAWN_START ? (local - DAWN_START) / (RUN_LENGTH - DAWN_START) : 1;
     const sx = WIDTH - 44;
     const sy = Math.round(-14 + p * 40);
     ctx.globalAlpha = 0.35 * w.dawn;

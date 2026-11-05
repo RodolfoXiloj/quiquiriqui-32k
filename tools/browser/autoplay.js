@@ -62,6 +62,8 @@ window.__qq = {
     paused: game.paused,
     over: game.over,
     won: game.won,
+    dawnChoice: game.dawnChoice,
+    day: game.day,
     music: { on: music.on, mood: music.mood },
     time: game.time,
     level: game.level,

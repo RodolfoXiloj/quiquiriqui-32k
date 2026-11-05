@@ -904,6 +904,83 @@ describe('quiquiriqui: the day arc', () => {
   });
 });
 
+describe('quiquiriqui at 5x: endless days', () => {
+  /** Plays up to the first dawn and waits until the dawn screen takes input. */
+  function reachDawn() {
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    game.time = RUN_LENGTH - 0.05;
+    for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
+    assert.equal(game.dawnChoice, true, 'no dawn screen');
+    steps(1.6);
+  }
+
+  it('at dawn, 1 keeps going into day 2, where predators are twice as tough', () => {
+    resetRun();
+    reachDawn();
+    tapKey('Digit1');
+    assert.equal(game.over, false);
+    assert.equal(game.won, true);
+    assert.equal(game.day, 2);
+    assert.equal(game.banner, 'DAY 2');
+    steps(1);
+    assert.ok(game.time > RUN_LENGTH, 'the clock stopped');
+    const rat = spawnEnemy(RAT, hen.x + 20, hen.y);
+    const toughness = 1 + (game.level - 1) / 12 + game.time / 240;
+    assert.equal(rat.maxHp, Math.floor(ENEMY_TYPES[RAT].hp * toughness * 2), 'day 2 should double their health');
+  });
+
+  it('a new day replays the timeline, bosses included, with more predators', () => {
+    resetRun({ peaceful: false });
+    reachDawn();
+    tapKey('Digit1');
+    for (const e of enemies) e.alive = false;
+    while (game.time < RUN_LENGTH + 62) {
+      hen.hp = hen.maxHp = 1e6;
+      update(STEP);
+      if (game.cards.length && game.cardLock <= 0) tapKey('Digit1');
+      if (game.reward.length && game.rewardLock <= 0) tapKey('Space');
+    }
+    assert.ok(enemies.some((e) => e.alive && e.boss), 'no boss on minute 1 of day 2');
+  });
+
+  it('2 ends the run at dawn with a best time of 10:00', () => {
+    localStorage.removeItem('qq_best');
+    game.best = 0;
+    resetRun();
+    reachDawn();
+    tapKey('Digit2');
+    assert.equal(game.started, false);
+    assert.equal(localStorage.getItem('qq_best'), String(RUN_LENGTH));
+  });
+
+  it('every later dawn starts the next day without stopping the run', () => {
+    resetRun();
+    reachDawn();
+    tapKey('Digit1');
+    game.time = RUN_LENGTH * 2 - 0.05;
+    steps(0.2);
+    assert.equal(game.day, 3);
+    assert.equal(game.over, false);
+    assert.equal(game.banner, 'DAY 3');
+    assert.ok(weatherAt(RUN_LENGTH * 2 + 1).dawn > 0.5, 'no morning glow');
+    assert.equal(weatherAt(RUN_LENGTH * 2 + 30).dawn, 0);
+    assert.equal(weatherAt(RUN_LENGTH * 2 + 500).night, 1);
+  });
+
+  it('falling on day 2 keeps a best time past 10:00', () => {
+    localStorage.removeItem('qq_best');
+    game.best = 0;
+    resetRun();
+    reachDawn();
+    tapKey('Digit1');
+    steps(2);
+    damageHen(1e9, hen.x + 1, hen.y);
+    assert.equal(game.over, true);
+    assert.ok(Number(localStorage.getItem('qq_best')) > RUN_LENGTH);
+  });
+});
+
 describe('quiquiriqui at 5x: the bot and a long run', () => {
   it('the bot survives the first minute', () => {
     resetRun({ peaceful: false });

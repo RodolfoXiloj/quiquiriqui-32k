@@ -136,8 +136,10 @@ export function spawnEnemy(kind, x, y) {
   // A little dust where it comes out of the grass (only worth it when she can see it)
   if (onScreen(x, y, -20)) for (let i = 0; i < 4; i++) spawnParticle(x, y, 1, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, 12, 6, 1, 0.35);
   const type = ENEMY_TYPES[kind];
-  // Tougher as the hen levels up and as the run goes on, a little faster too (crates stay as they are).
-  const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + (game.level - 1) / 12 + game.time / 240));
+  // Tougher as the hen levels up and as the run goes on, a little faster too; each endless day
+  // adds their whole base health again and 10% speed (crates stay as they are).
+  const days = game.day - 1;
+  const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + (game.level - 1) / 12 + game.time / 240) * (1 + days));
   Object.assign(e, {
     alive: true,
     kind,
@@ -147,7 +149,7 @@ export function spawnEnemy(kind, x, y) {
     prevY: y,
     hp,
     maxHp: hp,
-    speed: type.speed * (1 + (game.level - 1) / 100),
+    speed: type.speed * (1 + (game.level - 1) / 100) * (1 + 0.1 * days),
     r: type.r,
     dmg: type.dmg,
     flying: !!type.flying,
