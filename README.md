@@ -50,7 +50,9 @@
 
 A lone hen in an endless sunny meadow. Predators close in from every side, wave after wave, while the day turns to rain, snow and night. Her weapons fire on their own; **you only move**. Every level-up offers three upgrades, and **every upgrade is something she wears or carries**: a pot helmet, running boots, sunglasses, a feed basket, a cape. Glance at the hen and you see your build.
 
-Rats arrive from the first second; foxes join after a minute. She starts with **Egg Toss** and can carry six of seven weapons and all six passives:
+Rats arrive from the first second and foxes after a minute; snakes join at 3:00, crows at 5:00 and badgers at 7:00, and the last minute brings everything. A **boss** (a big, tough version of a predator) comes on most minutes and drops a **chest** with one or three upgrades. Every 20 seconds a **crate** appears; broken, it leaves a magnet (pulls in every kernel), a bomb (clears the screen), food or corn. The day turns to rain, snow and night, and at 10:00 the sun comes up.
+
+She starts with **Egg Toss** and can carry six of seven weapons and all six passives:
 
 | Upgrade | What it does | What she wears |
 |---------|--------------|----------------|
@@ -128,6 +130,7 @@ Only the shipped file is gated: `dist/index.html` after Terser **and** Roadrolle
 | M0 skeleton (measured Nov 5, 2026) | 10,936 B | 6,360 B (19.4%) |
 | M1 core loop (measured Nov 5, 2026) | 28,358 B | 13,426 B (41.0%) |
 | M2 dress-up (measured Nov 5, 2026) | 36,099 B | 16,188 B (49.4%) |
+| M3 the ten minutes (measured Nov 5, 2026) | 43,915 B | 18,784 B (57.3%) |
 | **Final target** | n/a | **≤ 32,768 bytes** |
 
 ---
@@ -159,7 +162,7 @@ To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?au
 | ✅ | **M0: Skeleton** | Endless isometric meadow, the hen walking in 8 directions, title, pause on blur, clock, tests. |
 | ✅ | **M1: Core loop** | Rats and Foxes on a wave timeline (minutes 0–3, then a ramp). Three weapons (Egg Toss, Peck, Feather Darts) and three passives (Running Boots, Feed Basket, Pot Helmet). Corn XP with a magnet, level-up cards (1/2/3, click, tap), bites, game over and a saved best time. |
 | ✅ | **M2: Dress-up** | Seven weapons (adds Corn Spray, Wing Gust, Chick Orbit, Thunder Comb) and six passives (adds Sunglasses, Hero Cape, Lucky Bandana). Every item drawn on the hen, with three looks as it levels; she is re-baked whenever her look changes. |
-| ⬜ | **M3: The 10 minutes** | Minute-by-minute waves and bosses, chests, breakable boxes, weather (rain, snow, night) and the dawn ending. |
+| ✅ | **M3: The 10 minutes** | A ten-minute timeline with snakes, crows and badgers; bosses with chests; crates with a magnet, a bomb or food; rain, snow and night; the dawn win at 10:00. |
 | ⬜ | **M4: Polish & ship** | Music, difficulty tuning, mobile and performance passes, deploy to GitHub Pages. |
 
 ---
