@@ -562,10 +562,48 @@ async function progressScenarios(page, base) {
     expect(s.time > 600, `the clock is at ${s.time}`);
     await page.evaluate('localStorage.removeItem("qq_profile")');
   });
+
+  await check('23. a locked hen is on show with a padlock; moving does not start the run', async () => {
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+    await page.evaluate('localStorage.removeItem("qq_profile")');
+    await page.tapKey('KeyE', 50);
+    await sleep(100);
+    let s = await page.snapshot();
+    expect(s.henChoice === 1 && s.profile.hen === 0, `hen on show ${s.henChoice}, chosen ${s.profile.hen}`);
+    await page.tapKey('KeyD', 200);
+    await sleep(150);
+    await page.screenshot('24-locked-hen.png');
+    s = await page.snapshot();
+    expect(!s.started, 'a locked hen started the run');
+    await page.tapKey('KeyQ', 50);
+    await page.tapKey('KeyD', 100);
+    await page.waitFor('window.__qq.snapshot().started', 2000);
+  });
+
+  await check('24. events and special predators: a hawk, a stampede, a frenzy, a rainbow elite', async () => {
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+    await page.tapKey('KeyD', 100);
+    await page.evaluate("window.__qq.cheat.event('hawk')");
+    let s = await page.snapshot();
+    expect(s.banner === 'HAWK!' && s.hawkDives > 0, `banner "${s.banner}", ${s.hawkDives} dives`);
+    await sleep(200);
+    await page.screenshot('25-hawk.png');
+    await page.waitFor('window.__qq.snapshot().hawkDives === 0', 6000);
+    await page.evaluate("window.__qq.cheat.event('stampede'), window.__qq.cheat.event('frenzy'), window.__qq.cheat.elite('badger', true)");
+    s = await page.snapshot();
+    expect(s.enemies >= 31 && s.frenzy > 0 && s.elites.includes(2), `${s.enemies} predators, frenzy ${s.frenzy}, elites ${s.elites}`);
+    await sleep(500);
+    await page.screenshot('26-stampede.png');
+    await page.evaluate('window.__qq.cheat.lineup()');
+    await sleep(700);
+    await page.screenshot('27-lineup.png');
+    s = await page.snapshot();
+    expect(s.shots > 0 || s.enemies > 0, 'the lineup is empty');
+  });
 }
 
 async function mobileScenario(page, client, base) {
-  await check('23. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
+  await check('25. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
     await client.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     try {
@@ -609,7 +647,7 @@ async function mobileScenario(page, client, base) {
 }
 
 async function distScenario(page) {
-  await check('24. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
+  await check('26. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
     await access(DIST).catch(() => {
       throw new Error('dist/index.html is missing: run npm run build first');
     });
@@ -654,7 +692,7 @@ async function main() {
     await mobileScenario(page, client, base);
     await distScenario(page);
     results.push({
-      name: '25. no exceptions, console errors or failed loads',
+      name: '27. no exceptions, console errors or failed loads',
       ok: problems.length === 0,
       error: problems.slice(0, 5).join(' | '),
     });

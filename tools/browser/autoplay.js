@@ -18,7 +18,8 @@ import { game, settings, formatClock, xpToNext } from '/state.js';
 import { hen, damageHen, syncHenStats } from '/hen.js';
 import { holdKey } from '/input.js';
 import { toIsoX, toIsoY } from '/iso.js';
-import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, CRATE } from '/enemies.js';
+import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, CRATE, shots, clouds, CLOUD_R, makeElite } from '/enemies.js';
+import { hawk, startEvent, EVENTS, HAWK_R, HAWK_HUNT, HAWK_STRIKE } from '/events.js';
 import { corn } from '/corn.js';
 import { pickups, spawnPickup } from '/pickups.js';
 import { ITEMS, ITEM_BY_ID, build, buildOrder, applyCard } from '/items.js';
@@ -26,7 +27,7 @@ import { bakeHen, outfitOf } from '/sprites.js';
 import { cardRect } from '/render.js';
 import { music } from '/music.js';
 import { profile, saveProfile } from '/profile.js';
-import { createBot } from '/__dev/bot.js';
+import { createBot, hazardsOf } from '/__dev/bot.js';
 
 const params = new URLSearchParams(location.search);
 const speed = Math.max(1, Number(params.get('speed')) || 5);
@@ -81,6 +82,12 @@ window.__qq = {
     build: buildOrder.map((id) => [id, build[id]]),
     enemies: countEnemies(),
     bosses: enemies.filter((e) => e.alive && e.boss).length,
+    elites: enemies.filter((e) => e.alive && e.elite).map((e) => e.elite),
+    banner: game.bannerTime > 0 ? game.banner : '',
+    hawkDives: hawk.dives,
+    frenzy: game.frenzy,
+    shots: shots.filter((s) => s.alive).length,
+    clouds: clouds.filter((c) => c.alive).length,
     crates: enemies.filter((e) => e.alive && e.prop).length,
     corn: corn.filter((c) => c.alive).length,
     pickups: pickups.filter((p) => p.alive).map((p) => p.kind),
@@ -119,6 +126,15 @@ window.__qq = {
     /** Spawns a boss of `kind` just off-screen. */
     boss(kind = 'fox') {
       spawnBoss(Math.max(0, ENEMY_TYPES.findIndex((type) => type.name === kind)));
+    },
+    /** Starts a random event now: 'hawk', 'stampede', 'surrounded' or 'frenzy'. */
+    event(name = 'hawk') {
+      startEvent(Math.max(0, EVENTS.findIndex((banner) => banner.startsWith(name.toUpperCase()))));
+    },
+    /** Spawns an elite of `kind` just off-screen: golden, or `rainbow`. */
+    elite(kind = 'fox', rainbow = false) {
+      const e = spawnEnemy(Math.max(0, ENEMY_TYPES.findIndex((type) => type.name === kind)));
+      if (e) makeElite(e, rainbow);
     },
     /** Puts a crate a little in front of the hen. */
     crate() {
@@ -183,7 +199,8 @@ if (!externalDriver) {
       holdKey(tapped, false);
       tapped = null;
     }
-    const { keys, tap } = bot.decide({ hen, enemies, corn, pickups, game, cards: cardsWithKind() });
+    const hazards = hazardsOf(shots, clouds, hawk, { cloudR: CLOUD_R, hawkR: HAWK_R, hawkHunt: HAWK_HUNT, hawkStrike: HAWK_STRIKE });
+    const { keys, tap } = bot.decide({ hen, enemies, corn, pickups, hazards, game, cards: cardsWithKind() });
     for (const code of MOVE_KEYS) holdKey(code, keys.includes(code));
     if (tap) {
       holdKey(tap, true);

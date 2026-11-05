@@ -6,12 +6,13 @@ import { boot, update, resetRun as resetGameRun, handleBlur } from '../src/main.
 import { holdKey, releaseAllInput, input } from '../src/input.js';
 import { hen } from '../src/hen.js';
 import { game, settings } from '../src/state.js';
-import { enemies } from '../src/enemies.js';
+import { enemies, shots, clouds, CLOUD_R } from '../src/enemies.js';
+import { hawk, HAWK_R, HAWK_HUNT, HAWK_STRIKE } from '../src/events.js';
 import { corn } from '../src/corn.js';
 import { pickups } from '../src/pickups.js';
 import { ITEM_BY_ID } from '../src/items.js';
 import { profile } from '../src/profile.js';
-import { createBot } from '../tools/browser/bot.js';
+import { createBot, hazardsOf } from '../tools/browser/bot.js';
 
 export const SPEED = 5;
 /** Every run in the tests uses this seed unless a test passes another, so results replay exactly. */
@@ -63,6 +64,7 @@ export function botWorld() {
     enemies,
     corn,
     pickups,
+    hazards: hazardsOf(shots, clouds, hawk, { cloudR: CLOUD_R, hawkR: HAWK_R, hawkHunt: HAWK_HUNT, hawkStrike: HAWK_STRIKE }),
     game,
     cards: game.cards.map((card) => ({ ...card, weapon: !!ITEM_BY_ID[card.id].weapon })),
   };

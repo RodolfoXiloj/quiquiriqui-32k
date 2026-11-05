@@ -5,7 +5,8 @@
 // instances: decide() reads a plain snapshot of the world and answers which keys to hold and which
 // key to tap. Strategy: try the 8 screen directions, score each by how close it would bring the
 // hen to predators (looking a little ahead) and how well it heads for the nearest prize or corn,
-// and keep the current direction unless another one is clearly better. Cards: new weapons first,
+// and keep the current direction unless another one is clearly better. Hazards (pebbles in flight,
+// stink clouds, the spot a hawk is about to dive on) count as danger too. Cards: new weapons first,
 // then weapon levels, then passives. It closes the chest screen, and after a game over (or the
 // dawn win) it waits a moment and starts again.
 
@@ -48,6 +49,26 @@ function dangerAt(px, py, enemies) {
   return danger;
 }
 
+/**
+ * The hazards to steer clear of, as { x, y, r, weight }: where each flying pebble will be in a
+ * moment, each stink cloud, and the hawk's target once it takes aim. `k` holds the game's sizes
+ * and timings: { cloudR, hawkR, hawkHunt, hawkStrike }.
+ */
+export function hazardsOf(shots, clouds, hawk, k) {
+  const list = [];
+  for (const s of shots) if (s.alive) list.push({ x: s.x + s.vx * 0.25, y: s.y + s.vy * 0.25, r: 0.9, weight: 2 });
+  for (const c of clouds) if (c.alive) list.push({ x: c.x, y: c.y, r: k.cloudR + 0.3, weight: 3 });
+  if (hawk.dives && hawk.t > k.hawkHunt && hawk.t < k.hawkStrike) list.push({ x: hawk.x, y: hawk.y, r: k.hawkR + 0.6, weight: 6 });
+  return list;
+}
+
+/** Danger at world point (px, py) from the hazards it lies in. */
+function hazardAt(px, py, hazards) {
+  let danger = 0;
+  for (const h of hazards) if (Math.hypot(h.x - px, h.y - py) < h.r) danger += h.weight;
+  return danger;
+}
+
 /** The nearest alive item of `list` within `range` tiles of the hen, or null. */
 function nearest(hen, list, range) {
   let best = null;
@@ -81,11 +102,12 @@ export function createBot() {
   let held = 0;
   return {
     /**
-     * world: { hen, enemies, corn, pickups, game, cards } where cards carry { id, level, weapon }.
+     * world: { hen, enemies, corn, pickups, hazards, game, cards } where cards carry { id, level,
+     * weapon } and hazards come from hazardsOf().
      * Returns { keys, tap }: the movement keys to hold now, and a key to tap once (or null).
      */
     decide(world) {
-      const { hen, enemies, corn, pickups = [], game, cards } = world;
+      const { hen, enemies, corn, pickups = [], hazards = [], game, cards } = world;
       // After a fall, start over; at dawn, keep going (endless).
       if (game.over) return { keys: [], tap: game.overTime > 2 ? (game.dawnChoice ? 'Digit1' : 'Space') : null };
       if (cards.length) return { keys: [], tap: game.cardLock <= 0 ? `Digit${pickCard(cards) + 1}` : null };
@@ -101,6 +123,7 @@ export function createBot() {
       DIRECTIONS.forEach((d, i) => {
         let score = -dangerAt(hen.x + d.x * LOOK_NEAR, hen.y + d.y * LOOK_NEAR, enemies);
         score -= 0.6 * dangerAt(hen.x + d.x * LOOK_FAR, hen.y + d.y * LOOK_FAR, enemies);
+        score -= hazardAt(hen.x + d.x * LOOK_NEAR, hen.y + d.y * LOOK_NEAR, hazards);
         if (food) {
           const fx = food.x - hen.x;
           const fy = food.y - hen.y;

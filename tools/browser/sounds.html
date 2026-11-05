@@ -94,6 +94,10 @@
         'thunder comb': sfx.sfxThunder,
         'rooster (dawn)': sfx.sfxCrow,
         'hen falls': sfx.sfxDeath,
+        'magpie throws': sfx.sfxThrow,
+        'weasel lunges': sfx.sfxLunge,
+        'event alarm': sfx.sfxAlarm,
+        'hawk screech': sfx.sfxScreech,
       };
       for (const [label, play] of Object.entries(effects)) button('effects', label, () => play());
       ENEMY_TYPES.forEach((type, kind) => button('effects', `${type.name} down`, () => sfx.sfxKill(kind)));
