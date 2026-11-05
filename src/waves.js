@@ -10,7 +10,7 @@ import { game, settings, showBanner } from './state.js';
 import { RUN_LENGTH } from './weather.js';
 import { PERIL } from './profile.js';
 import { hen } from './hen.js';
-import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, SKUNK, ENEMY_TYPES, enemies, spawnEnemy, spawnBoss, spawnPoint, makeElite, makeRoom } from './enemies.js';
+import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, SKUNK, ENEMY_TYPES, enemies, spawnEnemy, spawnBoss, spawnPoint, makeElite, makeRoom, SPAWN_MAX } from './enemies.js';
 
 /** Seconds between two crates. */
 export const CRATE_EVERY = 20;
@@ -25,11 +25,21 @@ export const RAINBOW_FROM = 180;
 const RAINBOW_SHARE = 0.2;
 /** During a FRENZY! (events.js) the waves come this many times as fast. */
 export const FRENZY_RATE = 3;
+/**
+ * The fewest predators that must be around the hen (within SPAWN_MAX) in each minute of the day:
+ * while there are fewer, more are born, QUOTA_RATE a second, from the
+ * latest common wave. A hen that clears the screen fast faces more; a struggling one, only the
+ * timeline. Each day gone by raises it as it raises the waves.
+ */
+export const QUOTA = [14, 22, 30, 38, 46, 54, 62, 70, 78, 90];
+export const QUOTA_RATE = 4;
 
 export const TIMELINE = [
   { at: 0, kinds: [RAT], count: 4, over: 2 },
   { at: 0, kinds: [RAT], count: 60, over: 60 },
   { at: 30, kinds: [RAT], count: 30, over: 30 },
+  { at: 30, kinds: [FOX], count: 10, over: 30 },
+  { at: 60, kinds: [WEASEL], count: 8, over: 60 },
   { at: 60, boss: FOX },
   { at: 60, kinds: [RAT, RAT, FOX], count: 80, over: 60 },
   { at: 120, kinds: [RAT, FOX], count: 120, over: 60 },
@@ -68,6 +78,7 @@ const spawners = [];
 let nextEvent = 0;
 let nextCrateAt = CRATE_EVERY;
 let nextEliteAt = ELITE_FROM;
+let quotaTimer = 0;
 /** The kinds of the latest wave of common predators: elites are picked from them. */
 let commonKinds = [RAT];
 /** The day the timeline is playing; a new day starts it over. */
@@ -78,6 +89,7 @@ export function resetWaves() {
   nextEvent = 0;
   nextCrateAt = CRATE_EVERY;
   nextEliteAt = ELITE_FROM;
+  quotaTimer = 0;
   commonKinds = [RAT];
   waveDay = 1;
 }
@@ -103,6 +115,18 @@ function startSpawner(event) {
   const count = Math.round(event.count * (1 + MORE_PER_DAY * (game.day - 1)) * (1 + PERIL.spawns * game.peril));
   spawners.push({ kinds: event.kinds, left: count, period: event.over / count, timer: 0 });
   if (!event.kinds.some((kind) => ENEMY_TYPES[kind].rare)) commonKinds = event.kinds;
+}
+
+/** The quota `local` seconds into the day. */
+export function quota(local) {
+  return Math.round(QUOTA[Math.min(QUOTA.length - 1, Math.floor(local / 60))] * (1 + MORE_PER_DAY * (game.day - 1)));
+}
+
+/** Predators (not crates) within SPAWN_MAX of the hen. */
+function nearby() {
+  let n = 0;
+  for (const e of enemies) if (e.alive && !e.prop && Math.hypot(e.x - hen.x, e.y - hen.y) < SPAWN_MAX) n++;
+  return n;
 }
 
 /** An elite of a common kind, golden or (from RAINBOW_FROM, now and then) rainbow. */
@@ -131,6 +155,11 @@ export function updateWaves(dt) {
   if (game.time >= nextCrateAt) {
     nextCrateAt += CRATE_EVERY;
     spawnCrate();
+  }
+  quotaTimer += dt;
+  if (quotaTimer >= 1 / QUOTA_RATE) {
+    quotaTimer = 0;
+    if (nearby() < quota(local)) spawnEnemy(pickKind(commonKinds));
   }
   if (game.time >= nextEliteAt) {
     nextEliteAt = game.time + 40 + gameRand() * 20;

@@ -51,11 +51,11 @@ export const FRENZY_SPEED = 1.2;
  * common predator (as a boss does), so it never misses its minute.
  */
 export const ENEMY_TYPES = [
-  { name: 'rat', hp: 6, speed: 2.1, r: 0.32, dmg: 5, colors: [16, 17] },
-  { name: 'fox', hp: 26, speed: 2.55, r: 0.45, dmg: 8, colors: [18, 13] },
-  { name: 'snake', hp: 5, speed: 3.45, r: 0.3, dmg: 6, colors: [12, 15] },
-  { name: 'crow', hp: 9, speed: 3, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
-  { name: 'badger', hp: 60, speed: 1.65, r: 0.55, dmg: 10, colors: [17, 13] },
+  { name: 'rat', hp: 6, speed: 2.5, r: 0.32, dmg: 5, colors: [16, 17] },
+  { name: 'fox', hp: 26, speed: 3.05, r: 0.45, dmg: 8, colors: [18, 13] },
+  { name: 'snake', hp: 5, speed: 4.1, r: 0.3, dmg: 6, colors: [12, 15] },
+  { name: 'crow', hp: 9, speed: 3.6, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
+  { name: 'badger', hp: 60, speed: 2, r: 0.55, dmg: 10, colors: [17, 13] },
   { name: 'crate', hp: 5, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
   { name: 'magpie', hp: 12, speed: 2.6, r: 0.3, dmg: 6, colors: [15, 13], flying: true, act: SHOOT, max: 6, rare: true },
   { name: 'weasel', hp: 14, speed: 2.4, r: 0.34, dmg: 7, colors: [19, 13], act: CHARGE, rare: true },
@@ -98,6 +98,14 @@ const SHOT_SPEED = 5;
 export const SHOT_LIFE = 3;
 const SHOT_R = 0.2;
 
+/**
+ * Predators grow tougher with the clock, not with the hen's level (so leveling up is pure gain):
+ * one born HP_TIME seconds into the run has twice its base health, and SPEED_TIME seconds in, twice
+ * its base speed.
+ */
+export const HP_TIME = 70;
+const SPEED_TIME = 3000;
+
 /** Bosses: this many times the health, radius and bite of their kind. */
 export const BOSS_HP = 10;
 export const BOSS_SIZE = 2;
@@ -118,7 +126,7 @@ export const SPAWN_MAX = 24;
 /** A predator farther than this (tiles) is moved back, in front of the hen. */
 const FAR_AWAY = SPAWN_MAX + 8;
 /** While she walks, this share of births happens in front of her, within ±60° of her heading. */
-const AHEAD_SHARE = 0.4;
+const AHEAD_SHARE = 0.6;
 const AHEAD_SPREAD = Math.PI / 3;
 /** Seconds a newborn predator takes to rise out of the grass (it fades in and does not bite). */
 export const RISE_TIME = 0.25;
@@ -271,12 +279,11 @@ export function spawnEnemy(kind, x, y) {
   // A little dust where it comes out of the grass (only worth it when she can see it)
   if (onScreen(x, y, -20)) for (let i = 0; i < 4; i++) spawnParticle(x, y, 1, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, 12, 6, 1, 0.35);
   const type = ENEMY_TYPES[kind];
-  // Tougher as the hen levels up and as the run goes on, a little faster too; each endless day
-  // adds their whole base health again and 10% speed (crates stay as they are).
-  // Peril adds its shares of health, speed and bite on top.
+  // Tougher as the run goes on, a little faster too; each endless day adds their whole base health
+  // again and 10% speed (crates stay as they are). Peril adds its shares of health, speed and bite.
   const days = game.day - 1;
   const peril = type.prop ? 0 : game.peril;
-  const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + (game.level - 1) / 12 + game.time / 240) * (1 + days) * (1 + PERIL.hp * peril));
+  const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + game.time / HP_TIME) * (1 + days) * (1 + PERIL.hp * peril));
   const phase = gameRand() * 2;
   Object.assign(e, {
     alive: true,
@@ -287,7 +294,7 @@ export function spawnEnemy(kind, x, y) {
     prevY: y,
     hp,
     maxHp: hp,
-    speed: type.speed * (1 + (game.level - 1) / 100) * (1 + 0.1 * days) * (1 + PERIL.speed * peril),
+    speed: type.speed * (1 + game.time / SPEED_TIME) * (1 + 0.1 * days) * (1 + PERIL.speed * peril),
     r: type.r,
     dmg: Math.round(type.dmg * (1 + PERIL.bite * peril)),
     flying: !!type.flying,
@@ -463,7 +470,7 @@ function act(e, ux, uy, d, dt) {
     const c = Math.hypot(cx, cy) || 1;
     mx = cx / c;
     my = cy / c;
-    speed *= 0.5;
+    speed *= 0.6;
     e.timer -= dt;
     if (e.timer <= 0 || c < 1) e.act = CHASE;
   } else if (e.act === CHARGE) {

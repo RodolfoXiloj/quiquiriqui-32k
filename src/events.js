@@ -1,9 +1,11 @@
-// Random events: from 1:30, every 45 to 75 seconds, a short burst of danger, announced across the
-// screen and never the same twice in a row (none while a boss is out: it waits ten seconds).
+// Events: the first, at 0:50, is always SURROUNDED! (a ring of rats, to teach breaking out early);
+// then every 45 to 75 seconds a random short burst of danger, announced across the screen and
+// never the same twice in a row (none while a boss is out: it waits ten seconds).
 // - HAWK!       a hawk's shadow hunts the hen, holds still, and the hawk dives there, four times;
 //               it hurts her if she is still under it, and any predator it lands on.
 // - STAMPEDE!   a band of rats runs straight across the meadow at twice their speed, then leaves.
-// - SURROUNDED! a ring of the toughest common predators appears around her and closes in.
+// - SURROUNDED! a ring of predators (rats early, then foxes, badgers late) appears around her and
+//               closes in.
 // - FRENZY!     for ten seconds the waves come three times as fast and every predator runs faster.
 // Each scales with the day and the peril, as the waves do.
 import { gameRand } from './rng.js';
@@ -23,8 +25,8 @@ export const FRENZY = 3;
 /** The banner of each event. */
 export const EVENTS = ['HAWK!', 'STAMPEDE!', 'SURROUNDED!', 'FRENZY!'];
 
-/** The first event comes at EVENT_FROM seconds; then one every EVENT_GAP to EVENT_GAP + 30. */
-export const EVENT_FROM = 90;
+/** The first event (always SURROUNDED!) comes at EVENT_FROM seconds; then one every EVENT_GAP to EVENT_GAP + 30. */
+export const EVENT_FROM = 50;
 export const EVENT_GAP = 45;
 /** Each day gone by adds this share to an event's predators (as MORE_PER_DAY does to waves). */
 const MORE_PER_DAY = 0.5;
@@ -49,7 +51,7 @@ const STAMPEDE_BAND = 6;
 const STAMPEDE_FROM = 16;
 /** A ring: this many predators, this far (tiles) around her, closing in for RING_TIME seconds. */
 const RING_COUNT = 16;
-export const RING_R = 7;
+export const RING_R = 6;
 const RING_TIME = 8;
 /** A frenzy lasts this long. */
 export const FRENZY_TIME = 10;
@@ -96,7 +98,8 @@ export function startEvent(kind) {
     }
   } else if (kind === SURROUNDED) {
     const n = scaled(RING_COUNT);
-    const kindOf = game.time % RUN_LENGTH >= 420 ? BADGER : FOX;
+    const t = game.time % RUN_LENGTH;
+    const kindOf = t < 120 ? RAT : t < 420 ? FOX : BADGER;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
       const e = place(kindOf, hen.x + Math.cos(a) * RING_R, hen.y + Math.sin(a) * RING_R);
@@ -148,8 +151,11 @@ export function updateEvents(dt) {
     return;
   }
   // Any event but the last one
-  let kind = Math.floor(gameRand() * (EVENTS.length - (lastEvent < 0 ? 0 : 1)));
-  if (lastEvent >= 0 && kind >= lastEvent) kind++;
+  let kind = SURROUNDED;
+  if (lastEvent >= 0) {
+    kind = Math.floor(gameRand() * (EVENTS.length - 1));
+    if (kind >= lastEvent) kind++;
+  }
   startEvent(kind);
   nextEventAt = game.time + EVENT_GAP + gameRand() * 30;
 }

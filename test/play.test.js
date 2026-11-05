@@ -8,6 +8,7 @@ import {
   playWithBot,
   update,
   STEP,
+  SPEED,
   handleBlur,
   holdKey,
   releaseAllInput,
@@ -77,6 +78,7 @@ import {
   shots,
   SHOT_EVERY,
   SHOT_LIFE,
+  HP_TIME,
   BOSS_HP,
   BOSS_SIZE,
   BOSS_BITE,
@@ -90,7 +92,7 @@ import {
   clearEnemies,
 } from '../src/enemies.js';
 import { pickups, spawnPickup, CHEST, MAGNET, BOMB, FOOD } from '../src/pickups.js';
-import { TIMELINE, CRATE_EVERY, pickKind, ELITE_FROM, RAINBOW_FROM, FRENZY_RATE } from '../src/waves.js';
+import { TIMELINE, CRATE_EVERY, pickKind, ELITE_FROM, RAINBOW_FROM, FRENZY_RATE, quota } from '../src/waves.js';
 import {
   EVENTS,
   EVENT_FROM,
@@ -552,6 +554,16 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.ok(Object.values(boons).reduce((a, b) => a + b, 0) >= 42, 'boons ran out');
   });
 
+  it('predators grow tougher with the clock, not with her level', () => {
+    start();
+    game.time = 120;
+    const a = { ...spawnEnemy(FOX, hen.x + 20, hen.y) };
+    game.level = 20;
+    const b = { ...spawnEnemy(FOX, hen.x + 20, hen.y + 1) };
+    assert.equal(b.maxHp, a.maxHp, 'leveling up made them tougher');
+    assert.equal(a.maxHp, Math.floor(ENEMY_TYPES[FOX].hp * (1 + 120 / HP_TIME)));
+  });
+
   it('predators born later in the run are tougher, at the same hen level', () => {
     start();
     const early = spawnEnemy(RAT, 20, 0);
@@ -971,7 +983,7 @@ describe('quiquiriqui at 5x: endless days', () => {
     steps(1);
     assert.ok(game.time > RUN_LENGTH, 'the clock stopped');
     const rat = spawnEnemy(RAT, hen.x + 20, hen.y);
-    const toughness = 1 + (game.level - 1) / 12 + game.time / 240;
+    const toughness = 1 + game.time / HP_TIME;
     assert.equal(rat.maxHp, Math.floor(ENEMY_TYPES[RAT].hp * toughness * 2), 'day 2 should double their health');
   });
 
@@ -1468,6 +1480,7 @@ describe('quiquiriqui at 5x: random events', () => {
     }
     assert.ok(seen.length >= 5, `${seen.length} events in 8 minutes`);
     assert.ok(seen[0].time >= EVENT_FROM && seen[0].time < EVENT_FROM + 1, `the first came at ${seen[0].time}`);
+    assert.equal(seen[0].name, EVENTS[SURROUNDED], 'the first event teaches breaking out of a ring');
     for (let i = 1; i < seen.length; i++) {
       const gap = seen[i].time - seen[i - 1].time;
       assert.ok(gap >= EVENT_GAP - 0.1 && gap <= EVENT_GAP + 30.1, `a gap of ${gap.toFixed(1)} s`);
@@ -1572,6 +1585,46 @@ describe('quiquiriqui at 5x: random events', () => {
   });
 });
 
+describe('quiquiriqui at 5x: difficulty', () => {
+  const near = () => enemies.filter((e) => e.alive && !e.prop && Math.hypot(e.x - hen.x, e.y - hen.y) < SPAWN_MAX).length;
+
+  it('the quota keeps the meadow full: cleared at 3:20, it fills up again in seconds; none when peaceful', () => {
+    resetRun({ peaceful: false });
+    start();
+    buildOrder.length = 0;
+    const step = () => {
+      hen.hp = hen.maxHp = 1e6;
+      game.cards = [];
+      game.reward = [];
+      update(STEP);
+    };
+    while (game.time < 200) step();
+    clearEnemies();
+    while (game.time < 208) step();
+    assert.ok(near() >= quota(200) * 0.9, `${near()} predators around her, the quota is ${quota(200)}`);
+    resetRun();
+    start();
+    game.time = 200;
+    steps(3);
+    assert.equal(countEnemies(), 0, 'the quota spawned in a peaceful meadow');
+  });
+
+  it('peril 0 is hard: with an empty shop the bot falls before dawn, never before 2:00; the full shop carries it further', () => {
+    const falls = (shop) =>
+      [1, 2, 3].map((seed) => {
+        resetRun({ peaceful: false, seed, shop });
+        playWithBot(RUN_LENGTH / SPEED + 5, { onFrame: () => game.over });
+        return game.won ? RUN_LENGTH : game.time;
+      });
+    const mean = (list) => list.reduce((a, b) => a + b, 0) / list.length;
+    const empty = falls([0, 0, 0, 0, 0]);
+    for (const t of empty) assert.ok(t >= 120 && t < RUN_LENGTH, `with an empty shop it fell at ${t.toFixed(0)} s`);
+    const full = falls([5, 5, 5, 5, 5]);
+    assert.ok(mean(full) > mean(empty) + 120, `${mean(empty).toFixed(0)} s -> ${mean(full).toFixed(0)} s with the full shop`);
+    resetRun();
+  });
+});
+
 describe('quiquiriqui at 5x: the bot and a long run', () => {
   it('the bot survives the first minute', () => {
     resetRun({ peaceful: false });
@@ -1598,7 +1651,7 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
     assert.equal(game.won, true, `stopped at ${game.time}`);
     assert.ok(peak >= 150, `the horde peaked at ${peak}`);
     assert.equal(Object.keys(firstSeen).length, ENEMY_TYPES.length, `seen: ${JSON.stringify(firstSeen)}`);
-    for (const [kind, from] of [[WEASEL, 120], [SNAKE, 180], [MAGPIE, 240], [CROW, 300], [SKUNK, 360], [BADGER, 420]]) {
+    for (const [kind, from] of [[WEASEL, 60], [SNAKE, 180], [MAGPIE, 240], [CROW, 300], [SKUNK, 360], [BADGER, 420]]) {
       assert.ok(firstSeen[kind] >= from && firstSeen[kind] < from + 20, `${ENEMY_TYPES[kind].name} first seen at ${firstSeen[kind]}`);
     }
     // Time a step with the pool full
