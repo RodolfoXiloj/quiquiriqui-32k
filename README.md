@@ -164,7 +164,7 @@ To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?au
 | ✅ | **M1: Core loop** | Rats and Foxes on a wave timeline (minutes 0–3, then a ramp). Three weapons (Egg Toss, Peck, Feather Darts) and three passives (Running Boots, Feed Basket, Pot Helmet). Corn XP with a magnet, level-up cards (1/2/3, click, tap), bites, game over and a saved best time. |
 | ✅ | **M2: Dress-up** | Seven weapons (adds Corn Spray, Wing Gust, Chick Orbit, Thunder Comb) and six passives (adds Sunglasses, Hero Cape, Lucky Bandana). Every item drawn on the hen, with three looks as it levels; she is re-baked whenever her look changes. |
 | ✅ | **M3: The 10 minutes** | A ten-minute timeline with snakes, crows and badgers; bosses with chests; crates with a magnet, a bomb or food; rain, snow and night; the dawn win at 10:00. |
-| ⬜ | **M4: Polish & ship** | Music, difficulty tuning, a performance pass and a test on real phones, deploy to GitHub Pages. The outfit and rat readability pass and the phone fit are done. |
+| ⬜ | **M4: Polish & ship** | An audio pass: original music written for the game, richer and less repetitive sound effects, and a mix that stays clear under a full horde. Difficulty tuning, a performance pass, a test on real phones, and the deploy to GitHub Pages. The outfit and rat readability pass and the phone fit are done. |
 
 ---
 
