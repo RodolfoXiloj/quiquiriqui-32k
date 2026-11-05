@@ -1,0 +1,23 @@
+{
+  "name": "quiquiriqui",
+  "version": "0.0.1",
+  "private": true,
+  "description": "An isometric horde-survival arcade game where a hen dresses up in what she earns. Under 32 KB, no libraries, no assets.",
+  "type": "module",
+  "scripts": {
+    "dev": "node tools/dev.mjs",
+    "build": "node tools/build.mjs",
+    "build:fast": "node tools/build.mjs --fast",
+    "size": "node tools/build.mjs --check",
+    "test": "node --test test/play.test.js",
+    "playtest": "node tools/build.mjs && node tools/playtest.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "roadroller": "^2.1.0",
+    "terser": "^5.51.2"
+  }
+}

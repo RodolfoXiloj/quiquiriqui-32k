@@ -1,0 +1,13 @@
+node_modules/
+dist/
+test-output/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local only (agent notes, design notes, the archived prototype)
+CLAUDE.md
+docs/
+archive/

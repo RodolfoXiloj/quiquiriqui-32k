@@ -1,0 +1,2 @@
+# Keep LF everywhere so byte counts are identical on every machine.
+* text=auto eol=lf
