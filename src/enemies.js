@@ -4,7 +4,9 @@
 // Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
 // stand still, never bite, are not kills, and break into a prize. Some kinds act on their own
 // (`act`): the magpie keeps its distance and throws pebbles (`shots`); the weasel stops, blinks
-// and lunges in a straight line. A skunk leaves a stink cloud where it falls (`clouds`).
+// and lunges in a straight line. A skunk leaves a stink cloud where it falls (`clouds`). Any
+// common predator may come as an elite (`makeElite`): golden or, rarely, rainbow; much tougher,
+// a chest and golden eggs when it falls.
 import { HALF_W, HALF_H } from './iso.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
@@ -51,6 +53,14 @@ export const ENEMY_TYPES = [
   { name: 'weasel', hp: 14, speed: 2.4, r: 0.34, dmg: 7, colors: [19, 13], act: CHARGE, rare: true },
   { name: 'skunk', hp: 30, speed: 1.7, r: 0.45, dmg: 8, colors: [15, 13], stink: true, rare: true },
 ];
+
+/** An elite's health, size and speed against its kind's; a rainbow one is tougher still. */
+export const ELITE_HP = 6;
+export const RAINBOW_HP = 10;
+const ELITE_SIZE = 1.4;
+export const ELITE_SPEED = 1.15;
+/** Golden eggs for a golden elite and for a rainbow one. */
+export const ELITE_EGGS = [5, 20];
 
 /** A stink cloud lasts CLOUD_TIME seconds and hurts the hen inside CLOUD_R tiles every CLOUD_TICK. */
 export const CLOUD_TIME = 3;
@@ -149,6 +159,8 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   state: 0,
   dirX: 0,
   dirY: 0,
+  /** 0, or 1 for a golden elite and 2 for a rainbow one. */
+  elite: 0,
 }));
 
 /** Stink clouds left by skunks. */
@@ -226,7 +238,7 @@ export function spawnPoint(ahead = AHEAD_SHARE) {
 }
 
 /** Frees a slot in a full pool: the farthest predator that is not a boss leaves. */
-function makeRoom() {
+export function makeRoom() {
   let far = null;
   let farD = -1;
   for (const e of enemies) {
@@ -285,8 +297,17 @@ export function spawnEnemy(kind, x, y) {
     warn: false,
     side: phase < 1 ? 1 : -1,
     state: 0,
+    elite: 0,
   });
   return e;
+}
+
+/** Makes predator `e` an elite: golden, or `rainbow`. Much tougher, a little bigger and faster. */
+export function makeElite(e, rainbow) {
+  e.elite = rainbow ? 2 : 1;
+  e.hp = e.maxHp = e.hp * (rainbow ? RAINBOW_HP : ELITE_HP);
+  e.r *= ELITE_SIZE;
+  e.speed *= ELITE_SPEED;
 }
 
 /**
@@ -387,6 +408,14 @@ function killEnemy(e) {
     triggerShake(1, 0, 3, 0.2);
     sfxBoom();
   } else if (e.prop) crateDrop(e);
+  if (e.elite) {
+    // A chest (three upgrades in a rainbow one's) and golden eggs
+    const eggs = ELITE_EGGS[e.elite - 1];
+    spawnPickup(CHEST, e.x, e.y, e.elite > 1);
+    game.eggBonus += eggs;
+    spawnPopup(e.x, e.y, `+${eggs} EGGS`, 10, 1.2);
+    sfxBoom();
+  }
   if (type.stink) {
     const c = clouds.find((item) => !item.alive);
     if (c) Object.assign(c, { alive: true, x: e.x, y: e.y, life: CLOUD_TIME, tick: 0, dmg: Math.ceil(e.dmg / 3) });

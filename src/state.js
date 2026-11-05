@@ -49,7 +49,17 @@ export const game = {
   shopOpen: false,
   /** Seconds the padlock of a locked hen keeps shaking after a try to start with her. */
   lockShake: 0,
+  /** Golden eggs won from elites this run, on top of eggsEarned. */
+  eggBonus: 0,
+  /** Chests waiting to be opened that hold three upgrades for sure (a rainbow elite's). */
+  bigChests: 0,
 };
+
+/** Shows `text` across the screen for a few seconds. */
+export function showBanner(text) {
+  game.banner = text;
+  game.bannerTime = 2.5;
+}
 
 /** Test and dev switches. They survive resetRun(). */
 export const settings = {
@@ -85,6 +95,8 @@ export function resetGame() {
   game.eggs = 0;
   game.shopOpen = false;
   game.lockShake = 0;
+  game.eggBonus = 0;
+  game.bigChests = 0;
 }
 
 /** Reads the saved best time of the current peril (0 if storage is missing or blocked). */

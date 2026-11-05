@@ -17,7 +17,7 @@ import { resetWeapons, updateWeapons, updateProjectiles } from './weapons.js';
 import { juice, snapCamera, updateJuice } from './juice.js';
 import { clearPools, updatePools, spawnParticle, spawnPuff, spawnPopup } from './pool.js';
 import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow, sfxChest, sfxSplat } from './sfx.js';
-import { game, settings, resetGame, loadBest, saveBest, xpToNext } from './state.js';
+import { game, settings, resetGame, loadBest, saveBest, xpToNext, showBanner } from './state.js';
 import { RUN_LENGTH, weatherAt } from './weather.js';
 import { updateMusic, loadMusicSetting, toggleMusic } from './music.js';
 import { renderScene, cardAt, titleRowAt, shopRowAt } from './render.js';
@@ -178,15 +178,9 @@ function shopMenu() {
 
 /** Adds to the profile the golden eggs the run has earned and not banked yet. */
 function bankRunEggs() {
-  const earned = eggsEarned(game.time, game.kills, game.won, game.peril);
+  const earned = eggsEarned(game.time, game.kills, game.won, game.peril) + game.eggBonus;
   if (earned > game.eggs) bankEggs(earned - game.eggs);
   game.eggs = earned;
-}
-
-/** Shows `text` across the screen for a few seconds. */
-function showBanner(text) {
-  game.banner = text;
-  game.bannerTime = 2.5;
 }
 
 /** Endless play: the next day begins (after the dawn screen, or at each later dawn). */
@@ -220,7 +214,8 @@ function openCards() {
  */
 function openChest() {
   const reward = [];
-  const count = gameRand() < BIG_CHEST ? 3 : 1;
+  // A rainbow elite's chest holds three; any other, one or (now and then) three
+  const count = game.bigChests > 0 ? (game.bigChests--, 3) : gameRand() < BIG_CHEST ? 3 : 1;
   for (let k = 0; k < count; k++) {
     const cards = rollCards(false);
     if (!cards.length) break;

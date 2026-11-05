@@ -200,6 +200,24 @@ function screenPos(e, alpha, camX, camY) {
   return { sx: Math.round(toIsoX(x, y) - camX), sy: Math.round(toIsoY(x, y) - camY) };
 }
 
+/** The colors a rainbow elite cycles through. */
+const RAINBOW = [9, 18, 10, 12, 14, 11];
+let tintCanvas = null;
+
+/** `sprite` washed with palette color `color` at strength `amount` (0-1), ready for drawSprite. */
+function tinted(sprite, color, amount) {
+  if (!tintCanvas) tintCanvas = document.createElement('canvas');
+  tintCanvas.width = sprite.w; // also clears it
+  tintCanvas.height = sprite.h;
+  const g = tintCanvas.getContext('2d');
+  g.drawImage(sprite.normal, 0, 0);
+  g.globalCompositeOperation = 'source-atop';
+  g.globalAlpha = amount;
+  g.fillStyle = PALETTE[color];
+  g.fillRect(0, 0, sprite.w, sprite.h);
+  return { ...sprite, normal: tintCanvas };
+}
+
 const visible = (sx, sy) => sx > -24 && sx < WIDTH + 24 && sy > -24 && sy < HEIGHT + 32;
 
 /**
@@ -337,7 +355,19 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     // White: just hit, or blinking before it acts (a magpie about to throw)
     const white = e.flash > 0.1 || (e.warn && Math.floor(time * 16) % 2 === 0);
     const shake = e.warn ? (Math.floor(time * 30) % 2) * 2 - 1 : 0;
-    drawSprite(ctx, set[pose], d.sx + shake, d.sy - lift, e.facing, white, false, e.boss ? 2 : 1);
+    let sprite = set[pose];
+    if (e.elite) {
+      // Elites: a pulsing ring on the ground and a golden (or shifting rainbow) sheen
+      const color = e.elite > 1 ? RAINBOW[Math.floor(time * 10) % RAINBOW.length] : 10;
+      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(time * 6);
+      ctx.strokeStyle = PALETTE[color];
+      ctx.beginPath();
+      ctx.ellipse(d.sx, d.sy, 10, 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = rise;
+      sprite = tinted(sprite, color, e.elite > 1 ? 0.6 : 0.55);
+    }
+    drawSprite(ctx, sprite, d.sx + shake, d.sy - lift, e.facing, white, false, e.boss ? 2 : e.elite ? 1.5 : 1);
     ctx.globalAlpha = 1;
   }
   if (game.started && !game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);

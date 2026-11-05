@@ -6,16 +6,23 @@
 // kind. A crate appears every 20 seconds near the edge of the screen. In endless play the timeline
 // starts over each day, with half as many predators again per day gone by.
 import { gameRand } from './rng.js';
-import { game, settings } from './state.js';
+import { game, settings, showBanner } from './state.js';
 import { RUN_LENGTH } from './weather.js';
 import { PERIL } from './profile.js';
 import { hen } from './hen.js';
-import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, SKUNK, ENEMY_TYPES, enemies, spawnEnemy, spawnBoss, spawnPoint } from './enemies.js';
+import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, SKUNK, ENEMY_TYPES, enemies, spawnEnemy, spawnBoss, spawnPoint, makeElite, makeRoom } from './enemies.js';
 
 /** Seconds between two crates. */
 export const CRATE_EVERY = 20;
 /** Each day gone by adds this share of predators to every wave. */
 export const MORE_PER_DAY = 0.5;
+/**
+ * The first elite comes at ELITE_FROM seconds, then one every 40 to 60 s, of a kind from the
+ * latest common wave. From RAINBOW_FROM, RAINBOW_SHARE of them are rainbow.
+ */
+export const ELITE_FROM = 60;
+export const RAINBOW_FROM = 180;
+const RAINBOW_SHARE = 0.2;
 
 export const TIMELINE = [
   { at: 0, kinds: [RAT], count: 4, over: 2 },
@@ -58,6 +65,9 @@ export const TIMELINE = [
 const spawners = [];
 let nextEvent = 0;
 let nextCrateAt = CRATE_EVERY;
+let nextEliteAt = ELITE_FROM;
+/** The kinds of the latest wave of common predators: elites are picked from them. */
+let commonKinds = [RAT];
 /** The day the timeline is playing; a new day starts it over. */
 let waveDay = 1;
 
@@ -65,6 +75,8 @@ export function resetWaves() {
   spawners.length = 0;
   nextEvent = 0;
   nextCrateAt = CRATE_EVERY;
+  nextEliteAt = ELITE_FROM;
+  commonKinds = [RAT];
   waveDay = 1;
 }
 
@@ -88,6 +100,18 @@ export function pickKind(kinds) {
 function startSpawner(event) {
   const count = Math.round(event.count * (1 + MORE_PER_DAY * (game.day - 1)) * (1 + PERIL.spawns * game.peril));
   spawners.push({ kinds: event.kinds, left: count, period: event.over / count, timer: 0 });
+  if (!event.kinds.some((kind) => ENEMY_TYPES[kind].rare)) commonKinds = event.kinds;
+}
+
+/** An elite of a common kind, golden or (from RAINBOW_FROM, now and then) rainbow. */
+function spawnElite() {
+  const kind = commonKinds[Math.floor(gameRand() * commonKinds.length)];
+  const rainbow = game.time >= RAINBOW_FROM && gameRand() < RAINBOW_SHARE;
+  if (!enemies.some((e) => !e.alive)) makeRoom();
+  const e = spawnEnemy(kind);
+  if (!e) return;
+  makeElite(e, rainbow);
+  if (rainbow) showBanner(`RAINBOW ${ENEMY_TYPES[kind].name.toUpperCase()}!`);
 }
 
 export function updateWaves(dt) {
@@ -105,6 +129,10 @@ export function updateWaves(dt) {
   if (game.time >= nextCrateAt) {
     nextCrateAt += CRATE_EVERY;
     spawnCrate();
+  }
+  if (game.time >= nextEliteAt) {
+    nextEliteAt = game.time + 40 + gameRand() * 20;
+    spawnElite();
   }
   for (let i = spawners.length - 1; i >= 0; i--) {
     const s = spawners[i];

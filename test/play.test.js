@@ -65,6 +65,11 @@ import {
   SKUNK,
   clouds,
   CLOUD_TIME,
+  makeElite,
+  ELITE_HP,
+  RAINBOW_HP,
+  ELITE_SPEED,
+  ELITE_EGGS,
   DASH_WARN,
   DASH_TIME,
   ENEMY_TYPES,
@@ -85,7 +90,7 @@ import {
   clearEnemies,
 } from '../src/enemies.js';
 import { pickups, spawnPickup, CHEST, MAGNET, BOMB, FOOD } from '../src/pickups.js';
-import { TIMELINE, CRATE_EVERY, pickKind } from '../src/waves.js';
+import { TIMELINE, CRATE_EVERY, pickKind, ELITE_FROM, RAINBOW_FROM } from '../src/waves.js';
 import { spawnCorn } from '../src/corn.js';
 import {
   ITEMS,
@@ -1336,6 +1341,78 @@ describe('quiquiriqui at 5x: special predators', () => {
     for (const kind of [MAGPIE, WEASEL, SKUNK]) assert.ok(spawnEnemy(kind), `${ENEMY_TYPES[kind].name} found no room`);
     assert.equal(countEnemies(), MAX_ENEMIES);
     assert.equal(spawnEnemy(RAT), null, 'a common kind should still wait for room');
+    resetRun();
+  });
+
+  it('an elite is tougher and faster, and drops a chest and golden eggs; a rainbow one a chest of three', () => {
+    quietRun();
+    const plain = spawnEnemy(FOX, hen.x + 5, hen.y);
+    const gold = spawnEnemy(FOX, hen.x + 5, hen.y + 1);
+    const rainbow = spawnEnemy(FOX, hen.x + 5, hen.y + 2);
+    makeElite(gold, false);
+    makeElite(rainbow, true);
+    assert.equal(gold.maxHp, plain.maxHp * ELITE_HP);
+    assert.equal(rainbow.maxHp, plain.maxHp * RAINBOW_HP);
+    assert.ok(Math.abs(gold.speed - plain.speed * ELITE_SPEED) < 1e-9);
+    assert.ok(gold.r > plain.r, 'not bigger');
+
+    hitEnemy(gold, 1e9, hen.x, hen.y);
+    assert.equal(game.eggBonus, ELITE_EGGS[0]);
+    const chest = pickups.find((p) => p.alive && p.kind === CHEST);
+    assert.ok(chest && !chest.big, 'a golden elite drops a plain chest');
+    chest.alive = false;
+    hitEnemy(rainbow, 1e9, hen.x, hen.y);
+    assert.equal(game.eggBonus, ELITE_EGGS[0] + ELITE_EGGS[1]);
+    const big = pickups.find((p) => p.alive && p.kind === CHEST);
+    assert.ok(big && big.big, 'a rainbow elite drops a big chest');
+
+    // Grabbing the big chest opens three upgrades
+    clearEnemies();
+    hen.x = big.x;
+    hen.y = big.y;
+    for (let i = 0; i < 120 && !game.reward.length; i++) update(STEP);
+    assert.equal(game.reward.length, 3, 'a big chest did not hold three upgrades');
+    resetRun();
+  });
+
+  it('the eggs an elite gives are banked with the run', () => {
+    profile.eggs = 0;
+    resetRun();
+    start();
+    game.eggBonus = ELITE_EGGS[1];
+    damageHen(1e9, hen.x + 1, hen.y);
+    update(STEP);
+    assert.equal(profile.eggs, eggsEarned(game.time, game.kills, false, 0) + ELITE_EGGS[1]);
+    profile.eggs = 0;
+    resetRun();
+  });
+
+  it('elites come from the first minute every 40 to 60 s, and rainbow ones only from 3:00', () => {
+    resetRun({ peaceful: false });
+    start();
+    // Pool slots are reused, so follow each elite from the step it appears until it is gone
+    const seen = [];
+    const live = new Set();
+    while (game.time < 400 && !game.over) {
+      hen.hp = hen.maxHp = 1e6;
+      game.cards = [];
+      game.reward = [];
+      update(STEP);
+      for (const e of live) if (!e.alive || !e.elite) live.delete(e);
+      for (const e of enemies) {
+        if (!e.alive || !e.elite || live.has(e)) continue;
+        live.add(e);
+        seen.push({ time: game.time, elite: e.elite });
+      }
+    }
+    const times = seen.map((s) => s.time);
+    assert.ok(times.length >= 6, `${times.length} elites in 400 s`);
+    assert.ok(times[0] >= ELITE_FROM && times[0] < ELITE_FROM + 1, `the first came at ${times[0]}`);
+    for (let i = 1; i < times.length; i++) {
+      const gap = times[i] - times[i - 1];
+      assert.ok(gap >= 39.9 && gap <= 60.1, `a gap of ${gap.toFixed(1)} s`);
+    }
+    for (const s of seen) if (s.elite > 1) assert.ok(s.time >= RAINBOW_FROM, `a rainbow elite at ${s.time}`);
     resetRun();
   });
 

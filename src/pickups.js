@@ -22,9 +22,10 @@ const GRAB_PAD = 0.35;
 
 export const pickups = Array.from({ length: MAX_PICKUPS }, () => ({ alive: false, kind: CHEST, x: 0, y: 0, z: 0, vz: 0, age: 0 }));
 
-export function spawnPickup(kind, x, y) {
+/** Drops prize `kind` at (x, y). A `big` chest holds three upgrades (a rainbow elite's). */
+export function spawnPickup(kind, x, y, big = false) {
   const p = pickups.find((item) => !item.alive);
-  if (p) Object.assign(p, { alive: true, kind, x, y, z: 0, vz: 45, age: 0 });
+  if (p) Object.assign(p, { alive: true, kind, x, y, z: 0, vz: 45, age: 0, big });
 }
 
 export function clearPickups() {
@@ -49,7 +50,10 @@ function grab(p) {
     const a = (i / 10) * Math.PI * 2;
     spawnParticle(p.x, p.y, 6, Math.cos(a) * 1.8, Math.sin(a) * 1.8, 25, i % 2 ? 10 : 13, 1, 0.4);
   }
-  if (p.kind === CHEST) game.chests++;
+  if (p.kind === CHEST) {
+    game.chests++;
+    if (p.big) game.bigChests++;
+  }
   else if (p.kind === MAGNET) {
     pullAllCorn();
     sfxMagnet();
