@@ -3,7 +3,7 @@
 // them, knock them back and float a damage number; a kill drops corn most of the time.
 // Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
 // stand still, never bite, are not kills, and break into a prize.
-import { HALF_W, HALF_H, screenToWorld } from './iso.js';
+import { HALF_W, HALF_H } from './iso.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
 import { game } from './state.js';
@@ -47,8 +47,18 @@ export const MAX_ENEMIES = 300;
 export const BITE_COOLDOWN = 0.5;
 /** Seconds a hit predator stays white. */
 const HIT_FLASH = 0.25;
-/** A predator this far (tiles) from the hen is moved back to the edge of the screen. */
-const FAR_AWAY = 30;
+/**
+ * Predators are born at most this far (tiles) from the hen: just off-screen on a wide screen,
+ * a little inside the view on a tall one. So they take as long to reach her on any screen.
+ */
+export const SPAWN_MAX = 24;
+/** A predator farther than this (tiles) is moved back, in front of the hen. */
+const FAR_AWAY = SPAWN_MAX + 8;
+/** While she walks, this share of births happens in front of her, within ±60° of her heading. */
+const AHEAD_SHARE = 0.4;
+const AHEAD_SPREAD = Math.PI / 3;
+/** Seconds a newborn predator takes to rise out of the grass (it fades in and does not bite). */
+export const RISE_TIME = 0.25;
 /** Spawns happen this many pixels outside the visible screen. */
 const SPAWN_MARGIN = 14;
 /** Chance that a hit that does not kill also knocks the predator back. */
@@ -101,28 +111,21 @@ export function onScreen(x, y, margin = 0) {
   return Math.abs(sx) < WIDTH / 2 - margin && Math.abs(sy) < HEIGHT / 2 - margin;
 }
 
-/** A random world point on a rectangle just outside the screen around the hen. */
-export function spawnPoint() {
-  const hw = WIDTH / 2 + SPAWN_MARGIN;
-  const hh = HEIGHT / 2 + SPAWN_MARGIN;
-  let u = gameRand() * 4 * (hw + hh);
-  let sx;
-  let sy;
-  if (u < 2 * hw) {
-    sx = u - hw;
-    sy = -hh;
-  } else if ((u -= 2 * hw) < 2 * hh) {
-    sx = hw;
-    sy = u - hh;
-  } else if ((u -= 2 * hh) < 2 * hw) {
-    sx = hw - u;
-    sy = hh;
-  } else {
-    sx = -hw;
-    sy = hh - (u - 2 * hw);
-  }
-  const w = screenToWorld(sx, sy);
-  return { x: hen.x + w.x, y: hen.y + w.y };
+/**
+ * A birth place for a predator: in a random world direction (or, `ahead` of the time while she
+ * walks, roughly where she is heading), where that direction leaves the screen, but never more
+ * than SPAWN_MAX tiles away. Running in a straight line therefore runs into fresh predators.
+ */
+export function spawnPoint(ahead = AHEAD_SHARE) {
+  let angle = gameRand() * Math.PI * 2;
+  if (hen.moving && gameRand() < ahead) angle = Math.atan2(hen.dirY, hen.dirX) + (gameRand() * 2 - 1) * AHEAD_SPREAD;
+  const cx = Math.cos(angle);
+  const cy = Math.sin(angle);
+  // Pixels on screen per tile walked in that direction
+  const sx = Math.abs(cx - cy) * HALF_W || 1e-6;
+  const sy = Math.abs(cx + cy) * HALF_H || 1e-6;
+  const reach = Math.min((WIDTH / 2 + SPAWN_MARGIN) / sx, (HEIGHT / 2 + SPAWN_MARGIN) / sy, SPAWN_MAX);
+  return { x: hen.x + cx * reach, y: hen.y + cy * reach };
 }
 
 /** Spawns a predator at (x, y), or just off-screen if no position is given. Returns it, or null when the pool is full. */
@@ -130,6 +133,8 @@ export function spawnEnemy(kind, x, y) {
   const e = enemies.find((item) => !item.alive);
   if (!e) return null;
   if (x === undefined) ({ x, y } = spawnPoint());
+  // A little dust where it comes out of the grass (only worth it when she can see it)
+  if (onScreen(x, y, -20)) for (let i = 0; i < 4; i++) spawnParticle(x, y, 1, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, 12, 6, 1, 0.35);
   const type = ENEMY_TYPES[kind];
   // Tougher as the hen levels up, a little faster too (crates stay as they are).
   const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + (game.level - 1) / 10));
@@ -291,8 +296,8 @@ export function updateEnemies(dt) {
     }
 
     if (d > FAR_AWAY && !game.over) {
-      // Left far behind: come back from the edge of the screen.
-      const p = spawnPoint();
+      // Left far behind: come back in front of her.
+      const p = spawnPoint(1);
       e.x = e.prevX = p.x;
       e.y = e.prevY = p.y;
       continue;
@@ -312,7 +317,7 @@ export function updateEnemies(dt) {
     const screenDx = dx - dy;
     if (Math.abs(screenDx) > 0.05) e.facing = (screenDx > 0) === !game.over ? 1 : -1;
 
-    if (!game.over && d < e.r + HEN_RADIUS && e.biteCooldown <= 0) {
+    if (!game.over && e.age > RISE_TIME && d < e.r + HEN_RADIUS && e.biteCooldown <= 0) {
       e.biteCooldown = BITE_COOLDOWN;
       damageHen(e.dmg, e.x, e.y);
     }

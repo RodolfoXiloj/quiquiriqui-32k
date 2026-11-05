@@ -7,7 +7,7 @@ import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
 import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier } from './sprites.js';
 import { hen } from './hen.js';
-import { enemies, bossName } from './enemies.js';
+import { enemies, bossName, RISE_TIME } from './enemies.js';
 import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
@@ -235,9 +235,14 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     const e = d.e;
     const set = enemySprites[e.kind];
     const pose = e.knockTime > 0 ? 'idle' : Math.floor(e.walkPhase) % 2 ? 'stepA' : 'stepB';
-    // Flyers keep to the air above their shadow, bobbing with each wing beat.
-    const lift = e.flying ? (e.boss ? 20 : 12) + Math.round(Math.sin(e.walkPhase * Math.PI) * 2) : 0;
+    // Flyers keep to the air above their shadow, bobbing with each wing beat. Newborns fade in
+    // (rising out of the grass, or dropping in from above for a flyer).
+    const rise = Math.min(1, e.age / RISE_TIME);
+    let lift = e.flying ? (e.boss ? 20 : 12) + Math.round(Math.sin(e.walkPhase * Math.PI) * 2) + Math.round((1 - rise) * 24) : 0;
+    if (!e.flying) lift -= Math.round((1 - rise) * 4);
+    ctx.globalAlpha = rise;
     drawSprite(ctx, set[pose], d.sx, d.sy - lift, e.facing, e.flash > 0.1, false, e.boss ? 2 : 1);
+    ctx.globalAlpha = 1;
   }
   if (game.started && !game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);
 

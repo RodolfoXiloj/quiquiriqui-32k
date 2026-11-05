@@ -58,6 +58,7 @@ import {
   BOSS_HP,
   BOSS_SIZE,
   BOSS_BITE,
+  SPAWN_MAX,
   spawnEnemy,
   spawnBoss,
   hitEnemy,
@@ -230,8 +231,12 @@ describe('quiquiriqui at 5x: predators', () => {
     }
     const watched = fresh[0];
     const d0 = Math.hypot(watched.x - hen.x, watched.y - hen.y);
+    const age0 = watched.age;
     play(0.4);
-    if (watched.alive) assert.ok(Math.hypot(watched.x - hen.x, watched.y - hen.y) < d0, 'the rat did not come closer');
+    // Pool objects are reused: only judge the same rat (still alive, and older than before).
+    if (watched.alive && watched.age > age0) {
+      assert.ok(Math.hypot(watched.x - hen.x, watched.y - hen.y) < d0, 'the rat did not come closer');
+    }
   });
 
   it('a crowd spreads out instead of stacking on one spot', () => {
@@ -277,6 +282,79 @@ describe('quiquiriqui at 5x: predators', () => {
     start();
     for (let i = 0; i < MAX_ENEMIES + 20; i++) spawnEnemy(FOX, 20, 0);
     assert.equal(countEnemies(), MAX_ENEMIES);
+  });
+});
+
+describe('quiquiriqui at 5x: no safe direction, on any screen', () => {
+  /** Plays a run holding `keys`, picking the first card and closing chests; returns when she was first bitten and when she fell. */
+  function holdThrough(keys, limit) {
+    resetRun({ peaceful: false, seed: 1 });
+    for (const k of keys) holdKey(k, true);
+    let bitten = null;
+    while (!game.over && game.time < limit) {
+      play(0.1);
+      if (bitten === null && hen.hp < hen.maxHp) bitten = game.time;
+      if (game.cards.length && game.cardLock <= 0) tapKey('Digit1');
+      if (game.reward.length && game.rewardLock <= 0) tapKey('Space');
+    }
+    for (const k of keys) holdKey(k, false);
+    return { bitten, fell: game.over ? game.time : null };
+  }
+
+  /** Newborn predators (seen in their first frame) over `seconds` of game time: their offsets from the hen. */
+  function births(seconds) {
+    const seen = [];
+    const end = game.time + seconds;
+    while (game.time < end && !game.over) {
+      hen.hp = hen.maxHp = 1e6; // a pick re-syncs her health, so keep her standing every frame
+      play(1 / 60);
+      for (const e of enemies) if (e.alive && !e.prop && !e.boss && e.age <= 5 * STEP + 1e-9) seen.push({ dx: e.x - hen.x, dy: e.y - hen.y });
+      if (game.cards.length && game.cardLock <= 0) tapKey('Digit1');
+      if (game.reward.length && game.rewardLock <= 0) tapKey('Space');
+    }
+    return seen;
+  }
+
+  for (const [w, h] of [[320, 180], [390, 844]]) {
+    for (const key of ['KeyW', 'KeyS']) {
+      it(`holding ${key} on a ${w}x${h} screen gets her bitten soon and eaten before 4:00`, () => {
+        try {
+          fitScreen(w, h);
+          const { bitten, fell } = holdThrough([key], 240);
+          assert.ok(bitten !== null && bitten < 90, `first bite at ${bitten}`);
+          assert.ok(fell !== null, 'she survived four minutes running in a straight line');
+        } finally {
+          fitScreen(WIDTH, MIN_HEIGHT);
+        }
+      });
+    }
+  }
+
+  it('standing still on a tall screen, predators are born all around her and never too far', () => {
+    try {
+      fitScreen(390, 844);
+      resetRun({ peaceful: false });
+      start();
+      const seen = births(90);
+      assert.ok(seen.length > 100, `${seen.length} births`);
+      const quarters = [0, 0, 0, 0];
+      for (const { dx, dy } of seen) {
+        assert.ok(Math.hypot(dx, dy) <= SPAWN_MAX + 1e-6, `born ${Math.hypot(dx, dy).toFixed(1)} tiles away`);
+        quarters[Math.floor(((Math.atan2(dy, dx) + Math.PI) / (Math.PI * 2)) * 4) % 4]++;
+      }
+      for (const n of quarters) assert.ok(n / seen.length >= 0.15, `quarters ${quarters}`);
+    } finally {
+      fitScreen(WIDTH, MIN_HEIGHT);
+    }
+  });
+
+  it('while she walks, most predators are born in front of her', () => {
+    resetRun({ peaceful: false });
+    holdKey('KeyD', true);
+    const seen = births(40);
+    holdKey('KeyD', false);
+    const ahead = seen.filter(({ dx, dy }) => dx * hen.dirX + dy * hen.dirY > 0).length;
+    assert.ok(ahead / seen.length >= 0.55, `${ahead} of ${seen.length} born ahead`);
   });
 });
 
