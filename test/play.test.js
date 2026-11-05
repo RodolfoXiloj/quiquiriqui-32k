@@ -44,7 +44,7 @@ import {
   cardRect,
   cardAt,
 } from '../src/render.js';
-import { WIDTH, HEIGHT } from '../src/screen.js';
+import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, fitScreen, screenScale } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
 import {
   RAT,
@@ -819,6 +819,31 @@ describe('quiquiriqui: text and layout', () => {
         }
       }
       if (item.weapon) for (const key of Object.keys(item.lv)) assert.equal(item.lv[key].length, MAX_ITEM_LEVEL);
+    }
+  });
+
+  it('a phone held upright gets a taller view, and the menus and spawns follow it', () => {
+    try {
+      assert.equal(fitScreen(390, 844), MAX_HEIGHT);
+      assert.equal(HEIGHT, MAX_HEIGHT);
+      const card = cardRect(0, 3);
+      assert.ok(card.y > 100 && card.y + card.h < HEIGHT - 40, `cards at y ${card.y}`);
+      resetRun({ peaceful: false });
+      start();
+      steps(3);
+      const fresh = enemies.filter((e) => e.alive && e.age < 0.6);
+      assert.ok(fresh.length > 0);
+      for (const e of fresh) {
+        const { sx, sy } = screenOffset(e.x, e.y);
+        assert.ok(Math.abs(sx) > WIDTH / 2 - 4 || Math.abs(sy) > HEIGHT / 2 - 4, `spawned on screen at ${sx}, ${sy}`);
+      }
+      assert.ok(screenScale(390, 844) > 1.2 && screenScale(390, 844) < 1.25, 'the phone should fill its width');
+      assert.equal(fitScreen(844, 390), MIN_HEIGHT);
+      assert.equal(fitScreen(1024, 768), 240);
+      assert.equal(fitScreen(1920, 1080), MIN_HEIGHT);
+      assert.equal(screenScale(1920, 1080), 6);
+    } finally {
+      fitScreen(WIDTH, MIN_HEIGHT);
     }
   });
 

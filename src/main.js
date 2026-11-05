@@ -2,7 +2,7 @@
 // runs the 60 Hz fixed-timestep simulation. `boot` and `update` are exported so the tests can
 // drive the game under Node without a browser.
 import { startLoop } from './loop.js';
-import { WIDTH, HEIGHT } from './screen.js';
+import { WIDTH, HEIGHT, fitScreen, screenScale } from './screen.js';
 import { bakeGround } from './ground.js';
 import { bakeHen, bakeWorldSprites, outfitOf, outfitKey, henLook } from './sprites.js';
 import { initInput, updateInput, releaseAllInput, releasePointer, input } from './input.js';
@@ -37,12 +37,13 @@ let time = 0;
 
 export function boot(canvas) {
   ctx = canvas.getContext('2d');
-  canvas.width = WIDTH;
-  canvas.height = HEIGHT;
 
-  /** Scales the canvas to the largest integer multiple that fits the window. */
+  /** Fits the internal height to the window's shape, then scales the canvas up to fill it. */
   function resize() {
-    const scale = Math.max(1, Math.floor(Math.min(innerWidth / WIDTH, innerHeight / HEIGHT)));
+    fitScreen(innerWidth, innerHeight);
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const scale = screenScale(innerWidth, innerHeight);
     canvas.style.width = WIDTH * scale + 'px';
     canvas.style.height = HEIGHT * scale + 'px';
   }

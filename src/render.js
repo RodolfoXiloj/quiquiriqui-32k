@@ -60,15 +60,14 @@ export const HUD_SIZES = {
 export const CARD_W = 92;
 export const CARD_H = 104;
 const CARD_GAP = 8;
-const CARD_Y = 44;
 /** Font sizes of the card name and description lines. */
 export const CARD_NAME_SIZE = 7;
 export const CARD_TEXT_SIZE = 6;
 
-/** Rectangle of card `i` out of `n`, in canvas pixels. */
+/** Rectangle of card `i` out of `n`, in canvas pixels (centered a little above the middle). */
 export function cardRect(i, n) {
   const x0 = (WIDTH - (n * CARD_W + (n - 1) * CARD_GAP)) / 2;
-  return { x: Math.round(x0 + i * (CARD_W + CARD_GAP)), y: CARD_Y, w: CARD_W, h: CARD_H };
+  return { x: Math.round(x0 + i * (CARD_W + CARD_GAP)), y: Math.round(HEIGHT / 2 - 46), w: CARD_W, h: CARD_H };
 }
 
 /** Index of the card under canvas point (x, y) out of `n`, or -1. */
@@ -381,8 +380,9 @@ function drawCards(ctx, time, cards, title, note, lock, numbered) {
   dim(ctx, 0.55);
   // Slide in while the pick lock runs down
   const slide = Math.round(Math.max(0, lock) * 60);
-  drawText(ctx, S[title], WIDTH / 2, 24 - slide, Z[title], 10);
-  drawText(ctx, S[note], WIDTH / 2, 36 - slide, Z[note], 13);
+  const top = cardRect(0, 1).y;
+  drawText(ctx, S[title], WIDTH / 2, top - 20 - slide, Z[title], 10);
+  drawText(ctx, S[note], WIDTH / 2, top - 8 - slide, Z[note], 13);
   const n = cards.length;
   cards.forEach((card, i) => {
     const item = ITEM_BY_ID[card.id];
@@ -409,29 +409,31 @@ function drawGameOver(ctx, time) {
   if (game.overTime < 0.8) return;
   // At dawn the hen stays in sight between the title and the stats; after a fall the stats cover her.
   const won = game.won;
+  const cy = HEIGHT / 2;
   dim(ctx, won ? 0.12 : 0.55);
   if (won) {
-    drawText(ctx, S.dawn, WIDTH / 2, 38, Z.dawn, 10);
-    drawText(ctx, S.crow, WIDTH / 2, 55, Z.crow, 13);
+    drawText(ctx, S.dawn, WIDTH / 2, cy - 52, Z.dawn, 10);
+    drawText(ctx, S.crow, WIDTH / 2, cy - 35, Z.crow, 13);
   } else {
-    drawText(ctx, S.gameOver, WIDTH / 2, 56, Z.gameOver, 9);
+    drawText(ctx, S.gameOver, WIDTH / 2, cy - 34, Z.gameOver, 9);
   }
-  const statsY = won ? 116 : 80;
+  const statsY = cy + (won ? 26 : -10);
   drawText(ctx, gameOverLine(game.time, game.kills, game.level), WIDTH / 2, statsY, 7, 13);
   if (game.newBest) drawText(ctx, S.newBest, WIDTH / 2, statsY + 14, Z.newBest, 10);
   else drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, statsY + 14, 7, 13);
-  if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, won ? 152 : 130, Z.resume, 13);
+  if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, cy + (won ? 62 : 40), Z.resume, 13);
 }
 
 function drawHud(ctx, time) {
   const S = HUD_STRINGS;
   const Z = HUD_SIZES;
+  const cy = HEIGHT / 2;
   if (!game.started) {
-    drawText(ctx, S.title, WIDTH / 2, 46, Z.title, 10);
-    drawText(ctx, S.subtitle, WIDTH / 2, 62, Z.subtitle, 13);
-    if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, 76, 7, 10);
-    if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, 136, Z.start, 13);
-    drawText(ctx, S.controls, WIDTH / 2, 150, Z.controls, 13);
+    drawText(ctx, S.title, WIDTH / 2, cy - 44, Z.title, 10);
+    drawText(ctx, S.subtitle, WIDTH / 2, cy - 28, Z.subtitle, 13);
+    if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, cy - 14, 7, 10);
+    if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 46, Z.start, 13);
+    drawText(ctx, S.controls, WIDTH / 2, cy + 60, Z.controls, 13);
     return;
   }
   drawTopBar(ctx, time);
@@ -442,12 +444,13 @@ function drawHud(ctx, time) {
   else if (game.cards.length) drawCards(ctx, time, game.cards, 'levelUp', 'choose', game.cardLock, true);
   else if (game.reward.length) {
     drawCards(ctx, time, game.reward, 'chest', 'chestNote', game.rewardLock, false);
-    if (game.rewardLock <= 0 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, HEIGHT - 16, Z.resume, 13);
+    const below = cardRect(0, 1).y + CARD_H + 12;
+    if (game.rewardLock <= 0 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, below, Z.resume, 13);
   }
   if (game.paused) {
     dim(ctx, 0.5);
-    drawText(ctx, S.paused, WIDTH / 2, 80, Z.paused, 10);
-    drawText(ctx, S.resume, WIDTH / 2, 100, Z.resume, 13);
+    drawText(ctx, S.paused, WIDTH / 2, cy - 10, Z.paused, 10);
+    drawText(ctx, S.resume, WIDTH / 2, cy + 10, Z.resume, 13);
   }
 }
 

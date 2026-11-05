@@ -468,8 +468,52 @@ async function dayScenarios(page, base) {
   });
 }
 
+async function mobileScenario(page, client, base) {
+  await check('19. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
+    await client.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+    try {
+      await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+      const size = await page.evaluate(`(() => {
+        const c = document.getElementById('c');
+        const r = c.getBoundingClientRect();
+        return { w: c.width, h: c.height, cssW: r.width, cssH: r.height };
+      })()`);
+      expect(size.w === 320 && size.h > 400, `internal size ${size.w}x${size.h}`);
+      expect(size.cssW >= 380, `the canvas is only ${fmt(size.cssW)} px wide on a 390 px screen`);
+      const at = (fx, fy) => page.toPage(320 * fx, size.h * fy);
+      const tap = await at(0.5, 0.75);
+      await page.touch('touchStart', [{ x: tap.x, y: tap.y, id: 1 }]);
+      await page.touch('touchEnd', []);
+      await page.waitFor('window.__qq.snapshot().started', 3000);
+      const a = await page.snapshot();
+      const from = await at(0.35, 0.75);
+      const to = await at(0.45, 0.75);
+      await page.touch('touchStart', [{ x: from.x, y: from.y, id: 2 }]);
+      await page.touch('touchMove', [{ x: to.x, y: to.y, id: 2 }]);
+      await sleep(500);
+      const b = await page.snapshot();
+      await page.screenshot('19-mobile.png');
+      await page.touch('touchEnd', []);
+      expect(b.hen.isoX - a.hen.isoX > 20, `the stick moved her only ${fmt(b.hen.isoX - a.hen.isoX)} px right`);
+      const cards = await openCards(page);
+      const card = cards.cards[1];
+      const c = await page.evaluate('window.__qq.cardCenter(1)');
+      const p = await page.toPage(c.x, c.y);
+      await page.touch('touchStart', [{ x: p.x, y: p.y, id: 3 }]);
+      await page.touch('touchEnd', []);
+      await page.waitFor('window.__qq.snapshot().cards.length === 0', 3000);
+      const after = await page.snapshot();
+      expect(levelOf(after, card.id) === card.level, `tapped ${card.id}, but it is level ${levelOf(after, card.id)}`);
+    } finally {
+      await client.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+      await client.send('Emulation.setDeviceMetricsOverride', VIEWPORT);
+    }
+  });
+}
+
 async function distScenario(page) {
-  await check('19. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
+  await check('20. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
     await access(DIST).catch(() => {
       throw new Error('dist/index.html is missing: run npm run build first');
     });
@@ -507,9 +551,10 @@ async function main() {
     await playScenarios(page, client, base);
     await outfitScenarios(page, client, base);
     await dayScenarios(page, base);
+    await mobileScenario(page, client, base);
     await distScenario(page);
     results.push({
-      name: '20. no exceptions, console errors or failed loads',
+      name: '21. no exceptions, console errors or failed loads',
       ok: problems.length === 0,
       error: problems.slice(0, 5).join(' | '),
     });
