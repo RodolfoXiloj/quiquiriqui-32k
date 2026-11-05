@@ -2,7 +2,8 @@
 // other apart so a horde reads as a crowd instead of one blob, and bite on contact. Hits flash
 // them, knock them back and float a damage number; a kill drops corn most of the time.
 // Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
-// stand still, never bite, are not kills, and break into a prize.
+// stand still, never bite, are not kills, and break into a prize. Some kinds act on their own
+// (`act`): the magpie keeps its distance and throws pebbles (`shots`).
 import { HALF_W, HALF_H } from './iso.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
@@ -12,7 +13,7 @@ import { spawnCorn } from './corn.js';
 import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
-import { sfxPeck, sfxBoom, sfxKill } from './sfx.js';
+import { sfxPeck, sfxBoom, sfxKill, sfxThrow } from './sfx.js';
 import { PERIL } from './profile.js';
 
 export const RAT = 0;
@@ -21,11 +22,17 @@ export const SNAKE = 2;
 export const CROW = 3;
 export const BADGER = 4;
 export const CRATE = 5;
+export const MAGPIE = 6;
+
+/** What a kind does besides biting: chase the hen, or keep away and throw pebbles. */
+export const CHASE = 0;
+export const SHOOT = 1;
 
 /**
  * Enemy kinds. hp: health at player level 1 · speed: tiles per second · r: body radius (tiles)
- * · dmg: bite damage · colors: palette indices for the hit puff · flying: drawn in the air and
- * only pushed apart from other flyers.
+ * · dmg: bite damage (and pebble damage) · colors: palette indices for the hit puff · flying:
+ * drawn in the air and only pushed apart from other flyers · act: CHASE (default) or SHOOT ·
+ * max: how many may be alive at once (waves.js sends another kind instead).
  */
 export const ENEMY_TYPES = [
   { name: 'rat', hp: 6, speed: 2.1, r: 0.32, dmg: 5, colors: [16, 17] },
@@ -34,7 +41,19 @@ export const ENEMY_TYPES = [
   { name: 'crow', hp: 9, speed: 3, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
   { name: 'badger', hp: 60, speed: 1.65, r: 0.55, dmg: 10, colors: [17, 13] },
   { name: 'crate', hp: 5, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
+  { name: 'magpie', hp: 12, speed: 2.6, r: 0.3, dmg: 6, colors: [15, 13], flying: true, act: SHOOT, max: 6 },
 ];
+
+/** A shooter comes closer from farther than this (tiles), backs off from nearer, and circles between. */
+const KEEP_FAR = 6;
+const KEEP_NEAR = 4.5;
+/** Seconds between two pebbles; the last SHOT_WARN of them it blinks white, as a warning. */
+export const SHOT_EVERY = 2.6;
+export const SHOT_WARN = 0.4;
+/** Pebble speed (tiles/s), lifetime (s) and radius (tiles). They fly straight: she can dodge them. */
+const SHOT_SPEED = 5;
+export const SHOT_LIFE = 3;
+const SHOT_R = 0.2;
 
 /** Bosses: this many times the health, radius and bite of their kind. */
 export const BOSS_HP = 10;
@@ -94,7 +113,41 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   knockTime: 0,
   facing: 1,
   walkPhase: 0,
+  act: CHASE,
+  /** Seconds to the next pebble (shooters). */
+  timer: 0,
+  /** True while it blinks before acting: the player's warning. */
+  warn: false,
+  /** Which way a shooter circles the hen: 1 or -1. */
+  side: 1,
 }));
+
+/** Pebbles thrown by magpies, flying straight at where the hen was. */
+export const shots = Array.from({ length: 32 }, () => ({ alive: false, x: 0, y: 0, prevX: 0, prevY: 0, vx: 0, vy: 0, life: 0, dmg: 0 }));
+
+/** Predator `e` throws a pebble along (ux, uy), a unit vector. */
+function throwPebble(e, ux, uy) {
+  const s = shots.find((p) => !p.alive);
+  if (!s) return;
+  Object.assign(s, { alive: true, x: e.x, y: e.y, prevX: e.x, prevY: e.y, vx: ux * SHOT_SPEED, vy: uy * SHOT_SPEED, life: SHOT_LIFE, dmg: e.dmg });
+  sfxThrow();
+}
+
+function updateShots(dt) {
+  for (const s of shots) {
+    if (!s.alive) continue;
+    s.prevX = s.x;
+    s.prevY = s.y;
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    s.life -= dt;
+    if (s.life <= 0 || game.over) s.alive = false;
+    else if (Math.hypot(hen.x - s.x, hen.y - s.y) < HEN_RADIUS + SHOT_R) {
+      s.alive = false;
+      damageHen(s.dmg, s.x, s.y);
+    }
+  }
+}
 
 /** The alive predators of the current step, reused to avoid allocating every frame. */
 const active = [];
@@ -143,6 +196,7 @@ export function spawnEnemy(kind, x, y) {
   const days = game.day - 1;
   const peril = type.prop ? 0 : game.peril;
   const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + (game.level - 1) / 12 + game.time / 240) * (1 + days) * (1 + PERIL.hp * peril));
+  const phase = gameRand() * 2;
   Object.assign(e, {
     alive: true,
     kind,
@@ -164,7 +218,11 @@ export function spawnEnemy(kind, x, y) {
     chickCooldown: 0,
     knockTime: 0,
     facing: 1,
-    walkPhase: gameRand() * 2,
+    walkPhase: phase,
+    act: type.act || CHASE,
+    timer: SHOT_EVERY * (0.5 + phase / 2),
+    warn: false,
+    side: phase < 1 ? 1 : -1,
   });
   return e;
 }
@@ -202,6 +260,7 @@ export function bossName(e) {
 
 export function clearEnemies() {
   for (const e of enemies) e.alive = false;
+  for (const s of shots) s.alive = false;
 }
 
 export function countEnemies() {
@@ -280,6 +339,33 @@ function killEnemy(e) {
   else if (gameRand() < DROP_CHANCE) spawnCorn(e.x, e.y, Math.floor(1 + game.time / 200));
 }
 
+/**
+ * One step of what predator `e` does, the hen being `d` tiles away along (ux, uy): chase her, or
+ * (a shooter) hold its distance, circle her and throw a pebble now and then while on screen.
+ */
+function act(e, ux, uy, d, dt) {
+  let mx = ux;
+  let my = uy;
+  let speed = e.speed;
+  if (e.act === SHOOT) {
+    const toward = d > KEEP_FAR ? 1 : d < KEEP_NEAR ? -1 : 0;
+    mx = toward ? ux * toward : -uy * e.side;
+    my = toward ? uy * toward : ux * e.side;
+    if (!toward) speed *= 0.6;
+    if (onScreen(e.x, e.y, 8)) {
+      e.timer -= dt;
+      e.warn = e.timer < SHOT_WARN;
+      if (e.timer <= 0) {
+        e.timer = SHOT_EVERY;
+        throwPebble(e, ux, uy);
+      }
+    }
+  }
+  e.x += mx * speed * dt;
+  e.y += my * speed * dt;
+  e.walkPhase += dt * 8;
+}
+
 export function updateEnemies(dt) {
   active.length = 0;
   for (const e of enemies) if (e.alive) active.push(e);
@@ -309,17 +395,18 @@ export function updateEnemies(dt) {
       continue;
     }
 
+    e.warn = false;
     if (e.knockTime > 0) {
       e.knockTime -= dt;
       e.x += e.knockX * dt;
       e.y += e.knockY * dt;
-    } else {
-      // Chase; after the hen falls, wander off; at dawn, run away.
-      const s = (game.over ? (game.won ? -1.4 : -0.5) : 1) * e.speed * dt;
+    } else if (game.over) {
+      // After the hen falls, wander off; at dawn, run away.
+      const s = (game.won ? -1.4 : -0.5) * e.speed * dt;
       e.x += (dx / d) * s;
       e.y += (dy / d) * s;
       e.walkPhase += dt * 8;
-    }
+    } else act(e, dx / d, dy / d, d, dt);
     const screenDx = dx - dy;
     if (Math.abs(screenDx) > 0.05) e.facing = (screenDx > 0) === !game.over ? 1 : -1;
 
@@ -359,4 +446,5 @@ export function updateEnemies(dt) {
       a.y = hen.y + (k ? hy * k : 0);
     }
   }
+  updateShots(dt);
 }

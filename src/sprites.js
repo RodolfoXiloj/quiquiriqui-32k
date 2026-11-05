@@ -352,6 +352,21 @@ function crowShape(step) {
   };
 }
 
+/** The magpie (18x12): black with a white belly and wing bar, and a long tail with a blue tip. */
+function magpieShape(step) {
+  const wing = step === 'stepA' ? -1 : step === 'stepB' ? 1 : 0;
+  return (x, y) => {
+    if (x === 16 && y === 5) return 17; // beak
+    if (inEllipse(x, y, 13.5, 5, 2, 1.8)) return x === 14 && y === 4 ? 13 : 15; // head with a glint
+    if (wing && inTaper(x, y, 9, wing < 0 ? 1 : 7, wing < 0 ? 5 : 10, wing < 0 ? 0.5 : 3, wing < 0 ? 3 : 0.5)) {
+      return y === (wing < 0 ? 4 : 8) ? 13 : 15; // wing with a white bar
+    }
+    if (inEllipse(x, y, 9.5, 6.5, 3.8, 2.3)) return y >= 7 && x >= 8 ? 13 : 15; // body, white belly
+    if (y >= 5 && y <= 6 && x >= 1 && x <= 6) return x <= 2 ? 12 : 15; // long tail, blue tip
+    return -1;
+  };
+}
+
 /** The badger (20x13): grey, with a white face crossed by a dark stripe. */
 function badgerShape(step) {
   const liftA = step === 'stepA' ? 1 : 0;
@@ -578,6 +593,7 @@ export function bakeWorldSprites() {
     [crowShape, 14, 12],
     [badgerShape, 20, 13],
     [crateShape, 14, 14],
+    [magpieShape, 18, 12],
   ]) {
     const set = {};
     for (const step of POSES) set[step] = bakeSprite(w, h, shape(step));

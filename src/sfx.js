@@ -143,7 +143,17 @@ const KILL_VOICES = [
     { freq: 420, endFreq: 120, dur: 0.08, noise: 0.75, vol: 0.18 },
     { freq: 300, endFreq: 90, dur: 0.1, noise: 0.8, vol: 0.14, delay: 0.05 },
   ],
+  // magpie: a dry "chak-chak"
+  [
+    { freq: 1300, endFreq: 900, dur: 0.05, noise: 0.45, vol: 0.12 },
+    { freq: 1250, endFreq: 850, dur: 0.05, noise: 0.45, vol: 0.12, delay: 0.08 },
+  ],
 ];
+
+/** A magpie throws a pebble: a short whoosh. */
+export function sfxThrow() {
+  if (gate('throw', 120)) playTone({ freq: 1500, endFreq: 500, dur: 0.09, noise: 0.6, vol: 0.09 });
+}
 
 /** A predator of `kind` goes down. */
 export function sfxKill(kind) {

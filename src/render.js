@@ -8,7 +8,7 @@ import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
 import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier, lockSprite } from './sprites.js';
 import { hen } from './hen.js';
-import { enemies, bossName, RISE_TIME } from './enemies.js';
+import { enemies, shots, bossName, RISE_TIME } from './enemies.js';
 import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
@@ -293,6 +293,12 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     ctx.moveTo(q.sx + 2, q.sy);
     ctx.ellipse(q.sx, q.sy, 2, 1, 0, 0, Math.PI * 2);
   }
+  for (const s of shots) {
+    if (!s.alive) continue;
+    const q = screenPos(s, alpha, camX, camY);
+    ctx.moveTo(q.sx + 2, q.sy);
+    ctx.ellipse(q.sx, q.sy, 2, 1, 0, 0, Math.PI * 2);
+  }
   for (let k = 0; k < chicks.count; k++) {
     const c = chicks.list[k];
     const q = screenPos(c, alpha, camX, camY);
@@ -327,10 +333,24 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     let lift = e.flying ? (e.boss ? 20 : 12) + Math.round(Math.sin(e.walkPhase * Math.PI) * 2) + Math.round((1 - rise) * 24) : 0;
     if (!e.flying) lift -= Math.round((1 - rise) * 4);
     ctx.globalAlpha = rise;
-    drawSprite(ctx, set[pose], d.sx, d.sy - lift, e.facing, e.flash > 0.1, false, e.boss ? 2 : 1);
+    // White: just hit, or blinking before it acts (a magpie about to throw)
+    const white = e.flash > 0.1 || (e.warn && Math.floor(time * 16) % 2 === 0);
+    drawSprite(ctx, set[pose], d.sx, d.sy - lift, e.facing, white, false, e.boss ? 2 : 1);
     ctx.globalAlpha = 1;
   }
   if (game.started && !game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);
+
+  // Magpie pebbles: grey stones flying a little above their shadows.
+  for (const s of shots) {
+    if (!s.alive) continue;
+    const { sx, sy } = screenPos(s, alpha, camX, camY);
+    ctx.fillStyle = PALETTE[0];
+    ctx.fillRect(sx - 2, sy - 9, 4, 4);
+    ctx.fillStyle = PALETTE[16];
+    ctx.fillRect(sx - 1, sy - 8, 2, 2);
+    ctx.fillStyle = PALETTE[13];
+    ctx.fillRect(sx - 1, sy - 8, 1, 1);
+  }
 
   // Eggs arc through the air; darts are short streaks.
   for (const p of projectiles) {

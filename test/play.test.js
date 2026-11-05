@@ -60,8 +60,12 @@ import {
   CROW,
   BADGER,
   CRATE,
+  MAGPIE,
   ENEMY_TYPES,
   MAX_ENEMIES,
+  shots,
+  SHOT_EVERY,
+  SHOT_LIFE,
   BOSS_HP,
   BOSS_SIZE,
   BOSS_BITE,
@@ -72,9 +76,10 @@ import {
   hitEnemy,
   screenOffset,
   countEnemies,
+  clearEnemies,
 } from '../src/enemies.js';
 import { pickups, spawnPickup, CHEST, MAGNET, BOMB, FOOD } from '../src/pickups.js';
-import { TIMELINE, CRATE_EVERY } from '../src/waves.js';
+import { TIMELINE, CRATE_EVERY, pickKind } from '../src/waves.js';
 import { spawnCorn } from '../src/corn.js';
 import {
   ITEMS,
@@ -1213,6 +1218,82 @@ describe('quiquiriqui at 5x: golden eggs and the shop', () => {
   });
 });
 
+describe('quiquiriqui at 5x: special predators', () => {
+  /** A predator of `kind` (dx, dy) tiles from the hen, already risen, too tough to die. */
+  function sturdy(kind, dx, dy) {
+    const e = spawnEnemy(kind, hen.x + dx, hen.y + dy);
+    e.hp = e.maxHp = 1e9;
+    e.age = 1;
+    return e;
+  }
+  const away = (e) => Math.hypot(e.x - hen.x, e.y - hen.y);
+  /** A run on the title of a peaceful meadow, started, with a tough hen and no weapons. */
+  function quietRun() {
+    resetRun();
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    buildOrder.length = 0; // no weapons: nothing knocks them about
+  }
+
+  it('a magpie backs off when close, comes closer from afar, and circles in between', () => {
+    quietRun();
+    const close = sturdy(MAGPIE, 2, 0);
+    const far = sturdy(MAGPIE, -5, -5);
+    steps(1.5);
+    assert.ok(away(close) > 3.5, `the close one stayed ${away(close).toFixed(1)} tiles away`);
+    assert.ok(away(far) < 6.5, `the far one stayed ${away(far).toFixed(1)} tiles away`);
+    const a0 = Math.atan2(close.y - hen.y, close.x - hen.x);
+    steps(1);
+    const a1 = Math.atan2(close.y - hen.y, close.x - hen.x);
+    assert.ok(away(close) >= 4 && away(close) <= 6.5, `${away(close).toFixed(1)} tiles away`);
+    assert.ok(Math.abs(a1 - a0) > 0.2, 'it did not circle her');
+    resetRun();
+  });
+
+  it('a magpie blinks, then throws a pebble that hurts her if she stays, and misses if she moves', () => {
+    quietRun();
+    const m = sturdy(MAGPIE, 5, 0);
+    let warned = false;
+    for (let i = 0; i < Math.round((SHOT_EVERY * 2) / STEP) && !shots.some((s) => s.alive); i++) {
+      update(STEP);
+      warned ||= m.warn;
+    }
+    assert.ok(warned, 'no warning before the throw');
+    assert.ok(shots.some((s) => s.alive), 'no pebble');
+    m.timer = 1e9; // one pebble is enough
+    let hp = hen.hp;
+    steps(2);
+    assert.ok(hen.hp < hp, 'a hen standing still was not hit');
+    assert.ok(!shots.some((s) => s.alive));
+
+    // Again, but she steps aside as it flies
+    m.timer = 0;
+    update(STEP);
+    m.timer = 1e9;
+    const shot = shots.find((s) => s.alive);
+    assert.ok(shot);
+    // Step 3 tiles across its path
+    const speed = Math.hypot(shot.vx, shot.vy);
+    hen.x -= (shot.vy / speed) * 3;
+    hen.y += (shot.vx / speed) * 3;
+    hp = hen.hp;
+    steps(SHOT_LIFE + 0.1);
+    assert.equal(hen.hp, hp, 'a dodged pebble still hit');
+    assert.ok(!shots.some((s) => s.alive), 'the pebble never landed');
+    resetRun();
+  });
+
+  it('no more than six magpies at once: the waves send rats instead', () => {
+    quietRun();
+    for (let i = 0; i < ENEMY_TYPES[MAGPIE].max; i++) sturdy(MAGPIE, 6 + i, 0);
+    assert.equal(pickKind([MAGPIE]), RAT);
+    clearEnemies();
+    assert.equal(pickKind([MAGPIE]), MAGPIE);
+    assert.ok(!shots.some((s) => s.alive), 'pebbles outlived the reset');
+    resetRun();
+  });
+});
+
 describe('quiquiriqui at 5x: the bot and a long run', () => {
   it('the bot survives the first minute', () => {
     resetRun({ peaceful: false });
@@ -1239,7 +1320,7 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
     assert.equal(game.won, true, `stopped at ${game.time}`);
     assert.ok(peak >= 150, `the horde peaked at ${peak}`);
     assert.equal(Object.keys(firstSeen).length, ENEMY_TYPES.length, `seen: ${JSON.stringify(firstSeen)}`);
-    for (const [kind, from] of [[SNAKE, 180], [CROW, 300], [BADGER, 420]]) {
+    for (const [kind, from] of [[SNAKE, 180], [MAGPIE, 240], [CROW, 300], [BADGER, 420]]) {
       assert.ok(firstSeen[kind] >= from && firstSeen[kind] < from + 20, `${ENEMY_TYPES[kind].name} first seen at ${firstSeen[kind]}`);
     }
     // Time a step with the pool full
