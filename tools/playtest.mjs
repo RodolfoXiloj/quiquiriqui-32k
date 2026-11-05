@@ -39,7 +39,7 @@ const KEYS = {
 /**
  * Runs in the page: counts the distinct colors on the game canvas, counts hen-feather pixels
  * (PALETTE[7], #f4f0e6) in a 48x48 box at the center, counts predator fur pixels anywhere (rat
- * #a7a3b8, fox #ee7a2c) and bluish pixels (rain), measures the mean brightness (0-255), and
+ * #a7a3b8, fox #ee7a2c), bluish pixels (rain) and card-panel pixels (#2b2b44), measures the mean brightness (0-255), and
  * hashes the image to detect change.
  */
 const CANVAS_STATS = `(() => {
@@ -49,6 +49,7 @@ const CANVAS_STATS = `(() => {
   let hen = 0;
   let fur = 0;
   let sky = 0;
+  let panel = 0;
   let light = 0;
   let hash = 0;
   for (let i = 0; i < d.length; i += 4) {
@@ -61,6 +62,7 @@ const CANVAS_STATS = `(() => {
     if (rgb === 0xf4f0e6 && Math.abs(x - c.width / 2) < 24 && Math.abs(y - c.height / 2) < 24) hen++;
     if (rgb === 0xa7a3b8 || rgb === 0xee7a2c) fur++;
     if (d[i + 2] > d[i + 1] + 10) sky++; // bluish (rain streaks, even half transparent; grass is green)
+    if (rgb === 0x2b2b44) panel++; // card panels
     light += d[i] + d[i + 1] + d[i + 2];
   }
   return {
@@ -68,6 +70,7 @@ const CANVAS_STATS = `(() => {
     henPixels: hen,
     furPixels: fur,
     skyPixels: sky,
+    panelPixels: panel,
     light: light / (3 * c.width * c.height),
     hash,
     w: c.width,
@@ -293,6 +296,22 @@ async function openCards(page) {
   return page.snapshot();
 }
 
+/**
+ * Waits until `condition` (a page expression) holds, playing on meanwhile: open cards get the real
+ * key 1 and a chest screen gets Space, so the run never stays frozen while we wait.
+ */
+async function playUntil(page, condition, timeoutMs) {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    if (await page.evaluate(condition)) return;
+    const s = await page.snapshot();
+    if (s.cards.length && s.cardLock <= 0) await page.tapKey('Digit1', 30);
+    else if (s.reward.length && s.rewardLock <= 0) await page.tapKey('Space', 30);
+    await sleep(60);
+  }
+  throw new Error(`timed out waiting for: ${condition}`);
+}
+
 /** Level of item `id` in a snapshot's build (0 if not owned). */
 const levelOf = (snap, id) => (snap.build.find(([owned]) => owned === id) || [id, 0])[1];
 
@@ -300,10 +319,10 @@ async function playScenarios(page, client, base) {
   await check('7. predators close in, eggs fly and something dies', async () => {
     await page.open(`${base}/?autoplay&drive=cdp&speed=${SPEED}`, ready);
     await page.tapKey('KeyD', 150);
-    await page.waitFor('window.__qq.snapshot().enemies >= 3', 10000);
-    await page.waitFor(`(${CANVAS_STATS}).furPixels > 20`, 10000);
+    await playUntil(page, 'window.__qq.snapshot().enemies >= 3', 10000);
+    await playUntil(page, `!window.__qq.snapshot().cards.length && (${CANVAS_STATS}).furPixels > 20`, 10000);
     await page.screenshot('07-combat.png');
-    await page.waitFor('window.__qq.snapshot().kills >= 1 || window.__qq.snapshot().cards.length > 0', 15000);
+    await playUntil(page, 'window.__qq.snapshot().kills >= 1', 15000);
     const s = await page.snapshot();
     expect(s.hen.hp > 0, 'the hen fell while standing still for a few seconds');
   });
@@ -469,6 +488,21 @@ async function dayScenarios(page, base) {
   });
 }
 
+async function soundBoardScenario(page, base) {
+  await check('20. the sound board loads, with a button per sound, and plays without errors', async () => {
+    await page.open(`${base}/__dev/sounds.html`, 'window.__soundsReady === true');
+    const buttons = await page.evaluate('window.__soundsButtons');
+    expect(buttons >= 25, `only ${buttons} buttons`);
+    // A real click first (a user gesture lets audio start), then every button once
+    const first = await page.evaluate(`(() => { const r = document.querySelector('button').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    await page.mouse('mousePressed', first);
+    await page.mouse('mouseReleased', first);
+    await page.evaluate(`document.querySelectorAll('button').forEach((b) => b.click())`);
+    await sleep(600);
+    await page.screenshot('20-sounds.png');
+  });
+}
+
 async function musicScenario(page, base) {
   await check('19. the music waits for the first key, follows the run, and M turns it off and on', async () => {
     await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
@@ -485,7 +519,7 @@ async function musicScenario(page, base) {
 }
 
 async function mobileScenario(page, client, base) {
-  await check('20. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
+  await check('21. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
     await client.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     try {
@@ -529,7 +563,7 @@ async function mobileScenario(page, client, base) {
 }
 
 async function distScenario(page) {
-  await check('21. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
+  await check('22. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
     await access(DIST).catch(() => {
       throw new Error('dist/index.html is missing: run npm run build first');
     });
@@ -545,7 +579,8 @@ async function distScenario(page) {
     await page.screenshot('06-dist-walk.png');
     await page.keyUp('KeyD');
     expect(b.hash !== a.hash, 'the canvas did not change while walking');
-    expect(b.henPixels >= 20, 'the hen left the center of the screen');
+    // The starting corn often gives the first level-up within that second: then the cards cover her.
+    expect(b.henPixels >= 20 || b.panelPixels > 2000, 'neither the hen at the center nor the level-up cards are on screen');
   });
 }
 
@@ -568,10 +603,11 @@ async function main() {
     await outfitScenarios(page, client, base);
     await dayScenarios(page, base);
     await musicScenario(page, base);
+    await soundBoardScenario(page, base);
     await mobileScenario(page, client, base);
     await distScenario(page);
     results.push({
-      name: '22. no exceptions, console errors or failed loads',
+      name: '23. no exceptions, console errors or failed loads',
       ok: problems.length === 0,
       error: problems.slice(0, 5).join(' | '),
     });

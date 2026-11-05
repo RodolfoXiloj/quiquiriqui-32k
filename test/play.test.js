@@ -73,7 +73,7 @@ import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
-import { audio, sfxKill, sfxLevelUp, sfxPeck } from '../src/sfx.js';
+import { audio, sfxKill, sfxLevelUp, sfxPeck, HIT_SOUNDS } from '../src/sfx.js';
 import { music, PARTS, notesAt, sectionLength } from '../src/music.js';
 
 /** Holds `code` for `seconds` of scenario time and returns the hen's screen-space shift. */
@@ -964,7 +964,8 @@ describe('quiquiriqui: sound', () => {
     withFakeAudio(() => {
       sfxPeck();
       const ctx = audio.ctx;
-      assert.ok(ctx.started.length === 1);
+      assert.equal(ctx.started.length, HIT_SOUNDS[0].length, 'the hit is not the chosen one');
+      HIT_SOUNDS[0].forEach((recipe, i) => assert.equal(ctx.started[i].buffer.length, Math.floor(22050 * recipe.dur)));
       assert.equal(ctx.started[0].to, audio.sfx);
       assert.equal(audio.sfx.to.name, 'compressor');
       assert.equal(audio.music.to.name, 'compressor');

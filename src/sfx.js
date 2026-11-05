@@ -80,10 +80,13 @@ export function playTone(recipe) {
 const MIN_GAP_MS = 45;
 const lastPlayed = {};
 
-/** True if sound `name` may play now (and records that it did). Uses real time, so it holds at any game speed. */
-function gate(name) {
+/**
+ * True if sound `name` may play now (and records that it did): at most once per `gap` ms. Uses
+ * real time, so it holds at any game speed.
+ */
+function gate(name, gap = MIN_GAP_MS) {
   const now = performance.now();
-  if (now - (lastPlayed[name] ?? -1e9) < MIN_GAP_MS) return false;
+  if (now - (lastPlayed[name] ?? -1e9) < gap) return false;
   lastPlayed[name] = now;
   return true;
 }
@@ -94,9 +97,31 @@ export function sfxCluck() {
   playTone({ freq: 760, endFreq: 390, dur: 0.1, noise: 0.15, vol: 0.26, mod: 45, delay: 0.08 });
 }
 
-/** A dry beak tap: every hit on a predator. */
+/**
+ * Candidate hit sounds, the most repeated sound in the game. tools/browser/sounds.html plays
+ * them side by side; the game uses the first.
+ */
+export const HIT_SOUNDS = [
+  // A, thud: a short low punch with a faint click on top
+  [
+    { freq: 240, endFreq: 70, dur: 0.07, noise: 0.12, vol: 0.2 },
+    { freq: 2600, endFreq: 1800, dur: 0.012, noise: 0.9, vol: 0.05 },
+  ],
+  // B, tock: a hollow wooden knock
+  [
+    { freq: 820, endFreq: 760, dur: 0.035, noise: 0.03, vol: 0.12, attack: 0.02 },
+    { freq: 1640, endFreq: 1500, dur: 0.02, noise: 0, vol: 0.04, attack: 0.02 },
+  ],
+  // C, pop: a short rising blip
+  [{ freq: 420, endFreq: 980, dur: 0.04, noise: 0.05, vol: 0.11 }],
+];
+export const HIT_NAMES = ['A thud', 'B tock', 'C pop'];
+/** A hit on a predator plays at most this often (ms): a crowd of hits stays one hit. */
+const HIT_GAP_MS = 60;
+
+/** Every hit on a predator. */
 export function sfxPeck() {
-  if (gate('peck')) playTone({ freq: 900, endFreq: 300, dur: 0.05, noise: 0.5, vol: 0.16 });
+  if (gate('hit', HIT_GAP_MS)) for (const recipe of HIT_SOUNDS[0]) playTone(recipe);
 }
 
 /** A bright blip for picking up corn. */

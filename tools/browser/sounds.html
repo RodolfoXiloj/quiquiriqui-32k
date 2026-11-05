@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quiquiriqui sounds</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #1d1a2f;
+        color: #fff;
+        font: bold 13px monospace;
+      }
+      h2 {
+        margin: 18px 0 8px;
+        color: #f7b733;
+        font-size: 14px;
+      }
+      p {
+        margin: 0 0 12px;
+        color: #cbbca3;
+        font-weight: normal;
+      }
+      button {
+        margin: 0 8px 8px 0;
+        padding: 8px 12px;
+        border: 2px solid #8fbf45;
+        border-radius: 4px;
+        background: #2b2b44;
+        color: #fff;
+        font: inherit;
+        cursor: pointer;
+      }
+      button.hit {
+        border-color: #f7b733;
+      }
+      button.on {
+        background: #5d8b32;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Dev-only sound board: every sound of the game, from the game's own synth. Click to listen.</p>
+    <h2>Hit candidates (the game plays the first; tell us which one you like)</h2>
+    <div id="hits"></div>
+    <h2>Sound effects</h2>
+    <div id="effects"></div>
+    <h2>Music (one part at a time)</h2>
+    <div id="music"></div>
+    <script type="module">
+      // Dev-only (served by tools/dev.mjs from tools/browser/, never bundled). It imports the game's
+      // own sfx.js and music.js, so it sounds exactly like the game.
+      import * as sfx from '/sfx.js';
+      import { music, updateMusic } from '/music.js';
+      import { ENEMY_TYPES } from '/enemies.js';
+
+      function button(parent, label, onClick, extra = '') {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.className = extra;
+        b.addEventListener('click', () => {
+          sfx.ensureAudio();
+          onClick(b);
+        });
+        document.getElementById(parent).appendChild(b);
+        return b;
+      }
+
+      sfx.HIT_SOUNDS.forEach((recipes, i) => {
+        button('hits', `${sfx.HIT_NAMES[i]} x1`, () => recipes.forEach((r) => sfx.playTone(r)), 'hit');
+        // A burst like a crowd being hit, respecting nothing but its own spacing
+        button(
+          'hits',
+          `${sfx.HIT_NAMES[i]} x6`,
+          () => {
+            for (let k = 0; k < 6; k++) setTimeout(() => recipes.forEach((r) => sfx.playTone(r)), k * 90);
+          },
+          'hit'
+        );
+      });
+
+      const effects = {
+        'cluck (start)': sfx.sfxCluck,
+        'corn pickup': sfx.sfxPickup,
+        'level up': sfx.sfxLevelUp,
+        chest: sfx.sfxChest,
+        magnet: sfx.sfxMagnet,
+        food: sfx.sfxFood,
+        'hen bitten': sfx.sfxHurt,
+        'egg splat': sfx.sfxSplat,
+        'bomb / boss down': sfx.sfxBoom,
+        'wing gust': sfx.sfxGust,
+        'thunder comb': sfx.sfxThunder,
+        'rooster (dawn)': sfx.sfxCrow,
+        'hen falls': sfx.sfxDeath,
+      };
+      for (const [label, play] of Object.entries(effects)) button('effects', label, () => play());
+      ENEMY_TYPES.forEach((type, kind) => button('effects', `${type.name} down`, () => sfx.sfxKill(kind)));
+
+      // Music: keep the scheduler running on this page's clock
+      let mood = null;
+      music.on = true;
+      const moods = ['day', 'boss', 'night', 'dawn'];
+      const moodButtons = [];
+      for (const m of [...moods, 'stop']) {
+        moodButtons.push(
+          button('music', m, (b) => {
+            mood = m === 'stop' ? null : m;
+            music.mood = null; // restart the part from its first bar
+            for (const other of moodButtons) other.classList.toggle('on', other === b && m !== 'stop');
+          })
+        );
+      }
+      (function tick() {
+        updateMusic(mood, 1);
+        requestAnimationFrame(tick);
+      })();
+
+      window.__soundsButtons = document.querySelectorAll('button').length;
+      window.__soundsReady = true;
+    </script>
+  </body>
+</html>
