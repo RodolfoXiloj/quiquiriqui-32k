@@ -69,7 +69,7 @@ export const RAINBOW_HP = 10;
 const ELITE_SIZE = 1.4;
 export const ELITE_SPEED = 1.15;
 /** Golden eggs for a golden elite and for a rainbow one. */
-export const ELITE_EGGS = [5, 20];
+export const ELITE_EGGS = [2, 8];
 
 /** A stink cloud lasts CLOUD_TIME seconds and hurts the hen inside CLOUD_R tiles every CLOUD_TICK. */
 export const CLOUD_TIME = 3;

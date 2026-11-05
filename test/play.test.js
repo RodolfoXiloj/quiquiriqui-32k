@@ -1237,15 +1237,16 @@ describe('quiquiriqui at 5x: golden eggs and the shop', () => {
 
   it('upgrades apply to every run: health, speed, damage, reach and XP', () => {
     resetRun({ shop: [2, 1, 1, 1, 1] });
-    assert.equal(hen.maxHp, 120);
-    assert.equal(hen.hp, 120);
-    assert.ok(Math.abs(stats.speed - 1.03) < 1e-9);
-    assert.ok(Math.abs(stats.damage - 1.05) < 1e-9);
-    assert.ok(Math.abs(stats.magnet - 3.25) < 1e-9);
+    const per = Object.fromEntries(SHOP.map((upgrade) => [upgrade.stat, upgrade.per]));
+    assert.equal(hen.maxHp, 100 + 2 * per.maxHp);
+    assert.equal(hen.hp, hen.maxHp);
+    assert.ok(Math.abs(stats.speed - (1 + per.speed)) < 1e-9);
+    assert.ok(Math.abs(stats.damage - (1 + per.damage)) < 1e-9);
+    assert.ok(Math.abs(stats.magnet - (3 + per.magnet)) < 1e-9);
     start();
     spawnCorn(hen.x + 0.5, hen.y, 1, 0);
     steps(0.3);
-    assert.ok(Math.abs(game.xp - 1.05) < 1e-9, `xp ${game.xp}`);
+    assert.ok(Math.abs(game.xp - (1 + per.xp)) < 1e-9, `xp ${game.xp}`);
     resetRun();
   });
 
