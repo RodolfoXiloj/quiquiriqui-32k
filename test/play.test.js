@@ -35,11 +35,11 @@ import {
 } from '../src/sprites.js';
 import {
   HUD_STRINGS,
-  HUD_SIZES,
+  HUD_SCALES,
   CARD_W,
-  CARD_NAME_SIZE,
-  CARD_TEXT_SIZE,
-  estimateTextWidth,
+  CARD_NAME_SCALE,
+  CARD_TEXT_SCALE,
+  textWidth,
   gameOverLine,
   cardRect,
   cardAt,
@@ -64,6 +64,7 @@ import {
   BOSS_SIZE,
   BOSS_BITE,
   SPAWN_MAX,
+  bossName,
   spawnEnemy,
   spawnBoss,
   hitEnemy,
@@ -93,6 +94,7 @@ import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
+import { GLYPHS, GLYPH_W, GLYPH_H } from '../src/font.js';
 import { profile, PERIL, MAX_PERIL, HENS, SHOP, SHOP_COSTS, unlockAfterDawn, eggsEarned, buyUpgrade } from '../src/profile.js';
 import { audio, sfxKill, sfxLevelUp, sfxPeck, HIT_SOUNDS } from '../src/sfx.js';
 import { music, PARTS, notesAt, sectionLength } from '../src/music.js';
@@ -1381,23 +1383,23 @@ describe('quiquiriqui: music', () => {
 describe('quiquiriqui: text and layout', () => {
   it('every HUD string fits the 320 px canvas', () => {
     for (const [key, text] of Object.entries(HUD_STRINGS)) {
-      assert.ok(HUD_SIZES[key], `no size for ${key}`);
-      assert.ok(estimateTextWidth(text, HUD_SIZES[key]) <= WIDTH - 16, `${key} is too wide`);
+      assert.ok(HUD_SCALES[key], `no scale for ${key}`);
+      assert.ok(textWidth(text, HUD_SCALES[key]) <= WIDTH - 16, `${key} is too wide`);
     }
-    assert.ok(estimateTextWidth(gameOverLine(599, 9999, 99), 7) <= WIDTH - 16, 'game over line');
+    assert.ok(textWidth(gameOverLine(599, 9999, 99), 1) <= WIDTH - 16, 'game over line');
     const saved = { ...profile };
     Object.assign(profile, { perilUnlocked: 0, hens: 1, hen: 0 });
-    assert.ok(estimateTextWidth(perilLine(), 7) <= WIDTH - 16, 'peril line');
+    assert.ok(textWidth(perilLine(), 1) <= WIDTH - 16, 'peril line');
     for (let i = 0; i < HENS.length; i++) {
       profile.hen = i;
-      assert.ok(estimateTextWidth(henLine(), 7) <= WIDTH - 16, 'hen line');
+      assert.ok(textWidth(henLine(), 1) <= WIDTH - 16, 'hen line');
     }
     profile.eggs = 99999;
-    assert.ok(estimateTextWidth(shopLine(), 7) <= WIDTH - 16, 'shop line');
+    assert.ok(textWidth(shopLine(), 1) <= WIDTH - 16, 'shop line');
     for (let i = 0; i < SHOP.length; i++) {
       for (const level of [0, SHOP_COSTS.length]) {
         profile.shop = SHOP.map(() => level);
-        assert.ok(estimateTextWidth(shopItemLine(i), 7) <= WIDTH - 16, `shop: "${shopItemLine(i)}"`);
+        assert.ok(textWidth(shopItemLine(i), 1) <= WIDTH - 16, `shop: "${shopItemLine(i)}"`);
       }
     }
     Object.assign(profile, saved);
@@ -1405,16 +1407,16 @@ describe('quiquiriqui: text and layout', () => {
 
   it('every card name and description fits its card', () => {
     for (const boon of BOONS) {
-      assert.ok(estimateTextWidth(boon.name, CARD_NAME_SIZE) <= CARD_W - 6, `${boon.id} name`);
+      assert.ok(textWidth(boon.name, CARD_NAME_SCALE) <= CARD_W - 6, `${boon.id} name`);
       for (const line of cardText({ id: boon.id, level: 0, boon: true })) {
-        assert.ok(estimateTextWidth(line, CARD_TEXT_SIZE) <= CARD_W - 6, `${boon.id}: "${line}"`);
+        assert.ok(textWidth(line, CARD_TEXT_SCALE) <= CARD_W - 6, `${boon.id}: "${line}"`);
       }
     }
     for (const item of ITEMS) {
-      assert.ok(estimateTextWidth(item.name, CARD_NAME_SIZE) <= CARD_W - 6, `${item.id} name`);
+      assert.ok(textWidth(item.name, CARD_NAME_SCALE) <= CARD_W - 6, `${item.id} name`);
       for (let level = 1; level <= MAX_ITEM_LEVEL; level++) {
         for (const line of cardText({ id: item.id, level })) {
-          assert.ok(estimateTextWidth(line, CARD_TEXT_SIZE) <= CARD_W - 6, `${item.id}: "${line}"`);
+          assert.ok(textWidth(line, CARD_TEXT_SCALE) <= CARD_W - 6, `${item.id}: "${line}"`);
         }
       }
       if (item.weapon) for (const key of Object.keys(item.lv)) assert.equal(item.lv[key].length, MAX_ITEM_LEVEL);
@@ -1453,6 +1455,33 @@ describe('quiquiriqui: text and layout', () => {
       assert.equal(screenScale(1920, 1080), 6);
     } finally {
       fitScreen(WIDTH, MIN_HEIGHT);
+    }
+  });
+
+  it('the pixel font: every glyph is 5 rows of 3 pixels, and widths are exact', () => {
+    for (const [ch, rows] of Object.entries(GLYPHS)) {
+      assert.equal(rows.length, GLYPH_H, ch);
+      for (const row of rows) assert.ok(row >= 0 && row < 1 << GLYPH_W, `${ch}: ${row}`);
+    }
+    assert.equal(textWidth('ABC', 2), (3 * 4 - 1) * 2);
+    assert.equal(textWidth('', 3), 0);
+  });
+
+  it('every text the game can show has a glyph for each of its characters', () => {
+    const saved = JSON.parse(JSON.stringify(profile));
+    const texts = [...Object.values(HUD_STRINGS)];
+    for (const item of [...ITEMS, ...BOONS]) texts.push(item.name, ...(item.text || []), ...(item.up || []));
+    for (const hen of HENS) texts.push(hen.name, `${hen.name}!`);
+    for (const [level, eggs, hens, peril] of [[0, 0, 1, 0], [5, 99999, 7, 5]]) {
+      Object.assign(profile, { eggs, hens, perilUnlocked: peril, peril, shop: SHOP.map(() => level) });
+      texts.push(shopLine(), perilLine(), henLine(), ...SHOP.map((_, i) => shopItemLine(i)));
+    }
+    Object.assign(profile, saved);
+    texts.push(gameOverLine(3599.9, 98765, 123), 'BEST 12:34   +99 GOLDEN EGGS', 'PERIL 5 UNLOCKED!', 'P5 DAY 12  59:59');
+    texts.push('+25 HP', '+30', '-12', 'MISS', '0123456789', 'BOON', 'NEW!', 'LV 99', 'KILLS 9999', 'SHOP', 'B: BACK');
+    for (let kind = 0; kind < ENEMY_TYPES.length; kind++) texts.push(bossName({ kind }));
+    for (const text of texts) {
+      for (const ch of text) assert.ok(GLYPHS[ch], `no glyph for "${ch}" in "${text}"`);
     }
   });
 

@@ -2,6 +2,7 @@
 // particles, damage numbers, the touch stick, the HUD and the menus (cards, game over, pause,
 // title). Everything is drawn at 320x180 and upscaled by an integer factor.
 import { PALETTE } from './palette.js';
+import { drawPixelText, textWidth } from './font.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
@@ -42,27 +43,27 @@ export const HUD_STRINGS = {
   tutorial: 'PICK UP CORN TO LEVEL UP',
 };
 
-/** Font size (px) each HUD string is drawn at. The fit test reads these too. */
-export const HUD_SIZES = {
-  title: 16,
-  subtitle: 7,
-  start: 8,
-  controls: 7,
-  music: 7,
-  paused: 14,
-  resume: 8,
-  levelUp: 12,
-  choose: 7,
-  chest: 12,
-  chestNote: 7,
-  gameOver: 16,
-  dawn: 16,
-  crow: 8,
-  nod: 7,
-  keepGoing: 8,
-  endRun: 8,
-  newBest: 8,
-  tutorial: 7,
+/** Font scale (font.js: 1 body text, 2 headings, 3 titles) of each HUD string. The fit test reads these too. */
+export const HUD_SCALES = {
+  title: 3,
+  subtitle: 1,
+  start: 2,
+  controls: 1,
+  music: 1,
+  paused: 2,
+  resume: 1,
+  levelUp: 2,
+  choose: 1,
+  chest: 2,
+  chestNote: 1,
+  gameOver: 3,
+  dawn: 3,
+  crow: 1,
+  nod: 1,
+  keepGoing: 1,
+  endRun: 1,
+  newBest: 1,
+  tutorial: 1,
 };
 
 /** Title screen rows that react to taps, as offsets (px) from the middle of the screen. */
@@ -99,14 +100,14 @@ function drawShop(ctx) {
   const cy = HEIGHT / 2;
   ctx.fillStyle = PALETTE[15];
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  drawText(ctx, 'SHOP', WIDTH / 2, cy - 64, 12, 10);
-  drawText(ctx, `${profile.eggs} GOLDEN EGGS`, WIDTH / 2, cy - 49, 7, 10);
+  drawText(ctx, 'SHOP', WIDTH / 2, cy - 64, 2, 10);
+  drawText(ctx, `${profile.eggs} GOLDEN EGGS`, WIDTH / 2, cy - 49, 1, 10);
   SHOP.forEach((_, i) => {
     const level = profile.shop[i];
     const dear = level < SHOP_COSTS.length && profile.eggs < SHOP_COSTS[level];
-    drawText(ctx, shopItemLine(i), WIDTH / 2, shopRowY(i), 7, level >= SHOP_COSTS.length ? 10 : dear ? 8 : 13);
+    drawText(ctx, shopItemLine(i), WIDTH / 2, shopRowY(i), 1, level >= SHOP_COSTS.length ? 10 : dear ? 8 : 13);
   });
-  drawText(ctx, 'B: BACK', WIDTH / 2, shopRowY(SHOP.length) + 4, 7, 13);
+  drawText(ctx, 'B: BACK', WIDTH / 2, shopRowY(SHOP.length) + 4, 1, 13);
 }
 
 /** The hen row of the title screen. */
@@ -125,9 +126,9 @@ export function perilLine() {
 export const CARD_W = 92;
 export const CARD_H = 104;
 const CARD_GAP = 8;
-/** Font sizes of the card name and description lines. */
-export const CARD_NAME_SIZE = 7;
-export const CARD_TEXT_SIZE = 6;
+/** Font scales of the card name and description lines. */
+export const CARD_NAME_SCALE = 1;
+export const CARD_TEXT_SCALE = 1;
 
 /** Rectangle of card `i` out of `n`, in canvas pixels (centered a little above the middle). */
 export function cardRect(i, n) {
@@ -149,21 +150,11 @@ export function gameOverLine(time, kills, level) {
   return `TIME ${formatClock(time)}   KILLS ${kills}   LV ${level}`;
 }
 
-/** Conservative width estimate for bold monospace text at `px`. */
-export function estimateTextWidth(text, px) {
-  return Math.ceil(text.length * px * 0.62);
-}
+/** Exact width (px) of `text` at font scale `scale`; the fit tests use it. */
+export { textWidth };
 
-/** Draws crisp text with a 1 px ink outline so it reads on any background. */
-function drawText(ctx, text, x, y, px, color = 13, align = 'center') {
-  ctx.font = `bold ${px}px monospace`;
-  ctx.textAlign = align;
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = PALETTE[0];
-  for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) ctx.fillText(text, x + ox, y + oy);
-  ctx.fillStyle = PALETTE[color];
-  ctx.fillText(text, x, y);
-}
+/** Crisp pixel-font text with a 1 px ink outline, so it reads on any background (font.js). */
+const drawText = drawPixelText;
 
 function dim(ctx, alpha) {
   ctx.globalAlpha = alpha;
@@ -384,7 +375,7 @@ function drawEffects(ctx, camX, camY) {
   for (const p of popups) {
     if (!p.alive) continue;
     ctx.globalAlpha = Math.min(1, (p.life / p.maxLife) * 2);
-    drawText(ctx, p.text, Math.round(toIsoX(p.x, p.y) - camX), Math.round(toIsoY(p.x, p.y, p.z) - camY), p.size, p.color);
+    drawText(ctx, p.text, Math.round(toIsoX(p.x, p.y) - camX), Math.round(toIsoY(p.x, p.y, p.z) - camY), 1, p.color);
   }
   ctx.globalAlpha = 1;
 }
@@ -413,16 +404,16 @@ function drawTopBar(ctx, time) {
   ctx.fillRect(2, 2, WIDTH - 4, 6);
   ctx.fillStyle = PALETTE[full && Math.sin(time * 12) > 0 ? 13 : 10];
   ctx.fillRect(3, 3, full ? WIDTH - 6 : Math.floor(((WIDTH - 6) * Math.min(game.xp, need)) / need), 4);
-  drawText(ctx, `LV ${game.level}`, 4, 14, 8, 13, 'left');
-  drawText(ctx, (game.peril ? `P${game.peril} ` : '') + (game.day > 1 ? `DAY ${game.day}  ` : '') + formatClock(game.time), WIDTH / 2, 14, 8, 13);
-  if (game.bannerTime > 0 && !game.over) drawText(ctx, game.banner, WIDTH / 2, HEIGHT / 2 - 40, 16, 10);
-  drawText(ctx, `KILLS ${game.kills}`, WIDTH - 4, 14, 8, 13, 'right');
+  drawText(ctx, `LV ${game.level}`, 4, 14, 1, 13, 'left');
+  drawText(ctx, (game.peril ? `P${game.peril} ` : '') + (game.day > 1 ? `DAY ${game.day}  ` : '') + formatClock(game.time), WIDTH / 2, 14, 1, 13);
+  if (game.bannerTime > 0 && !game.over) drawText(ctx, game.banner, WIDTH / 2, HEIGHT / 2 - 40, 3, 10);
+  drawText(ctx, `KILLS ${game.kills}`, WIDTH - 4, 14, 1, 13, 'right');
   // The strongest boss on the field: its name and health under the top bar.
   let boss = null;
   for (const e of enemies) if (e.alive && e.boss && (!boss || e.hp > boss.hp)) boss = e;
   const menu = game.over || game.cards.length || game.reward.length;
   if (boss && !menu) {
-    drawText(ctx, bossName(boss), WIDTH / 2, 25, 6, 13);
+    drawText(ctx, bossName(boss), WIDTH / 2, 25, 1, 13);
     ctx.fillStyle = PALETTE[0];
     ctx.fillRect(WIDTH / 2 - 50, 30, 100, 4);
     ctx.fillStyle = PALETTE[9];
@@ -447,7 +438,7 @@ function drawTopBar(ctx, time) {
  */
 function drawCards(ctx, time, cards, title, note, lock, numbered) {
   const S = HUD_STRINGS;
-  const Z = HUD_SIZES;
+  const Z = HUD_SCALES;
   dim(ctx, 0.55);
   // Slide in while the pick lock runs down
   const slide = Math.round(Math.max(0, lock) * 60);
@@ -465,19 +456,19 @@ function drawCards(ctx, time, cards, title, note, lock, numbered) {
     ctx.fillRect(r.x, y, r.w, r.h);
     ctx.fillStyle = PALETTE[15];
     ctx.fillRect(r.x + 2, y + 2, r.w - 4, r.h - 4);
-    if (numbered) drawText(ctx, String(i + 1), r.x + 8, y + 9, 7, 10);
+    if (numbered) drawText(ctx, String(i + 1), r.x + 8, y + 9, 1, 10);
     ctx.drawImage(icon.normal, cx - 14, y + 10 + Math.round(Math.sin(time * 4 + i) * 1.5), 28, 28);
-    drawText(ctx, item.name, cx, y + 50, CARD_NAME_SIZE, 13);
-    drawText(ctx, card.boon ? 'BOON' : card.level === 1 ? 'NEW!' : `LV ${card.level}`, cx, y + 61, 7, card.boon || card.level === 1 ? 10 : 12);
+    drawText(ctx, item.name, cx, y + 50, CARD_NAME_SCALE, 13);
+    drawText(ctx, card.boon ? 'BOON' : card.level === 1 ? 'NEW!' : `LV ${card.level}`, cx, y + 61, 1, card.boon || card.level === 1 ? 10 : 12);
     const [a, b] = cardText(card);
-    drawText(ctx, a, cx, y + 76, CARD_TEXT_SIZE, 7);
-    if (b) drawText(ctx, b, cx, y + 85, CARD_TEXT_SIZE, 7);
+    drawText(ctx, a, cx, y + 76, CARD_TEXT_SCALE, 7);
+    if (b) drawText(ctx, b, cx, y + 85, CARD_TEXT_SCALE, 7);
   });
 }
 
 function drawGameOver(ctx, time) {
   const S = HUD_STRINGS;
-  const Z = HUD_SIZES;
+  const Z = HUD_SCALES;
   if (game.overTime < 0.8) return;
   // At dawn the hen stays in sight between the title and the stats; after a fall the stats cover her.
   const won = game.won;
@@ -491,11 +482,11 @@ function drawGameOver(ctx, time) {
     drawText(ctx, S.gameOver, WIDTH / 2, cy - 34, Z.gameOver, 9);
   }
   const statsY = cy + (won ? 26 : -10);
-  drawText(ctx, gameOverLine(game.time, game.kills, game.level), WIDTH / 2, statsY, 7, 13);
+  drawText(ctx, gameOverLine(game.time, game.kills, game.level), WIDTH / 2, statsY, 1, 13);
   const eggs = game.eggs ? `   +${game.eggs} GOLDEN EGGS` : '';
   if (game.newBest) drawText(ctx, S.newBest + eggs, WIDTH / 2, statsY + 14, Z.newBest, 10);
-  else drawText(ctx, `BEST ${formatClock(game.best)}` + eggs, WIDTH / 2, statsY + 14, 7, 13);
-  if (game.unlockNote) drawText(ctx, game.unlockNote, WIDTH / 2, statsY + 25, 7, 10);
+  else drawText(ctx, `BEST ${formatClock(game.best)}` + eggs, WIDTH / 2, statsY + 14, 1, 13);
+  if (game.unlockNote) drawText(ctx, game.unlockNote, WIDTH / 2, statsY + 25, 1, 10);
   if (game.overTime > 1.5 && game.dawnChoice) {
     // Keep going (left) or end the run (right)
     drawText(ctx, S.keepGoing, WIDTH / 4, cy + 62, Z.keepGoing, Math.sin(time * 5) > -0.3 ? 10 : 13);
@@ -505,16 +496,16 @@ function drawGameOver(ctx, time) {
 
 function drawHud(ctx, time) {
   const S = HUD_STRINGS;
-  const Z = HUD_SIZES;
+  const Z = HUD_SCALES;
   const cy = HEIGHT / 2;
   if (!game.started) {
     drawText(ctx, S.title, WIDTH / 2, cy - 58, Z.title, 10);
-    drawText(ctx, S.subtitle, WIDTH / 2, cy - 44, Z.subtitle, 13);
-    if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, cy - 32, 7, 10);
+    drawText(ctx, S.subtitle, WIDTH / 2, cy - 41, Z.subtitle, 13);
+    if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, cy - 31, 1, 10);
     if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 22, Z.start, 13);
-    drawText(ctx, henLine(), WIDTH / 2, cy + TITLE_ROWS.hen, 7, 13);
-    drawText(ctx, perilLine(), WIDTH / 2, cy + TITLE_ROWS.peril, 7, profile.peril ? 10 : 13);
-    drawText(ctx, shopLine(), WIDTH / 2, cy + TITLE_ROWS.shop, 7, 10);
+    drawText(ctx, henLine(), WIDTH / 2, cy + TITLE_ROWS.hen, 1, 13);
+    drawText(ctx, perilLine(), WIDTH / 2, cy + TITLE_ROWS.peril, 1, profile.peril ? 10 : 13);
+    drawText(ctx, shopLine(), WIDTH / 2, cy + TITLE_ROWS.shop, 1, 10);
     drawText(ctx, S.controls, WIDTH / 2, cy + 67, Z.controls, 13);
     drawText(ctx, S.music, WIDTH / 2, cy + 77, Z.music, 13);
     if (game.shopOpen) drawShop(ctx);
