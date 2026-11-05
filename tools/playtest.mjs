@@ -38,7 +38,8 @@ const KEYS = {
 /**
  * Runs in the page: counts the distinct colors on the game canvas, counts hen-feather pixels
  * (PALETTE[7], #f4f0e6) in a 48x48 box at the center, counts predator fur pixels anywhere (rat
- * #a7a3b8, fox #ee7a2c), and hashes the image to detect change.
+ * #a7a3b8, fox #ee7a2c) and bluish pixels (rain), measures the mean brightness (0-255), and
+ * hashes the image to detect change.
  */
 const CANVAS_STATS = `(() => {
   const c = document.getElementById('c');
@@ -46,6 +47,8 @@ const CANVAS_STATS = `(() => {
   const colors = new Set();
   let hen = 0;
   let fur = 0;
+  let sky = 0;
+  let light = 0;
   let hash = 0;
   for (let i = 0; i < d.length; i += 4) {
     const rgb = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
@@ -56,8 +59,19 @@ const CANVAS_STATS = `(() => {
     const y = (p / c.width) | 0;
     if (rgb === 0xf4f0e6 && Math.abs(x - c.width / 2) < 24 && Math.abs(y - c.height / 2) < 24) hen++;
     if (rgb === 0xa7a3b8 || rgb === 0xee7a2c) fur++;
+    if (d[i + 2] > d[i + 1] + 10) sky++; // bluish (rain streaks, even half transparent; grass is green)
+    light += d[i] + d[i + 1] + d[i + 2];
   }
-  return { colors: colors.size, henPixels: hen, furPixels: fur, hash, w: c.width, h: c.height };
+  return {
+    colors: colors.size,
+    henPixels: hen,
+    furPixels: fur,
+    skyPixels: sky,
+    light: light / (3 * c.width * c.height),
+    hash,
+    w: c.width,
+    h: c.height,
+  };
 })()`;
 
 /**
@@ -395,8 +409,67 @@ async function outfitScenarios(page, client, base) {
   });
 }
 
+async function dayScenarios(page, base) {
+  await check('15. the day turns: rain falls, then night comes', async () => {
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+    await page.tapKey('KeyD', 100);
+    await sleep(300);
+    const day = await page.stats();
+    await page.evaluate('window.__qq.cheat.setTime(200)');
+    await sleep(500);
+    const rain = await page.stats();
+    await page.screenshot('14-rain.png');
+    await page.evaluate('window.__qq.cheat.setTime(500)');
+    await sleep(500);
+    const night = await page.stats();
+    await page.screenshot('15-night.png');
+    expect(rain.skyPixels > day.skyPixels + 60, `rain: ${day.skyPixels} -> ${rain.skyPixels} bluish px`);
+    expect(night.light < day.light * 0.75, `night is not darker: ${fmt(day.light)} -> ${fmt(night.light)}`);
+  });
+
+  await check('16. ten minutes win at dawn; a key goes back to the title', async () => {
+    await page.evaluate('window.__qq.cheat.setTime(598)');
+    await page.waitFor('window.__qq.snapshot().won', 4000);
+    await sleep(500);
+    await page.screenshot('16-dawn.png');
+    const s = await page.snapshot();
+    expect(s.over && s.time === 600, `time ${s.time}`);
+    await page.tapKey('Space', 50);
+    await page.waitFor('!window.__qq.snapshot().started', 3000);
+  });
+
+  await check('17. a boss shows its bar; a chest opens the CHEST! screen', async () => {
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+    await page.tapKey('KeyD', 100);
+    await page.evaluate(`window.__qq.cheat.boss('fox')`);
+    await page.waitFor('window.__qq.snapshot().bosses === 1', 3000);
+    await sleep(300);
+    await page.screenshot('17-boss.png');
+    await page.evaluate('window.__qq.cheat.prize(0)');
+    await page.waitFor('window.__qq.snapshot().reward.length > 0', 3000);
+    await sleep(200);
+    await page.screenshot('18-chest.png');
+    const s = await page.snapshot();
+    expect(s.reward.length === 1 || s.reward.length === 3, `${s.reward.length} upgrades in the chest`);
+    await page.waitFor('window.__qq.snapshot().rewardLock <= 0', 3000);
+    await page.tapKey('Space', 50);
+    await page.waitFor('window.__qq.snapshot().reward.length === 0', 3000);
+  });
+
+  await check('18. a broken crate leaves something behind', async () => {
+    const a = await page.snapshot();
+    await page.evaluate('window.__qq.cheat.crate()');
+    await page.waitFor('window.__qq.snapshot().crates === 1', 2000);
+    await page.waitFor('window.__qq.snapshot().crates === 0', 6000);
+    await sleep(200);
+    const b = await page.snapshot();
+    const left = b.pickups.length > a.pickups.length || b.corn > a.corn || b.xp !== a.xp || b.level !== a.level || b.cards.length > 0;
+    expect(left, 'the crate broke and left nothing');
+  });
+}
+
 async function distScenario(page) {
-  await check('15. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
+  await check('19. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
     await access(DIST).catch(() => {
       throw new Error('dist/index.html is missing: run npm run build first');
     });
@@ -433,9 +506,10 @@ async function main() {
     await movementScenarios(page, client, base);
     await playScenarios(page, client, base);
     await outfitScenarios(page, client, base);
+    await dayScenarios(page, base);
     await distScenario(page);
     results.push({
-      name: '16. no exceptions, console errors or failed loads',
+      name: '20. no exceptions, console errors or failed loads',
       ok: problems.length === 0,
       error: problems.slice(0, 5).join(' | '),
     });
