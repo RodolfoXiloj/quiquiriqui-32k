@@ -46,8 +46,10 @@ import {
   perilLine,
   henLine,
   shopLine,
-  shopItemLine,
+  shopCost,
   shopRowAt,
+  shopRowY,
+  SHOP_ROW,
 } from '../src/render.js';
 import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, fitScreen, screenScale } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
@@ -1179,11 +1181,14 @@ describe('quiquiriqui at 5x: golden eggs and the shop', () => {
     assert.equal(profile.eggs, 5);
     tapKey('Digit3'); // too dear now: nothing happens
     assert.equal(profile.shop[2], 1);
-    tapAt(WIDTH / 2, HEIGHT / 2 - 32 + 13 * SHOP.length);
+    tapAt(WIDTH / 2, shopRowY(SHOP.length));
     update(STEP);
     assert.equal(game.shopOpen, false, 'BACK did not close the shop');
     assert.equal(game.started, false);
-    assert.equal(shopRowAt(HEIGHT / 2 - 32), 0);
+    for (let i = 0; i <= SHOP.length; i++) {
+      assert.equal(shopRowAt(shopRowY(i)), i);
+      assert.equal(shopRowAt(shopRowY(i) + 8), i, 'a tap near the edge of a row');
+    }
     profile.eggs = 0;
     resetRun();
   });
@@ -1396,12 +1401,17 @@ describe('quiquiriqui: text and layout', () => {
     }
     profile.eggs = 99999;
     assert.ok(textWidth(shopLine(), 1) <= WIDTH - 16, 'shop line');
-    for (let i = 0; i < SHOP.length; i++) {
-      for (const level of [0, SHOP_COSTS.length]) {
-        profile.shop = SHOP.map(() => level);
-        assert.ok(textWidth(shopItemLine(i), 1) <= WIDTH - 16, `shop: "${shopItemLine(i)}"`);
-      }
+    for (const upgrade of SHOP) {
+      // Name and effect sit between the icon and the level pips
+      for (const line of [upgrade.name, upgrade.text]) assert.ok(SHOP_ROW.text + textWidth(line, 1) <= SHOP_ROW.pips - 4, `shop: "${line}"`);
+      assert.ok(iconSprites[upgrade.id], `no icon for the shop's ${upgrade.id}`);
     }
+    // The dearest price ends left of the egg, and leaves the pips alone
+    profile.shop = SHOP.map(() => SHOP_COSTS.length - 1);
+    const priceLeft = SHOP_ROW.x + SHOP_ROW.w - 15 - textWidth(shopCost(0), 1);
+    assert.ok(SHOP_ROW.pips + 6 * SHOP_COSTS.length + 4 <= priceLeft, 'the pips run into the price');
+    // The whole shop fits the shortest screen
+    assert.ok(shopRowY(SHOP.length) + 6 <= HEIGHT, 'BACK is off the screen');
     Object.assign(profile, saved);
   });
 
@@ -1471,10 +1481,11 @@ describe('quiquiriqui: text and layout', () => {
     const saved = JSON.parse(JSON.stringify(profile));
     const texts = [...Object.values(HUD_STRINGS)];
     for (const item of [...ITEMS, ...BOONS]) texts.push(item.name, ...(item.text || []), ...(item.up || []));
+    for (const upgrade of SHOP) texts.push(upgrade.name, upgrade.text);
     for (const hen of HENS) texts.push(hen.name, `${hen.name}!`);
     for (const [level, eggs, hens, peril] of [[0, 0, 1, 0], [5, 99999, 7, 5]]) {
       Object.assign(profile, { eggs, hens, perilUnlocked: peril, peril, shop: SHOP.map(() => level) });
-      texts.push(shopLine(), perilLine(), henLine(), ...SHOP.map((_, i) => shopItemLine(i)));
+      texts.push(shopLine(), perilLine(), henLine(), ...SHOP.map((_, i) => shopCost(i)));
     }
     Object.assign(profile, saved);
     texts.push(gameOverLine(3599.9, 98765, 123), 'BEST 12:34   +99 GOLDEN EGGS', 'PERIL 5 UNLOCKED!', 'P5 DAY 12  59:59');

@@ -441,7 +441,7 @@ const EGG_LOOKS = [
 /** A Chick Orbit chick (9x8), facing right. */
 export let chickSprite = null;
 
-/** 14x14 icons for the upgrade cards and the HUD, by item id. */
+/** 14x14 icons for the upgrade cards, the HUD and the shop, by item id (profile.js SHOP ids too). */
 export const iconSprites = {};
 
 /** Thunder Comb icon: a zigzag bolt, as [row, from x, to x]. */
@@ -529,6 +529,40 @@ const ICON_SHAPES = {
   bandana: (x, y) => {
     if (y === 3 && (x === 1 || x === 12)) return 12;
     return inTaper(x, y, 6.5, 3, 10, 5.5, 0) ? ((x + y) % 3 === 0 ? 13 : 12) : -1;
+  },
+  // The shop's permanent upgrades (profile.js SHOP), drawn apart from the items worn in a run.
+  // Tough Hide: a red heart
+  hide: (x, y) => {
+    if (y <= 3 && (x === 6 || x === 7)) return -1;
+    const heart = inEllipse(x, y, 4.5, 5, 2.8, 2.6) || inEllipse(x, y, 8.5, 5, 2.8, 2.6) || inTaper(x, y, 6.5, 5, 11, 5.6, 0);
+    return heart ? (x === 4 && y === 4 ? 13 : 9) : -1;
+  },
+  // Strong Legs: a feathered thigh on a golden leg with three toes
+  legs: (x, y) => {
+    if (inEllipse(x, y, 6.5, 3.5, 4.6, 2.8)) return x >= 8 && y >= 4 ? 8 : 7;
+    if (y <= 8) return x === 6 || x === 7 ? 10 : -1;
+    if ((x === 6 || x === 7) && y <= 11) return 10; // middle toe
+    const side = x + y;
+    if (((side === 13 || side === 14) && x <= 5) || ((y - x === 0 || y - x === 1) && x >= 8)) return 10; // side toes
+    return -1;
+  },
+  // Sharp Eye: a wide-open eye
+  eye: (x, y) => {
+    if (!inEllipse(x, y, 6.5, 6.5, 5.8, 3.6)) return -1;
+    const r = Math.hypot(x - 6.5, y - 6.5);
+    return r < 1.2 ? 0 : x === 5 && y === 5 ? 13 : r < 2.8 ? 12 : 13;
+  },
+  // Big Crop: a sack heaped with corn
+  crop: (x, y) => {
+    if (y <= 4) return inEllipse(x, y, 6.5, 4, 3.6, 2) ? ((x + y) % 2 ? 10 : 19) : -1;
+    if (y === 5) return x >= 4 && x <= 9 ? 6 : -1;
+    return inEllipse(x, y, 6.5, 8.5, 5, 3.8) ? (x >= 9 || y >= 11 ? 6 : 8) : -1;
+  },
+  // Quick Learner: a kernel and an arrow going up
+  learner: (x, y) => {
+    if (inEllipse(x, y, 4.5, 8, 2.6, 3.6)) return x === 4 && y === 6 ? 13 : 10;
+    if ((x === 10 && y >= 3 && y <= 11) || (y >= 3 && y <= 5 && Math.abs(x - 10) <= y - 3)) return 12;
+    return -1;
   },
 };
 

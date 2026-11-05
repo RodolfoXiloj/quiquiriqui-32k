@@ -80,34 +80,65 @@ export function shopLine() {
   return `B: SHOP   ${profile.eggs} GOLDEN EGGS`;
 }
 
-/** Shop rows: the upgrades, then BACK, as offsets (px) from the middle of the screen. */
-const shopRowY = (i) => HEIGHT / 2 - 32 + i * 13;
+/** Height (px) of a shop row. */
+const SHOP_ROW_H = 19;
+/** Canvas y of the middle of shop row `i`: the upgrades, then BACK. */
+export const shopRowY = (i) => HEIGHT / 2 - 30 + i * SHOP_ROW_H;
+/** A shop row's left edge and width, where its name starts and where its level pips start. */
+export const SHOP_ROW = { x: 36, w: 248, text: 70, pips: 190 };
 
 /** The shop row under canvas height `y`: an upgrade index, SHOP.length for BACK, or -1. */
 export function shopRowAt(y) {
-  for (let i = 0; i <= SHOP.length; i++) if (Math.abs(y - shopRowY(i)) <= 5) return i;
+  for (let i = 0; i <= SHOP.length; i++) if (Math.abs(y - shopRowY(i)) <= SHOP_ROW_H / 2) return i;
   return -1;
 }
 
-/** One line of the shop: key, name, level and what the next level costs. */
-export function shopItemLine(i) {
+/** What the next level of shop upgrade `i` costs in golden eggs ('40'), or 'MAX'. */
+export function shopCost(i) {
   const level = profile.shop[i];
-  const cost = level < SHOP_COSTS.length ? `${SHOP_COSTS[level]} EGGS` : 'MAX';
-  return `${i + 1} ${SHOP[i].name}  ${SHOP[i].text}  LV ${level}  ${cost}`;
+  return level < SHOP_COSTS.length ? String(SHOP_COSTS[level]) : 'MAX';
 }
 
+/** The shop: a row per upgrade with its key, icon, name and effect, level pips and price. */
 function drawShop(ctx) {
   const cy = HEIGHT / 2;
+  const { x, w, text, pips } = SHOP_ROW;
+  const egg = eggSprites[2].normal;
   ctx.fillStyle = PALETTE[15];
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  drawText(ctx, 'SHOP', WIDTH / 2, cy - 64, 2, 10);
-  drawText(ctx, `${profile.eggs} GOLDEN EGGS`, WIDTH / 2, cy - 49, 1, 10);
-  SHOP.forEach((_, i) => {
+  drawText(ctx, 'SHOP', WIDTH / 2, cy - 62, 2, 10);
+  const eggs = `${profile.eggs} GOLDEN EGGS`;
+  const left = Math.round(WIDTH / 2 - (textWidth(eggs) + 11) / 2);
+  ctx.drawImage(egg, left, cy - 52);
+  drawText(ctx, eggs, left + 11, cy - 47, 1, 10, 'left');
+  SHOP.forEach((upgrade, i) => {
+    const y = shopRowY(i);
     const level = profile.shop[i];
-    const dear = level < SHOP_COSTS.length && profile.eggs < SHOP_COSTS[level];
-    drawText(ctx, shopItemLine(i), WIDTH / 2, shopRowY(i), 1, level >= SHOP_COSTS.length ? 10 : dear ? 8 : 13);
+    const maxed = level >= SHOP_COSTS.length;
+    // Too dear for now: the whole row fades
+    ctx.globalAlpha = maxed || profile.eggs >= SHOP_COSTS[level] ? 1 : 0.5;
+    ctx.fillStyle = PALETTE[maxed ? 10 : 17];
+    ctx.fillRect(x, y - 9, w, 18);
+    ctx.fillStyle = PALETTE[15];
+    ctx.fillRect(x + 1, y - 8, w - 2, 16);
+    drawText(ctx, String(i + 1), x + 7, y, 1, 10);
+    ctx.drawImage(iconSprites[upgrade.id].normal, x + 13, y - 7);
+    drawText(ctx, upgrade.name, text, y - 4, 1, 13, 'left');
+    drawText(ctx, upgrade.text, text, y + 4, 1, 16, 'left');
+    for (let l = 0; l < SHOP_COSTS.length; l++) {
+      ctx.fillStyle = PALETTE[0];
+      ctx.fillRect(pips + l * 6, y - 3, 5, 5);
+      ctx.fillStyle = PALETTE[l < level ? 10 : 17];
+      ctx.fillRect(pips + l * 6 + 1, y - 2, 3, 3);
+    }
+    if (maxed) drawText(ctx, 'MAX', x + w - 6, y, 1, 10, 'right');
+    else {
+      drawText(ctx, shopCost(i), x + w - 15, y, 1, 13, 'right');
+      ctx.drawImage(egg, x + w - 12, y - 5);
+    }
   });
-  drawText(ctx, 'B: BACK', WIDTH / 2, shopRowY(SHOP.length) + 4, 1, 13);
+  ctx.globalAlpha = 1;
+  drawText(ctx, 'B: BACK', WIDTH / 2, shopRowY(SHOP.length), 1, 13);
 }
 
 /** The hen row of the title screen. */

@@ -18,11 +18,11 @@ const BLACK_HEN_PERIL = 2;
 
 /** Permanent upgrades: each level adds `per` to a stat of every run (items.js sums them in). */
 export const SHOP = [
-  { name: 'TOUGH HIDE', text: '+10 HEALTH', stat: 'maxHp', per: 10 },
-  { name: 'STRONG LEGS', text: '+3% SPEED', stat: 'speed', per: 0.03 },
-  { name: 'SHARP EYE', text: '+5% DAMAGE', stat: 'damage', per: 0.05 },
-  { name: 'BIG CROP', text: '+0.25 REACH', stat: 'magnet', per: 0.25 },
-  { name: 'QUICK LEARNER', text: '+5% XP', stat: 'xp', per: 0.05 },
+  { id: 'hide', name: 'TOUGH HIDE', text: '+10 HEALTH', stat: 'maxHp', per: 10 },
+  { id: 'legs', name: 'STRONG LEGS', text: '+3% SPEED', stat: 'speed', per: 0.03 },
+  { id: 'eye', name: 'SHARP EYE', text: '+5% DAMAGE', stat: 'damage', per: 0.05 },
+  { id: 'crop', name: 'BIG CROP', text: '+0.25 REACH', stat: 'magnet', per: 0.25 },
+  { id: 'learner', name: 'QUICK LEARNER', text: '+5% XP', stat: 'xp', per: 0.05 },
 ];
 /** Golden eggs for each next level of a shop upgrade (5 levels). */
 export const SHOP_COSTS = [10, 20, 40, 80, 160];
