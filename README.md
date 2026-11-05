@@ -135,6 +135,7 @@ Only the shipped file is gated: `dist/index.html` after Terser **and** Roadrolle
 | M3 the ten minutes (measured Nov 5, 2026) | 43,915 B | 18,784 B (57.3%) |
 | Polish and phone fit (measured Nov 5, 2026) | 44,333 B | 18,944 B (57.8%) |
 | Spawns on any screen and the audio pass (measured Nov 5, 2026) | 48,734 B | 20,800 B (63.5%) |
+| Faster hen, snappier magnet, new hit sound (measured Nov 5, 2026) | 49,013 B | 20,878 B (63.7%) |
 | **Final target** | n/a | **≤ 32,768 bytes** |
 
 ---
@@ -155,7 +156,7 @@ npm run size        # re-check the size of dist/index.html
 
 The build **fails** if `dist/index.html` would be over **32,768 bytes** or references any external resource. A failed build leaves the previous `dist/index.html` untouched.
 
-To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?autoplay`. The bot dodges, collects corn, picks cards and starts over after a game over. Add `&speed=N` for another speed, or `&peaceful` to walk around with no predators. The wardrobe, `http://localhost:8080/__dev/wardrobe.html`, shows every worn item at each of its looks. The playtest needs Node 22+ and Chrome or Edge (`CHROME_PATH` to override). All test tooling is dev-only and never shipped.
+To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?autoplay`. The bot dodges, collects corn, picks cards and starts over after a game over. Add `&speed=N` for another speed, or `&peaceful` to walk around with no predators. The wardrobe, `http://localhost:8080/__dev/wardrobe.html`, shows every worn item at each of its looks, and the sound board, `http://localhost:8080/__dev/sounds.html`, plays every sound effect and each part of the music. The playtest needs Node 22+ and Chrome or Edge (`CHROME_PATH` to override). All test tooling is dev-only and never shipped.
 
 ---
 
