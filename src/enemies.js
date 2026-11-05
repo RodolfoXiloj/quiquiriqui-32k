@@ -17,7 +17,7 @@ import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
 import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge } from './sfx.js';
-import { PERIL } from './profile.js';
+import { PERIL, NO_MERCY } from './profile.js';
 
 export const RAT = 0;
 export const FOX = 1;
@@ -39,8 +39,9 @@ export const SHOOT = 1;
 export const CHARGE = 2;
 export const RUN = 3;
 export const CLOSE = 4;
-/** During a FRENZY! every predator runs this much faster. */
+/** During a FRENZY! every predator runs this much faster; at peril NO MERCY, always this much. */
 export const FRENZY_SPEED = 1.2;
+export const NO_MERCY_SPEED = 1.1;
 
 /**
  * Enemy kinds. hp: health at player level 1 · speed: tiles per second · r: body radius (tiles)
@@ -294,7 +295,7 @@ export function spawnEnemy(kind, x, y) {
     prevY: y,
     hp,
     maxHp: hp,
-    speed: type.speed * (1 + game.time / SPEED_TIME) * (1 + 0.1 * days) * (1 + PERIL.speed * peril),
+    speed: type.speed * (1 + game.time / SPEED_TIME) * (1 + 0.1 * days) * (peril >= NO_MERCY ? NO_MERCY_SPEED : 1),
     r: type.r,
     dmg: Math.round(type.dmg * (1 + PERIL.bite * peril)),
     flying: !!type.flying,

@@ -22,7 +22,7 @@ import { game, settings, resetGame, loadBest, saveBest, xpToNext, showBanner } f
 import { RUN_LENGTH, weatherAt } from './weather.js';
 import { updateMusic, loadMusicSetting, toggleMusic } from './music.js';
 import { renderScene, cardAt, titleRowAt, shopRowAt } from './render.js';
-import { profile, loadProfile, choosePeril, chooseHen, henUnlocked, unlockAfterDawn, HENS, eggsEarned, bankEggs, buyUpgrade, SHOP } from './profile.js';
+import { profile, loadProfile, choosePeril, chooseHen, henUnlocked, unlockAfterDawn, HENS, eggsEarned, bankEggs, buyUpgrade, SHOP, TWO_CARDS } from './profile.js';
 
 /** Real seconds before a card can be picked once the cards open. */
 const CARD_LOCK = 0.35;
@@ -201,7 +201,8 @@ function dawnPicked() {
 
 /** Opens the level-up cards (or heals when nothing is left to upgrade). */
 function openCards() {
-  game.cards = rollCards(game.level === 2);
+  // At peril TWO CARDS, one fewer to choose from
+  game.cards = rollCards(game.level === 2).slice(0, game.peril >= TWO_CARDS ? 2 : 3);
   game.cardLock = CARD_LOCK;
   sfxLevelUp();
   if (!game.cards.length) {

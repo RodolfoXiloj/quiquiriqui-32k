@@ -19,7 +19,7 @@ import { input, STICK_RADIUS } from './input.js';
 import { game, formatClock, xpToNext } from './state.js';
 import { weatherAt, DAWN_START, RUN_LENGTH } from './weather.js';
 import { hawk, HAWK_HUNT, HAWK_STRIKE, HAWK_R } from './events.js';
-import { profile, MAX_PERIL, HENS, henUnlocked, SHOP, SHOP_COSTS } from './profile.js';
+import { profile, MAX_PERIL, HENS, henUnlocked, SHOP, SHOP_COSTS, PERIL_RULES } from './profile.js';
 
 /** Every fixed on-screen string. A test checks that each fits the 320 px canvas. */
 export const HUD_STRINGS = {
@@ -147,10 +147,11 @@ export function henLine() {
   return `Q < ${HENS[game.hen].name} > E` + (henUnlocked(game.hen) ? '' : '  LOCKED');
 }
 
-/** The peril row of the title screen. */
+/** The peril row of the title screen, with the rule the chosen level adds. */
 export function perilLine() {
   const locked = MAX_PERIL - profile.perilUnlocked;
-  return `Z < PERIL ${profile.peril} > C` + (locked ? `   ${locked} LOCKED` : '');
+  const rule = PERIL_RULES[profile.peril];
+  return `Z < PERIL ${profile.peril}${rule ? ': ' + rule : ''} > C` + (locked ? `  ${locked} LOCKED` : '');
 }
 
 /** Upgrade card layout, shared with main.js (taps) and the tests (text fit). */

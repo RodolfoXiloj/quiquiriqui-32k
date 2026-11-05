@@ -79,6 +79,7 @@ import {
   SHOT_EVERY,
   SHOT_LIFE,
   HP_TIME,
+  NO_MERCY_SPEED,
   BOSS_HP,
   BOSS_SIZE,
   BOSS_BITE,
@@ -92,11 +93,12 @@ import {
   clearEnemies,
 } from '../src/enemies.js';
 import { pickups, spawnPickup, CHEST, MAGNET, BOMB, FOOD } from '../src/pickups.js';
-import { TIMELINE, CRATE_EVERY, pickKind, ELITE_FROM, RAINBOW_FROM, FRENZY_RATE, quota } from '../src/waves.js';
+import { TIMELINE, CRATE_EVERY, pickKind, ELITE_FROM, RAINBOW_FROM, FRENZY_RATE, quota, QUOTA, NO_MERCY_QUOTA } from '../src/waves.js';
 import {
   EVENTS,
   EVENT_FROM,
   EVENT_GAP,
+  MORE_GAP,
   HAWK,
   STAMPEDE,
   SURROUNDED,
@@ -133,7 +135,23 @@ import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
 import { GLYPHS, GLYPH_W, GLYPH_H } from '../src/font.js';
-import { profile, PERIL, MAX_PERIL, HENS, SHOP, SHOP_COSTS, unlockAfterDawn, eggsEarned, buyUpgrade } from '../src/profile.js';
+import {
+  profile,
+  PERIL,
+  MAX_PERIL,
+  PERIL_RULES,
+  MORE_EVENTS,
+  ELITES_X2,
+  TWO_BOSSES,
+  TWO_CARDS,
+  NO_MERCY,
+  HENS,
+  SHOP,
+  SHOP_COSTS,
+  unlockAfterDawn,
+  eggsEarned,
+  buyUpgrade,
+} from '../src/profile.js';
 import { audio, sfxKill, sfxLevelUp, sfxPeck, HIT_SOUNDS } from '../src/sfx.js';
 import { music, PARTS, notesAt, sectionLength } from '../src/music.js';
 
@@ -1045,7 +1063,7 @@ describe('quiquiriqui at 5x: peril levels', () => {
     Object.assign(profile, { peril: 0, perilUnlocked: 0, hen: 0, hens: 1 });
   }
 
-  it('peril makes predators tougher, faster, hungrier and more numerous', () => {
+  it('peril adds 10% health and bite per level, and leaves numbers and speed to its rules', () => {
     const born = (peril) => {
       resetRun({ peaceful: false, peril });
       start();
@@ -1056,9 +1074,7 @@ describe('quiquiriqui at 5x: peril levels', () => {
       }
       return enemies.filter((e) => e.alive && !e.prop).length;
     };
-    const calm = born(0);
-    const perilous = born(2);
-    assert.ok(perilous / calm > 1.3 && perilous / calm < 1.5, `${calm} -> ${perilous} predators`);
+    assert.equal(born(2), born(0), 'peril 2 changed how many predators are born');
     // Copy the values: the pool hands out the same object again after a reset
     resetRun({ peril: 0 });
     start();
@@ -1067,7 +1083,7 @@ describe('quiquiriqui at 5x: peril levels', () => {
     start();
     const b = { ...spawnEnemy(RAT, 20, 0) };
     assert.equal(b.maxHp, Math.floor(ENEMY_TYPES[RAT].hp * (1 + 2 * PERIL.hp)));
-    assert.ok(Math.abs(b.speed / a.speed - (1 + 2 * PERIL.speed)) < 1e-9);
+    assert.equal(b.speed, a.speed, 'peril 2 changed their speed');
     assert.equal(b.dmg, Math.round(ENEMY_TYPES[RAT].dmg * (1 + 2 * PERIL.bite)));
   });
 
@@ -1625,6 +1641,102 @@ describe('quiquiriqui at 5x: difficulty', () => {
   });
 });
 
+describe('quiquiriqui at 5x: peril rules', () => {
+  /** A run at `peril` with waves, a tough unarmed hen, no bosses (they hold events back), up to `until` s. */
+  function playTo(peril, until, onStep = () => {}) {
+    resetRun({ peaceful: false, peril });
+    start();
+    buildOrder.length = 0;
+    while (game.time < until) {
+      hen.hp = hen.maxHp = 1e6;
+      game.cards = [];
+      game.reward = [];
+      for (const e of enemies) if (e.boss) e.alive = false;
+      update(STEP);
+      onStep();
+    }
+  }
+
+  it(`peril ${MORE_EVENTS}, MORE EVENTS: after the first, events come every 30 to 50 s`, () => {
+    const times = [];
+    playTo(MORE_EVENTS, 330, () => {
+      if (game.bannerTime === 2.5 && EVENTS.includes(game.banner)) times.push(game.time);
+    });
+    assert.ok(times.length >= 6, `${times.length} events in 5:30`);
+    for (let i = 1; i < times.length; i++) {
+      const gap = times[i] - times[i - 1];
+      assert.ok(gap >= MORE_GAP - 0.1 && gap <= MORE_GAP + 20.1, `a gap of ${gap.toFixed(1)} s`);
+    }
+    resetRun();
+  });
+
+  it(`peril ${ELITES_X2}, ELITES X2: an elite every 20 to 30 s`, () => {
+    const times = [];
+    const live = new Set();
+    playTo(ELITES_X2, 240, () => {
+      for (const e of live) if (!e.alive || !e.elite) live.delete(e);
+      for (const e of enemies) {
+        if (!e.alive || !e.elite || live.has(e)) continue;
+        live.add(e);
+        times.push(game.time);
+      }
+    });
+    assert.ok(times.length >= 7, `${times.length} elites in 4 minutes`);
+    for (let i = 1; i < times.length; i++) {
+      const gap = times[i] - times[i - 1];
+      assert.ok(gap >= 19.9 && gap <= 30.1, `a gap of ${gap.toFixed(1)} s`);
+    }
+    resetRun();
+  });
+
+  it(`peril ${TWO_BOSSES}, TWO BOSSES: each boss comes with another`, () => {
+    const bosses = (peril) => {
+      resetRun({ peaceful: false, peril });
+      start();
+      buildOrder.length = 0;
+      while (game.time < 61) {
+        hen.hp = hen.maxHp = 1e6;
+        game.cards = [];
+        game.reward = [];
+        update(STEP);
+      }
+      return enemies.filter((e) => e.alive && e.boss).length;
+    };
+    assert.equal(bosses(TWO_BOSSES - 1), 1);
+    assert.equal(bosses(TWO_BOSSES), 2);
+    resetRun();
+  });
+
+  it(`peril ${TWO_CARDS}, TWO CARDS: a level-up offers two cards, not three`, () => {
+    for (const [peril, n] of [[TWO_CARDS - 1, 3], [TWO_CARDS, 2]]) {
+      resetRun({ peril });
+      start();
+      game.xp = xpToNext(1);
+      update(STEP);
+      assert.equal(game.cards.length, n, `peril ${peril}`);
+      tapKey('Digit1');
+      game.xp = xpToNext(2);
+      steps(0.5);
+      assert.equal(game.cards.length, n, `peril ${peril}, second level-up`);
+    }
+    resetRun();
+  });
+
+  it(`peril ${NO_MERCY}, NO MERCY: a fuller meadow and faster predators`, () => {
+    resetRun({ peril: NO_MERCY - 1 });
+    start();
+    const before = quota(200);
+    const a = { ...spawnEnemy(RAT, hen.x + 20, hen.y) };
+    resetRun({ peril: NO_MERCY });
+    start();
+    assert.equal(before, QUOTA[3]);
+    assert.equal(quota(200), Math.round(QUOTA[3] * NO_MERCY_QUOTA));
+    const b = { ...spawnEnemy(RAT, hen.x + 20, hen.y) };
+    assert.ok(Math.abs(b.speed / a.speed - NO_MERCY_SPEED) < 1e-9, `x${(b.speed / a.speed).toFixed(3)}`);
+    resetRun();
+  });
+});
+
 describe('quiquiriqui at 5x: the bot and a long run', () => {
   it('the bot survives the first minute', () => {
     resetRun({ peaceful: false });
@@ -1825,7 +1937,12 @@ describe('quiquiriqui: text and layout', () => {
     assert.ok(textWidth(gameOverLine(599, 9999, 99), 1) <= WIDTH - 16, 'game over line');
     const saved = { ...profile };
     Object.assign(profile, { perilUnlocked: 0, hens: 1, hen: 0 });
-    assert.ok(textWidth(perilLine(), 1) <= WIDTH - 16, 'peril line');
+    for (let p = 0; p <= MAX_PERIL; p++) {
+      Object.assign(profile, { perilUnlocked: p, peril: p });
+      assert.ok(textWidth(perilLine(), 1) <= WIDTH - 16, `peril line: ${perilLine()}`);
+      if (p) assert.ok(perilLine().includes(PERIL_RULES[p]), 'the rule is not on the title');
+    }
+    Object.assign(profile, { perilUnlocked: 0, peril: 0 });
     for (let i = 0; i < HENS.length; i++) {
       game.hen = i;
       assert.ok(textWidth(henLine(), 1) <= WIDTH - 16, 'hen line');

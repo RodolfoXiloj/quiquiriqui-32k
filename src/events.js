@@ -15,7 +15,7 @@ import { enemies, spawnEnemy, hitEnemy, makeRoom, RAT, FOX, BADGER, RUN, CLOSE }
 import { spawnParticle } from './pool.js';
 import { triggerShake } from './juice.js';
 import { sfxAlarm, sfxScreech, sfxBoom } from './sfx.js';
-import { PERIL } from './profile.js';
+import { PERIL, MORE_EVENTS } from './profile.js';
 import { RUN_LENGTH } from './weather.js';
 
 export const HAWK = 0;
@@ -25,9 +25,13 @@ export const FRENZY = 3;
 /** The banner of each event. */
 export const EVENTS = ['HAWK!', 'STAMPEDE!', 'SURROUNDED!', 'FRENZY!'];
 
-/** The first event (always SURROUNDED!) comes at EVENT_FROM seconds; then one every EVENT_GAP to EVENT_GAP + 30. */
+/**
+ * The first event (always SURROUNDED!) comes at EVENT_FROM seconds; then one every EVENT_GAP to
+ * EVENT_GAP + 30 (at peril MORE EVENTS, every MORE_GAP to MORE_GAP + 20).
+ */
 export const EVENT_FROM = 50;
 export const EVENT_GAP = 45;
+export const MORE_GAP = 30;
 /** Each day gone by adds this share to an event's predators (as MORE_PER_DAY does to waves). */
 const MORE_PER_DAY = 0.5;
 
@@ -69,7 +73,7 @@ export function resetEvents() {
 }
 
 /** How many predators an event brings today, at this peril. */
-const scaled = (n) => Math.round(n * (1 + MORE_PER_DAY * (game.day - 1)) * (1 + PERIL.spawns * game.peril));
+const scaled = (n) => Math.round(n * (1 + MORE_PER_DAY * (game.day - 1)));
 
 /** Spawns a predator of `kind` at (x, y), making room in a full pool. */
 function place(kind, x, y) {
@@ -157,5 +161,5 @@ export function updateEvents(dt) {
     if (kind >= lastEvent) kind++;
   }
   startEvent(kind);
-  nextEventAt = game.time + EVENT_GAP + gameRand() * 30;
+  nextEventAt = game.time + (game.peril >= MORE_EVENTS ? MORE_GAP + gameRand() * 20 : EVENT_GAP + gameRand() * 30);
 }

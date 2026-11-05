@@ -8,7 +8,7 @@
 import { gameRand } from './rng.js';
 import { game, settings, showBanner } from './state.js';
 import { RUN_LENGTH } from './weather.js';
-import { PERIL } from './profile.js';
+import { ELITES_X2, TWO_BOSSES, NO_MERCY } from './profile.js';
 import { hen } from './hen.js';
 import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, SKUNK, ENEMY_TYPES, enemies, spawnEnemy, spawnBoss, spawnPoint, makeElite, makeRoom, SPAWN_MAX } from './enemies.js';
 
@@ -22,6 +22,8 @@ export const MORE_PER_DAY = 0.5;
  */
 export const ELITE_FROM = 60;
 export const RAINBOW_FROM = 180;
+/** At peril ELITES X2, one every 20 to 30 s, and rainbow ones from 2:00. */
+export const RAINBOW_FROM_X2 = 120;
 const RAINBOW_SHARE = 0.2;
 /** During a FRENZY! (events.js) the waves come this many times as fast. */
 export const FRENZY_RATE = 3;
@@ -33,6 +35,8 @@ export const FRENZY_RATE = 3;
  */
 export const QUOTA = [14, 22, 30, 38, 46, 54, 62, 70, 78, 90];
 export const QUOTA_RATE = 4;
+/** At peril NO MERCY the quota is this much higher. */
+export const NO_MERCY_QUOTA = 1.5;
 
 export const TIMELINE = [
   { at: 0, kinds: [RAT], count: 4, over: 2 },
@@ -112,14 +116,15 @@ export function pickKind(kinds) {
 }
 
 function startSpawner(event) {
-  const count = Math.round(event.count * (1 + MORE_PER_DAY * (game.day - 1)) * (1 + PERIL.spawns * game.peril));
+  const count = Math.round(event.count * (1 + MORE_PER_DAY * (game.day - 1)));
   spawners.push({ kinds: event.kinds, left: count, period: event.over / count, timer: 0 });
   if (!event.kinds.some((kind) => ENEMY_TYPES[kind].rare)) commonKinds = event.kinds;
 }
 
 /** The quota `local` seconds into the day. */
 export function quota(local) {
-  return Math.round(QUOTA[Math.min(QUOTA.length - 1, Math.floor(local / 60))] * (1 + MORE_PER_DAY * (game.day - 1)));
+  const mercy = game.peril >= NO_MERCY ? NO_MERCY_QUOTA : 1;
+  return Math.round(QUOTA[Math.min(QUOTA.length - 1, Math.floor(local / 60))] * (1 + MORE_PER_DAY * (game.day - 1)) * mercy);
 }
 
 /** Predators (not crates) within SPAWN_MAX of the hen. */
@@ -132,7 +137,7 @@ function nearby() {
 /** An elite of a common kind, golden or (from RAINBOW_FROM, now and then) rainbow. */
 function spawnElite() {
   const kind = commonKinds[Math.floor(gameRand() * commonKinds.length)];
-  const rainbow = game.time >= RAINBOW_FROM && gameRand() < RAINBOW_SHARE;
+  const rainbow = game.time >= (game.peril >= ELITES_X2 ? RAINBOW_FROM_X2 : RAINBOW_FROM) && gameRand() < RAINBOW_SHARE;
   if (!enemies.some((e) => !e.alive)) makeRoom();
   const e = spawnEnemy(kind);
   if (!e) return;
@@ -149,7 +154,10 @@ export function updateWaves(dt) {
   const local = game.time - RUN_LENGTH * (game.day - 1);
   while (nextEvent < TIMELINE.length && local >= TIMELINE[nextEvent].at) {
     const event = TIMELINE[nextEvent++];
-    if (event.boss !== undefined) spawnBoss(event.boss);
+    if (event.boss !== undefined) {
+      spawnBoss(event.boss);
+      if (game.peril >= TWO_BOSSES) spawnBoss(event.boss);
+    }
     else startSpawner(event);
   }
   if (game.time >= nextCrateAt) {
@@ -162,7 +170,7 @@ export function updateWaves(dt) {
     if (nearby() < quota(local)) spawnEnemy(pickKind(commonKinds));
   }
   if (game.time >= nextEliteAt) {
-    nextEliteAt = game.time + 40 + gameRand() * 20;
+    nextEliteAt = game.time + (game.peril >= ELITES_X2 ? 20 + gameRand() * 10 : 40 + gameRand() * 20);
     spawnElite();
   }
   for (let i = spawners.length - 1; i >= 0; i--) {

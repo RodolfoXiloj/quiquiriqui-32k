@@ -4,8 +4,20 @@
 // Every run also earns golden eggs, spent in the shop on upgrades that last from run to run.
 
 export const MAX_PERIL = 5;
-/** Each peril level adds these shares: predator health, speed, numbers and bite damage. */
-export const PERIL = { hp: 0.25, speed: 0.06, spawns: 0.2, bite: 0.1 };
+/** Each peril level adds these shares to every predator: health and bite. The rules do the rest. */
+export const PERIL = { hp: 0.1, bite: 0.1 };
+/**
+ * Peril levels add a rule each, and keep those below:
+ * events come more often; elites twice as often; two bosses each time;
+ * two cards to choose from instead of three; and no mercy (a fuller meadow, faster predators).
+ * The title shows the rule of the chosen level.
+ */
+export const MORE_EVENTS = 1;
+export const ELITES_X2 = 2;
+export const TWO_BOSSES = 3;
+export const TWO_CARDS = 4;
+export const NO_MERCY = 5;
+export const PERIL_RULES = ['', 'MORE EVENTS', 'ELITES X2', 'TWO BOSSES', 'TWO CARDS', 'NO MERCY'];
 
 /** Peril at which a dawn brings the black hen. */
 const BLACK_HEN_PERIL = 2;
