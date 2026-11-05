@@ -93,6 +93,7 @@ flowchart LR
 | Mouse | Hold a button and steer from the screen center | Click a card |
 | Touch | A stick opens wherever your thumb lands (works with the phone upright or sideways) | Tap a card |
 | Gamepad | Left stick | (planned) |
+| Music | M turns it off and on | |
 
 The game pauses when the window loses focus.
 
@@ -119,7 +120,8 @@ The engine is reused from our own earlier prototype (see [Archive](#archive)), a
 - **Fixed 60 Hz timestep**, object pools (300 predators, 300 kernels, 96 projectiles), hitstop, screen shake and a smoothed camera.
 - **Seeded gameplay randomness**: a run replays exactly from its seed, which keeps tests and the bot reproducible.
 - **Data tables** for predators, the wave timeline and the upgrades, so new content is mostly data.
-- **Own parametric WebAudio synth** (tone + noise + pitch slide + ring modulation).
+- **Own parametric WebAudio synth** (tone + noise + pitch slide + ring modulation), with every effect pitched slightly differently each time and a voice per predator.
+- **Original music on the same synth**: a humming voice, a galloping bass and a noise drum kit play a theme written for this game. A tiny sequencer reads one character per eighth note and schedules ahead on the audio clock; the part follows the run (day, boss, night, dawn). Effects and music share a compressor so a full horde stays clear.
 
 ### Size Budget
 
@@ -132,6 +134,7 @@ Only the shipped file is gated: `dist/index.html` after Terser **and** Roadrolle
 | M2 dress-up (measured Nov 5, 2026) | 36,099 B | 16,188 B (49.4%) |
 | M3 the ten minutes (measured Nov 5, 2026) | 43,915 B | 18,784 B (57.3%) |
 | Polish and phone fit (measured Nov 5, 2026) | 44,333 B | 18,944 B (57.8%) |
+| Spawns on any screen and the audio pass (measured Nov 5, 2026) | 48,734 B | 20,800 B (63.5%) |
 | **Final target** | n/a | **≤ 32,768 bytes** |
 
 ---
@@ -164,7 +167,7 @@ To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?au
 | ✅ | **M1: Core loop** | Rats and Foxes on a wave timeline (minutes 0–3, then a ramp). Three weapons (Egg Toss, Peck, Feather Darts) and three passives (Running Boots, Feed Basket, Pot Helmet). Corn XP with a magnet, level-up cards (1/2/3, click, tap), bites, game over and a saved best time. |
 | ✅ | **M2: Dress-up** | Seven weapons (adds Corn Spray, Wing Gust, Chick Orbit, Thunder Comb) and six passives (adds Sunglasses, Hero Cape, Lucky Bandana). Every item drawn on the hen, with three looks as it levels; she is re-baked whenever her look changes. |
 | ✅ | **M3: The 10 minutes** | A ten-minute timeline with snakes, crows and badgers; bosses with chests; crates with a magnet, a bomb or food; rain, snow and night; the dawn win at 10:00. |
-| ⬜ | **M4: Polish & ship** | An audio pass: original music written for the game, richer and less repetitive sound effects, and a mix that stays clear under a full horde. Difficulty tuning, a performance pass, a test on real phones, and the deploy to GitHub Pages. The outfit and rat readability pass and the phone fit are done. |
+| ⬜ | **M4: Polish & ship** | Difficulty tuning, a performance pass, a test on real phones, and the deploy to GitHub Pages. Done so far: the outfit and rat readability pass, the phone fit, predators born all around the hen on any screen, and the audio pass (original music, a voice per predator, a mixer). |
 
 ---
 
