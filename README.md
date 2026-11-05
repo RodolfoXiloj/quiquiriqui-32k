@@ -50,7 +50,7 @@
 
 A lone hen in an endless sunny meadow. Predators close in from every side, wave after wave, while the day turns to rain, snow and night. Her weapons fire on their own; **you only move**. Every level-up offers three upgrades, and **every upgrade is something she wears or carries**: a pot helmet, running boots, sunglasses, a feed basket, a cape. Glance at the hen and you see your build.
 
-Rats arrive from the first second and foxes after a minute; snakes join at 3:00, crows at 5:00 and badgers at 7:00, and the last minute brings everything. A **boss** (a big, tough version of a predator) comes on most minutes and drops a **chest** with one or three upgrades. Every 20 seconds a **crate** appears; broken, it leaves a magnet (pulls in every kernel), a bomb (clears the screen), food or corn. The day turns to rain, snow and night, and at 10:00 the sun comes up.
+Rats arrive from the first second and foxes after a minute; snakes join at 3:00, crows at 5:00 and badgers at 7:00, and the last minute brings everything. Three predators do more than chase: the **weasel** (from 2:00) stops, blinks and lunges in a straight line; the **magpie** (from 4:00) keeps its distance, circles and throws pebbles you can dodge; the **skunk** (from 6:00) leaves a stink cloud where it falls. Now and then a predator comes as a golden **elite** (much tougher; it drops a chest and golden eggs), and from 3:00 a rare **rainbow** one cycles through every color and drops a chest of three. A **boss** (a big, tough version of a predator) comes on most minutes and drops a **chest** with one or three upgrades. Every 20 seconds a **crate** appears; broken, it leaves a magnet (pulls in every kernel), a bomb (clears the screen), food or corn. The day turns to rain, snow and night, and at 10:00 the sun comes up.
 
 She starts with **Egg Toss** and can carry six of seven weapons and all six passives:
 
@@ -72,14 +72,23 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 
 Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden).
 
+From 1:30, every 45 to 75 seconds, a **random event** turns the heat up for a few seconds:
+
+| Event | What happens |
+|-------|--------------|
+| **HAWK!** | A hawk's shadow hunts the hen, holds still inside a closing red ring, and the hawk dives there. Four dives: keep moving. It hits predators too. |
+| **STAMPEDE!** | A band of rats runs straight across the meadow at twice their speed. |
+| **SURROUNDED!** | A ring of foxes (badgers late in the day) appears around her and closes in. |
+| **FRENZY!** | For ten seconds the waves come three times as fast and every predator runs faster. A red frame pulses. |
+
 Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the predators flee. Then choose: end the run, or **keep going** into day 2, 3, 4... where the timeline starts over with tougher, faster and more numerous predators each day, until she falls.
 
 ### Playing again and again
 
 - **Levels never end.** Each level costs more corn than the last. Once every item is maxed, level-ups offer **boons** (more damage, speed, reach, health or fire rate, or a warm meal) with no limit.
 - **Peril 0 to 5.** A dawn unlocks the next peril: more predator health, speed, numbers and bite. Each peril keeps its own best time.
-- **Three hens.** The white hen starts with Egg Toss; the speckled hen (unlocked by your first dawn) with Peck; the black hen (a dawn at peril 2) with Feather Darts.
-- **Golden eggs and the shop.** Every run earns golden eggs (time, kills, dawn, peril). Spend them on five permanent upgrades: Tough Hide, Strong Legs, Sharp Eye, Big Crop and Quick Learner.
+- **Three hens.** The white hen starts with Egg Toss; the speckled hen (unlocked by your first dawn) with Peck; the black hen (a dawn at peril 2) with Feather Darts. Locked hens can be browsed on the title screen: they show with a padlock and how to unlock them, but cannot start a run.
+- **Golden eggs and the shop.** Every run earns golden eggs (time, kills, dawn, peril, and elites). Spend them on five permanent upgrades, each with its own icon and five levels: Tough Hide, Strong Legs, Sharp Eye, Big Crop and Quick Learner.
 
 ```mermaid
 flowchart LR
@@ -89,6 +98,8 @@ flowchart LR
   D --> B
   B --> E["A boss every minute: drops a chest"]
   E --> B
+  B --> G["Random events and elites"]
+  G --> B
   B --> F["10:00, dawn: the rooster crows"]
 ```
 
@@ -128,7 +139,7 @@ The engine is reused from our own earlier prototype (see [Archive](#archive)), a
 - **Our own 3×5 pixel font**, written as data in the code (five octal digits per glyph) and drawn pixel-exact with an ink outline, so text stays as crisp as the art at any scale. No font files, no system fonts.
 - **Fixed 60 Hz timestep**, object pools (300 predators, 300 kernels, 96 projectiles), hitstop, screen shake and a smoothed camera.
 - **Seeded gameplay randomness**: a run replays exactly from its seed, which keeps tests and the bot reproducible.
-- **Data tables** for predators, the wave timeline and the upgrades, so new content is mostly data.
+- **Data tables** for predators, the wave timeline and the upgrades, so new content is mostly data. A predator's `act` gives it a behavior (chase, keep away and shoot, lunge); events reuse the same pool with two more (run straight across, close in on a point).
 - **Own parametric WebAudio synth** (tone + noise + pitch slide + ring modulation), with every effect pitched slightly differently each time and a voice per predator.
 - **Original music on the same synth**: a humming voice, a galloping bass and a noise drum kit play a theme written for this game. A tiny sequencer reads one character per eighth note and schedules ahead on the audio clock; the part follows the run (day, boss, night, dawn). Effects and music share a compressor so a full horde stays clear.
 
@@ -147,6 +158,7 @@ Only the shipped file is gated: `dist/index.html` after Terser **and** Roadrolle
 | Faster hen, snappier magnet, new hit sound (measured Nov 5, 2026) | 49,013 B | 20,878 B (63.7%) |
 | Endless days, peril, hens, shop, boons (measured Nov 5, 2026) | 55,254 B | 23,347 B (71.2%) |
 | Pixel font (measured Nov 5, 2026) | 56,085 B | 23,791 B (72.6%) |
+| Shop icons, locked hens, special predators, elites, events (measured Nov 5, 2026) | 66,116 B | 26,954 B (82.3%) |
 | **Final target** | n/a | **≤ 32,768 bytes** |
 
 ---
@@ -179,7 +191,7 @@ To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?au
 | ✅ | **M1: Core loop** | Rats and Foxes on a wave timeline (minutes 0–3, then a ramp). Three weapons (Egg Toss, Peck, Feather Darts) and three passives (Running Boots, Feed Basket, Pot Helmet). Corn XP with a magnet, level-up cards (1/2/3, click, tap), bites, game over and a saved best time. |
 | ✅ | **M2: Dress-up** | Seven weapons (adds Corn Spray, Wing Gust, Chick Orbit, Thunder Comb) and six passives (adds Sunglasses, Hero Cape, Lucky Bandana). Every item drawn on the hen, with three looks as it levels; she is re-baked whenever her look changes. |
 | ✅ | **M3: The 10 minutes** | A ten-minute timeline with snakes, crows and badgers; bosses with chests; crates with a magnet, a bomb or food; rain, snow and night; the dawn win at 10:00. |
-| ⬜ | **M4: Polish & ship** | A performance pass, a test on real phones, and the deploy to GitHub Pages. Done so far: the outfit and rat readability pass, the phone fit, predators born all around the hen on any screen, the audio pass, and replayability (steeper XP, endless boons, endless days, peril levels, three hens, the shop). |
+| ⬜ | **M4: Polish & ship** | A performance pass, a test on real phones, and the deploy to GitHub Pages. Done so far: the outfit and rat readability pass, the phone fit, predators born all around the hen on any screen, the audio pass, replayability (steeper XP, endless boons, endless days, peril levels, three hens, the shop), the pixel font, and variety (the weasel, magpie and skunk, elites, random events). |
 
 ---
 
