@@ -66,6 +66,7 @@ window.__qq = {
     dawnChoice: game.dawnChoice,
     day: game.day,
     peril: game.peril,
+    hen: game.hen,
     profile: { ...profile },
     music: { on: music.on, mood: music.mood },
     time: game.time,
@@ -147,6 +148,7 @@ window.__qq = {
     /** Unlocks every peril level (for testing the menus). */
     unlockAll() {
       profile.perilUnlocked = 5;
+      profile.hens = 7;
       saveProfile();
     },
     /** Every item at `level`: the fully dressed hen. */

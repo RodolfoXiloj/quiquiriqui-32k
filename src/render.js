@@ -17,7 +17,7 @@ import { particles, popups, rings, bolts, RING_LIFE, BOLT_LIFE } from './pool.js
 import { input, STICK_RADIUS } from './input.js';
 import { game, formatClock, xpToNext } from './state.js';
 import { weatherAt, DAWN_START, RUN_LENGTH } from './weather.js';
-import { profile, MAX_PERIL } from './profile.js';
+import { profile, MAX_PERIL, HENS, henUnlocked } from './profile.js';
 
 /** Every fixed on-screen string. A test checks that each fits the 320 px canvas. */
 export const HUD_STRINGS = {
@@ -66,12 +66,18 @@ export const HUD_SIZES = {
 };
 
 /** Title screen rows that react to taps, as offsets (px) from the middle of the screen. */
-const TITLE_ROWS = { peril: 45 };
+const TITLE_ROWS = { hen: 34, peril: 45 };
 
 /** The title row under canvas height `y` ('peril'), or null. */
 export function titleRowAt(y) {
   for (const [row, dy] of Object.entries(TITLE_ROWS)) if (Math.abs(y - (HEIGHT / 2 + dy)) <= 5) return row;
   return null;
+}
+
+/** The hen row of the title screen. */
+export function henLine() {
+  const locked = HENS.filter((_, i) => !henUnlocked(i)).length;
+  return `Q < ${HENS[profile.hen].name} > E` + (locked ? `   ${locked} LOCKED` : '');
 }
 
 /** The peril row of the title screen. */
@@ -470,6 +476,7 @@ function drawHud(ctx, time) {
     drawText(ctx, S.subtitle, WIDTH / 2, cy - 44, Z.subtitle, 13);
     if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, cy - 32, 7, 10);
     if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 22, Z.start, 13);
+    drawText(ctx, henLine(), WIDTH / 2, cy + TITLE_ROWS.hen, 7, 13);
     drawText(ctx, perilLine(), WIDTH / 2, cy + TITLE_ROWS.peril, 7, profile.peril ? 10 : 13);
     drawText(ctx, S.controls, WIDTH / 2, cy + 67, Z.controls, 13);
     drawText(ctx, S.music, WIDTH / 2, cy + 77, Z.music, 13);

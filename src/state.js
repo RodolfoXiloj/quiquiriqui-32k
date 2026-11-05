@@ -38,8 +38,9 @@ export const game = {
   titleLock: 0,
   /** Longest run so far at this peril, in seconds (kept across runs, saved in localStorage). */
   best: 0,
-  /** The peril (difficulty tier) of this run, chosen on the title screen. */
+  /** The peril (difficulty tier) and the hen (profile.js HENS) of this run, chosen on the title screen. */
   peril: 0,
+  hen: 0,
   /** A line for the dawn screen when the dawn unlocked something ('PERIL 1 UNLOCKED!'). */
   unlockNote: '',
 };

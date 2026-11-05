@@ -21,7 +21,7 @@ import { game, settings, resetGame, loadBest, saveBest, xpToNext } from './state
 import { RUN_LENGTH, weatherAt } from './weather.js';
 import { updateMusic, loadMusicSetting, toggleMusic } from './music.js';
 import { renderScene, cardAt, titleRowAt } from './render.js';
-import { profile, loadProfile, choosePeril, unlockAfterDawn } from './profile.js';
+import { profile, loadProfile, choosePeril, chooseHen, unlockAfterDawn, HENS } from './profile.js';
 
 /** Real seconds before a card can be picked once the cards open. */
 const CARD_LOCK = 0.35;
@@ -78,9 +78,10 @@ export function resetRun(seed = (Math.random() * 2 ** 31) | 0) {
   seedGame(seed);
   resetGame();
   game.peril = profile.peril;
+  game.hen = profile.hen;
   loadBest();
   resetHen();
-  resetBuild();
+  resetBuild(HENS[game.hen].start);
   dressHen();
   resetWaves();
   resetWeapons();
@@ -101,7 +102,7 @@ export function handleBlur() {
 
 /** Re-bakes the hen when what she wears changes. Returns true if it did. */
 function dressHen() {
-  const outfit = outfitOf(build);
+  const outfit = { ...outfitOf(build), hen: game.hen };
   if (outfitKey(outfit) === henLook.key) return false;
   bakeHen(outfit);
   return true;
@@ -123,7 +124,7 @@ function winRun() {
   game.dawnChoice = true;
   game.overTime = 0;
   game.newBest = saveBest(RUN_LENGTH);
-  if (unlockAfterDawn(game.peril)) game.unlockNote = `PERIL ${game.peril + 1} UNLOCKED!`;
+  game.unlockNote = unlockAfterDawn(game.peril).join('  ');
   sfxCrow();
   for (let k = 0; k < 30; k++) {
     const a = Math.random() * Math.PI * 2;
@@ -132,23 +133,29 @@ function winRun() {
 }
 
 /**
- * The title screen's menu rows: Z / C (or a tap on the left / right half of the row) choose the
- * peril. Returns true if the input was for the menu, so it does not start the run.
+ * The title screen's menu rows: Q / E choose the hen and Z / C the peril (or a tap on the left /
+ * right half of a row). Returns true if the input was for the menu, so it does not start the run.
  */
 function titleMenu() {
   const tap = input.tap;
   const row = tap ? titleRowAt(tap.y) : null;
-  let step = 0;
-  if (input.pressed.has('KeyZ')) step = -1;
-  if (input.pressed.has('KeyC')) step = 1;
-  if (row === 'peril') step = tap.x < WIDTH / 2 ? -1 : 1;
-  if (step) {
-    choosePeril(profile.peril + step);
+  const side = tap && tap.x < WIDTH / 2 ? -1 : 1;
+  const press = (code) => input.pressed.has(code);
+  const peril = press('KeyZ') ? -1 : press('KeyC') ? 1 : row === 'peril' ? side : 0;
+  const hen = press('KeyQ') ? -1 : press('KeyE') ? 1 : row === 'hen' ? side : 0;
+  if (peril) {
+    choosePeril(profile.peril + peril);
     game.peril = profile.peril;
     loadBest();
   }
+  if (hen) {
+    chooseHen(hen);
+    game.hen = profile.hen;
+    resetBuild(HENS[game.hen].start);
+    dressHen();
+  }
   if (row) releasePointer();
-  return !!(step || row);
+  return !!(peril || hen || row);
 }
 
 /** Shows `text` across the screen for a few seconds. */

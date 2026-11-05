@@ -23,11 +23,13 @@ boot(document.createElement('canvas'));
 /**
  * Fresh title screen with no held input. Module state is shared, so every test calls this.
  * `peaceful` (the default) turns off the waves and the starting corn, for tests that only
- * look at movement or set up their own predators. `peril` picks the difficulty tier (0 by default).
+ * look at movement or set up their own predators. `peril` picks the difficulty tier and `hen` the
+ * hen (both 0 by default: the white hen with Egg Toss).
  */
-export function resetRun({ peaceful = true, seed = SEED, peril = 0 } = {}) {
+export function resetRun({ peaceful = true, seed = SEED, peril = 0, hen = 0 } = {}) {
   settings.peaceful = peaceful;
   profile.peril = peril;
+  profile.hen = hen;
   releaseAllInput();
   resetGameRun(seed);
 }

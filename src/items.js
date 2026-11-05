@@ -163,12 +163,12 @@ function recomputeStats() {
   }
 }
 
-/** A new run starts with Egg Toss only. */
-export function resetBuild() {
+/** A new run starts with the hen's own weapon only (Egg Toss for the white hen). */
+export function resetBuild(start = 'egg') {
   for (const id of Object.keys(build)) delete build[id];
   for (const id of Object.keys(boons)) delete boons[id];
   buildOrder.length = 0;
-  applyCard({ id: 'egg' });
+  applyCard({ id: start });
 }
 
 /** The value of weapon stat `key` at the level the hen owns. */

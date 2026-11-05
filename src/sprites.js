@@ -106,10 +106,17 @@ export function outfitOf(levels) {
   return outfit;
 }
 
-/** A short string that changes exactly when the hen's look changes. */
+/** A short string that changes exactly when the hen's look changes (her items and her feathers). */
 export function outfitKey(outfit) {
-  return WORN_ITEMS.map((id) => outfit[id] || 0).join('');
+  return WORN_ITEMS.map((id) => outfit[id] || 0).join('') + (outfit.hen || 0);
 }
+
+/** Feathers of each hen (profile.js HENS order): [body, shade, speckles or -1]. */
+export const FEATHERS = [
+  [7, 8, -1],
+  [7, 8, 19],
+  [17, 15, -1],
+];
 
 /** Thunder Comb: a zigzag bolt standing on her head, as [row, from x, to x] from the bottom up. */
 const BOLT_ROWS = [
@@ -259,6 +266,12 @@ export function henShape(step, outfit = {}) {
       if (c >= 0) return c;
     }
     const c = henBody(bx, by, step, outfit);
+    if (c === 7 || c === 8) {
+      // Her own feathers: white, speckled or black
+      const [body, shade, speckle] = FEATHERS[outfit.hen || 0];
+      if (c === 7 && speckle >= 0 && (bx * 7 + by * 3) % 5 === 0) return speckle;
+      return c === 7 ? body : shade;
+    }
     if (c >= 0 || !outfit.cape) return c;
     return capeLayer(bx, by, outfit.cape);
   };

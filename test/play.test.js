@@ -44,6 +44,7 @@ import {
   cardRect,
   cardAt,
   perilLine,
+  henLine,
 } from '../src/render.js';
 import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, fitScreen, screenScale } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
@@ -89,7 +90,7 @@ import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
-import { profile, PERIL, MAX_PERIL } from '../src/profile.js';
+import { profile, PERIL, MAX_PERIL, HENS, unlockAfterDawn } from '../src/profile.js';
 import { audio, sfxKill, sfxLevelUp, sfxPeck, HIT_SOUNDS } from '../src/sfx.js';
 import { music, PARTS, notesAt, sectionLength } from '../src/music.js';
 
@@ -649,7 +650,8 @@ describe('quiquiriqui: the hen dresses up', () => {
 
   it('no outfit ever uses a meadow color', () => {
     for (const tier of [1, 2, 3]) {
-      const outfits = [Object.fromEntries(WORN_ITEMS.map((id) => [id, tier])), ...WORN_ITEMS.map((id) => ({ [id]: tier }))];
+      const full = Object.fromEntries(WORN_ITEMS.map((id) => [id, tier]));
+      const outfits = [full, { ...full, hen: 1 }, { ...full, hen: 2 }, ...WORN_ITEMS.map((id) => ({ [id]: tier }))];
       for (const outfit of outfits) {
         for (const step of ['idle', 'stepA', 'stepB']) {
           for (const c of henGrid(outfit, step).split(',').map(Number)) {
@@ -984,10 +986,10 @@ describe('quiquiriqui at 5x: endless days', () => {
 });
 
 describe('quiquiriqui at 5x: peril levels', () => {
-  /** A fresh profile: only peril 0 unlocked. */
+  /** A fresh profile: only peril 0 and the white hen unlocked. */
   function freshProfile() {
     localStorage.removeItem('qq_profile');
-    Object.assign(profile, { peril: 0, perilUnlocked: 0 });
+    Object.assign(profile, { peril: 0, perilUnlocked: 0, hen: 0, hens: 1 });
   }
 
   it('peril makes predators tougher, faster, hungrier and more numerous', () => {
@@ -1026,7 +1028,7 @@ describe('quiquiriqui at 5x: peril levels', () => {
     game.time = RUN_LENGTH - 0.05;
     for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
     assert.equal(profile.perilUnlocked, 1);
-    assert.equal(game.unlockNote, 'PERIL 1 UNLOCKED!');
+    assert.ok(game.unlockNote.startsWith('PERIL 1 UNLOCKED!'), game.unlockNote);
     assert.equal(JSON.parse(localStorage.getItem('qq_profile')).perilUnlocked, 1);
     steps(1.6);
     tapKey('Digit2');
@@ -1045,6 +1047,42 @@ describe('quiquiriqui at 5x: peril levels', () => {
     update(STEP);
     assert.equal(profile.peril, 1);
     assert.equal(game.started, false, 'a tap on the menu started the run');
+    freshProfile();
+  });
+
+  it('each hen starts with her own weapon and wears her own feathers', () => {
+    const looks = new Set();
+    HENS.forEach((hen, i) => {
+      resetRun({ hen: i });
+      assert.deepEqual(buildOrder, [hen.start], hen.name);
+      looks.add(henGrid({ hen: i }));
+    });
+    assert.equal(looks.size, HENS.length, 'two hens look the same');
+    resetRun();
+  });
+
+  it('locked hens are skipped; the first dawn brings the speckled hen, peril 2 the black hen', () => {
+    freshProfile();
+    resetRun();
+    tapKey('KeyE');
+    assert.equal(profile.hen, 0, 'chose a locked hen');
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    game.time = RUN_LENGTH - 0.05;
+    for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
+    assert.ok(game.unlockNote.includes('SPECKLED HEN!'), game.unlockNote);
+    steps(1.6);
+    tapKey('Digit2');
+    steps(0.7);
+    tapKey('KeyE');
+    assert.equal(profile.hen, 1);
+    assert.deepEqual(buildOrder, ['peck'], 'the title did not switch to her weapon');
+    tapKey('KeyE');
+    assert.equal(profile.hen, 0, 'did not skip the locked black hen');
+    assert.equal(game.started, false);
+    // A dawn at peril 2 or more brings the black hen
+    profile.perilUnlocked = MAX_PERIL;
+    assert.deepEqual(unlockAfterDawn(2), ['BLACK HEN!']);
     freshProfile();
   });
 
@@ -1259,10 +1297,14 @@ describe('quiquiriqui: text and layout', () => {
       assert.ok(estimateTextWidth(text, HUD_SIZES[key]) <= WIDTH - 16, `${key} is too wide`);
     }
     assert.ok(estimateTextWidth(gameOverLine(599, 9999, 99), 7) <= WIDTH - 16, 'game over line');
-    const peril = profile.perilUnlocked;
-    profile.perilUnlocked = 0;
+    const saved = { ...profile };
+    Object.assign(profile, { perilUnlocked: 0, hens: 1, hen: 0 });
     assert.ok(estimateTextWidth(perilLine(), 7) <= WIDTH - 16, 'peril line');
-    profile.perilUnlocked = peril;
+    for (let i = 0; i < HENS.length; i++) {
+      profile.hen = i;
+      assert.ok(estimateTextWidth(henLine(), 7) <= WIDTH - 16, 'hen line');
+    }
+    Object.assign(profile, saved);
   });
 
   it('every card name and description fits its card', () => {
