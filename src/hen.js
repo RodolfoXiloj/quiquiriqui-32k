@@ -9,8 +9,11 @@ import { triggerHitstop, triggerShake } from './juice.js';
 import { spawnParticle, spawnPopup } from './pool.js';
 import { sfxHurt, sfxDeath } from './sfx.js';
 
-/** Walking speed in tiles per second, before Running Boots. */
-export const HEN_SPEED = 4;
+/**
+ * Walking speed in tiles per second, before Running Boots: about 68 screen pixels a second
+ * sideways (half that up and down, the isometric view's foreshortening).
+ */
+export const HEN_SPEED = 6;
 /** Body radius in tiles, for bites and pickups. */
 export const HEN_RADIUS = 0.45;
 export const START_HP = 100;

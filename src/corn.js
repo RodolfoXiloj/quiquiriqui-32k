@@ -11,10 +11,10 @@ import { sfxPickup } from './sfx.js';
 export const MAX_CORN = 300;
 const STARTING_CORN = 12;
 /** Seconds a kernel hops in place before flying to the hen. */
-const HOP_TIME = 0.18;
+const HOP_TIME = 0.12;
 /** Pull acceleration (tiles/s²) and top speed (tiles/s) of a flying kernel. */
-const PULL = 70;
-const MAX_PULL_SPEED = 16;
+const PULL = 220;
+const MAX_PULL_SPEED = 30;
 /** A flying kernel this close (tiles) is eaten. */
 const EAT_RADIUS = 0.4;
 

@@ -27,11 +27,11 @@ export const CRATE = 5;
  * only pushed apart from other flyers.
  */
 export const ENEMY_TYPES = [
-  { name: 'rat', hp: 6, speed: 1.4, r: 0.32, dmg: 5, colors: [16, 17] },
-  { name: 'fox', hp: 26, speed: 1.7, r: 0.45, dmg: 8, colors: [18, 13] },
-  { name: 'snake', hp: 5, speed: 2.3, r: 0.3, dmg: 6, colors: [12, 15] },
-  { name: 'crow', hp: 9, speed: 2, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
-  { name: 'badger', hp: 60, speed: 1.1, r: 0.55, dmg: 10, colors: [17, 13] },
+  { name: 'rat', hp: 6, speed: 2.1, r: 0.32, dmg: 5, colors: [16, 17] },
+  { name: 'fox', hp: 26, speed: 2.55, r: 0.45, dmg: 8, colors: [18, 13] },
+  { name: 'snake', hp: 5, speed: 3.45, r: 0.3, dmg: 6, colors: [12, 15] },
+  { name: 'crow', hp: 9, speed: 3, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
+  { name: 'badger', hp: 60, speed: 1.65, r: 0.55, dmg: 10, colors: [17, 13] },
   { name: 'crate', hp: 5, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
 ];
 

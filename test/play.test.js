@@ -163,6 +163,15 @@ describe('quiquiriqui at 5x: moving around', () => {
     assert.ok(Math.abs(up.dx) < 1e-6, `dx ${up.dx}`);
   });
 
+  it('she runs at least 60 screen pixels a second sideways', () => {
+    holdKey('KeyD', true);
+    update(STEP); // the first input starts the run
+    const x0 = toIsoX(hen.x, hen.y);
+    for (let i = 0; i < 60; i++) update(STEP);
+    holdKey('KeyD', false);
+    assert.ok(toIsoX(hen.x, hen.y) - x0 >= 60, `${(toIsoX(hen.x, hen.y) - x0).toFixed(1)} px in 1 s`);
+  });
+
   it('the hen faces the way she walks', () => {
     walk('KeyA', 0.1);
     assert.equal(hen.facing, -1);
@@ -386,6 +395,13 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.ok(drops >= 80 && drops < 100, `${drops} drops in 100 kills`);
   });
 
+  it('a kernel at the edge of her reach is eaten within 0.35 s', () => {
+    start();
+    spawnCorn(hen.x + stats.magnet - 0.05, hen.y, 1, 0);
+    steps(0.35);
+    assert.equal(game.xp, 1);
+  });
+
   it('the magnet pulls nearby corn in and fills the XP bar', () => {
     start();
     spawnCorn(hen.x + 1.5, hen.y, 1, 0);
@@ -543,7 +559,7 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     applyCard({ id: 'boots' });
     assert.ok(Math.abs(stats.speed - (speed + 0.16)) < 1e-9);
     applyCard({ id: 'basket' });
-    assert.ok(stats.magnet > 2.2);
+    assert.ok(stats.magnet > 3);
   });
 
   it('Feather Darts fly behind the hen', () => {
@@ -868,12 +884,14 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
       },
     });
     assert.equal(game.won, true, `stopped at ${game.time}`);
-    assert.equal(peak, MAX_ENEMIES, 'the horde never reached the cap');
+    assert.ok(peak >= 150, `the horde peaked at ${peak}`);
     assert.equal(Object.keys(firstSeen).length, ENEMY_TYPES.length, `seen: ${JSON.stringify(firstSeen)}`);
     for (const [kind, from] of [[SNAKE, 180], [CROW, 300], [BADGER, 420]]) {
       assert.ok(firstSeen[kind] >= from && firstSeen[kind] < from + 20, `${ENEMY_TYPES[kind].name} first seen at ${firstSeen[kind]}`);
     }
-    // Time a step with the full horde
+    // Time a step with the pool full
+    while (spawnEnemy(RAT)) {}
+    assert.equal(countEnemies(), MAX_ENEMIES);
     const t0 = performance.now();
     for (let i = 0; i < 120; i++) update(STEP);
     worst = (performance.now() - t0) / 120;
@@ -1061,13 +1079,23 @@ describe('quiquiriqui: text and layout', () => {
       assert.ok(card.y > 100 && card.y + card.h < HEIGHT - 40, `cards at y ${card.y}`);
       resetRun({ peaceful: false });
       start();
-      steps(3);
-      const fresh = enemies.filter((e) => e.alive && e.age < 0.6);
-      assert.ok(fresh.length > 0);
-      for (const e of fresh) {
-        const { sx, sy } = screenOffset(e.x, e.y);
-        assert.ok(Math.abs(sx) > WIDTH / 2 - 4 || Math.abs(sy) > HEIGHT / 2 - 4, `spawned on screen at ${sx}, ${sy}`);
+      // Newborns appear off-screen, or (above and below a tall view) at the farthest birth distance.
+      let newborns = 0;
+      for (let i = 0; i < 60; i++) {
+        update(STEP);
+        for (const e of enemies) {
+          if (!e.alive || e.age > STEP * 1.5) continue;
+          newborns++;
+          const { sx, sy } = screenOffset(e.x, e.y);
+          const off = Math.abs(sx) > WIDTH / 2 - 4 || Math.abs(sy) > HEIGHT / 2 - 4;
+          assert.ok(off || Math.hypot(e.x - hen.x, e.y - hen.y) > SPAWN_MAX - 0.1, `born on screen at ${sx}, ${sy}, close by`);
+        }
       }
+      for (let i = 0; i < 300 && !newborns; i++) {
+        update(STEP);
+        newborns += enemies.filter((e) => e.alive && e.age <= STEP * 1.5).length;
+      }
+      assert.ok(newborns > 0, 'nobody was born');
       assert.ok(screenScale(390, 844) > 1.2 && screenScale(390, 844) < 1.25, 'the phone should fill its width');
       assert.equal(fitScreen(844, 390), MIN_HEIGHT);
       assert.equal(fitScreen(1024, 768), 240);

@@ -129,7 +129,7 @@ export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((item) => [item.id, item]
  * Base stats before passives: speed multiplier, corn magnet radius (tiles), flat armor, damage
  * multiplier, extra max health and dodge chance.
  */
-const BASE_STATS = { speed: 1, magnet: 2.2, armor: 0, damage: 1, maxHp: 0, dodge: 0 };
+const BASE_STATS = { speed: 1, magnet: 3, armor: 0, damage: 1, maxHp: 0, dodge: 0 };
 export const stats = { ...BASE_STATS };
 
 /** Owned item levels by id, and the order they were taken in (for the HUD). */
