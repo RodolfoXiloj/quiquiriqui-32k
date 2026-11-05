@@ -8,7 +8,7 @@ import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
 import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier, lockSprite } from './sprites.js';
 import { hen } from './hen.js';
-import { enemies, shots, bossName, RISE_TIME } from './enemies.js';
+import { enemies, shots, clouds, bossName, RISE_TIME, CLOUD_R } from './enemies.js';
 import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
@@ -309,6 +309,7 @@ function drawWorld(ctx, camX, camY, alpha, time) {
   ctx.fill();
   ctx.globalAlpha = 1;
   drawRings(ctx, camX, camY);
+  drawClouds(ctx, camX, camY, time);
 
   // Painter's algorithm: back to front.
   drawList.sort((a, b) => a.depth - b.depth);
@@ -389,6 +390,27 @@ function drawRings(ctx, camX, camY) {
       ctx.beginPath();
       ctx.ellipse(sx, sy, r * k * HALF_W * Math.SQRT2, r * k * HALF_H * Math.SQRT2, 0, 0, Math.PI * 2);
       ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Skunk stink: a violet haze over its reach, with puffs drifting around it; it fades as it clears. */
+function drawClouds(ctx, camX, camY, time) {
+  ctx.fillStyle = PALETTE[14];
+  for (const c of clouds) {
+    if (!c.alive) continue;
+    const sx = Math.round(toIsoX(c.x, c.y) - camX);
+    const sy = Math.round(toIsoY(c.x, c.y) - camY);
+    const rx = CLOUD_R * HALF_W * Math.SQRT2;
+    const fade = Math.min(1, c.life * 2);
+    for (let k = 0; k < 6; k++) {
+      const a = k * 1.25 + time * (k % 2 ? 1 : -1);
+      ctx.globalAlpha = (k ? 0.5 : 0.3) * fade;
+      ctx.beginPath();
+      if (k) ctx.ellipse(sx + Math.cos(a) * rx * 0.6, sy - 4 + Math.sin(a) * rx * 0.3, 6, 4, 0, 0, Math.PI * 2);
+      else ctx.ellipse(sx, sy, rx, rx / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
   ctx.globalAlpha = 1;

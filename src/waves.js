@@ -1,8 +1,8 @@
 // The wave timeline of the ten minutes: timed events that each start a spawner, which releases
 // `count` predators spread evenly over `over` seconds, picking each one's kind at random from
 // `kinds` (repeat a kind to make it more common). Snakes join at 3:00, crows at 5:00 and
-// badgers at 7:00; weasels, which lunge, at 2:00, and magpies, which keep away and throw
-// pebbles, at 4:00. The last minute brings everything. Events with `boss` send one boss of that
+// badgers at 7:00; weasels, which lunge, at 2:00, magpies, which keep away and throw pebbles,
+// at 4:00, and skunks, which leave a stink cloud, at 6:00. The last minute brings everything. Events with `boss` send one boss of that
 // kind. A crate appears every 20 seconds near the edge of the screen. In endless play the timeline
 // starts over each day, with half as many predators again per day gone by.
 import { gameRand } from './rng.js';
@@ -10,7 +10,7 @@ import { game, settings } from './state.js';
 import { RUN_LENGTH } from './weather.js';
 import { PERIL } from './profile.js';
 import { hen } from './hen.js';
-import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, ENEMY_TYPES, enemies, spawnEnemy, spawnBoss, spawnPoint } from './enemies.js';
+import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, SKUNK, ENEMY_TYPES, enemies, spawnEnemy, spawnBoss, spawnPoint } from './enemies.js';
 
 /** Seconds between two crates. */
 export const CRATE_EVERY = 20;
@@ -37,18 +37,22 @@ export const TIMELINE = [
   { at: 300, kinds: [WEASEL], count: 16, over: 60 },
   { at: 360, kinds: [CROW, SNAKE, FOX], count: 190, over: 60 },
   { at: 360, kinds: [MAGPIE], count: 12, over: 60 },
+  { at: 360, kinds: [SKUNK], count: 12, over: 60 },
   { at: 420, boss: BADGER },
   { at: 420, kinds: [BADGER, RAT, RAT, CROW], count: 200, over: 60 },
   { at: 420, kinds: [WEASEL], count: 18, over: 60 },
+  { at: 420, kinds: [SKUNK], count: 14, over: 60 },
   { at: 480, boss: FOX },
   { at: 480, kinds: [BADGER, FOX, SNAKE, CROW], count: 240, over: 60 },
   { at: 480, kinds: [MAGPIE], count: 14, over: 60 },
+  { at: 480, kinds: [SKUNK], count: 16, over: 60 },
   { at: 540, boss: SNAKE },
   { at: 540, boss: CROW },
   { at: 540, boss: BADGER },
   { at: 540, kinds: [RAT, FOX, SNAKE, CROW, BADGER], count: 300, over: 60 },
   { at: 540, kinds: [MAGPIE], count: 16, over: 60 },
   { at: 540, kinds: [WEASEL], count: 20, over: 60 },
+  { at: 540, kinds: [SKUNK], count: 18, over: 60 },
 ];
 
 const spawners = [];

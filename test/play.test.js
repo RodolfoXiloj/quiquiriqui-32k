@@ -62,6 +62,9 @@ import {
   CRATE,
   MAGPIE,
   WEASEL,
+  SKUNK,
+  clouds,
+  CLOUD_TIME,
   DASH_WARN,
   DASH_TIME,
   ENEMY_TYPES,
@@ -1305,6 +1308,37 @@ describe('quiquiriqui at 5x: special predators', () => {
     resetRun();
   });
 
+  it('a skunk leaves a stink cloud where it falls: it hurts her inside, not outside, and clears', () => {
+    quietRun();
+    const k = spawnEnemy(SKUNK, hen.x + 3, hen.y);
+    k.age = 1;
+    const [cx, cy] = [k.x, k.y];
+    hitEnemy(k, 1e6, hen.x, hen.y);
+    const alive = () => clouds.filter((c) => c.alive);
+    assert.equal(alive().length, 1, 'no cloud');
+    assert.ok(Math.hypot(alive()[0].x - cx, alive()[0].y - cy) < 0.01, 'the cloud is not where it fell');
+    const hp = hen.hp;
+    steps(1);
+    assert.equal(hen.hp, hp, 'the cloud reached her 3 tiles away');
+    hen.x = cx - 0.5;
+    steps(1.2);
+    const lost = hp - hen.hp;
+    assert.ok(lost > 0, 'no harm inside the cloud');
+    assert.ok(lost <= 3 * Math.ceil(ENEMY_TYPES[SKUNK].dmg / 3), `it hurt too often: -${lost} in 1.2 s`);
+    steps(CLOUD_TIME);
+    assert.equal(alive().length, 0, 'the cloud never cleared');
+    resetRun();
+  });
+
+  it('a full pool still lets the special kinds in: the farthest common predator leaves', () => {
+    quietRun();
+    while (spawnEnemy(RAT)) {}
+    for (const kind of [MAGPIE, WEASEL, SKUNK]) assert.ok(spawnEnemy(kind), `${ENEMY_TYPES[kind].name} found no room`);
+    assert.equal(countEnemies(), MAX_ENEMIES);
+    assert.equal(spawnEnemy(RAT), null, 'a common kind should still wait for room');
+    resetRun();
+  });
+
   it('no more than six magpies at once: the waves send rats instead', () => {
     quietRun();
     for (let i = 0; i < ENEMY_TYPES[MAGPIE].max; i++) sturdy(MAGPIE, 6 + i, 0);
@@ -1342,7 +1376,7 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
     assert.equal(game.won, true, `stopped at ${game.time}`);
     assert.ok(peak >= 150, `the horde peaked at ${peak}`);
     assert.equal(Object.keys(firstSeen).length, ENEMY_TYPES.length, `seen: ${JSON.stringify(firstSeen)}`);
-    for (const [kind, from] of [[WEASEL, 120], [SNAKE, 180], [MAGPIE, 240], [CROW, 300], [BADGER, 420]]) {
+    for (const [kind, from] of [[WEASEL, 120], [SNAKE, 180], [MAGPIE, 240], [CROW, 300], [SKUNK, 360], [BADGER, 420]]) {
       assert.ok(firstSeen[kind] >= from && firstSeen[kind] < from + 20, `${ENEMY_TYPES[kind].name} first seen at ${firstSeen[kind]}`);
     }
     // Time a step with the pool full

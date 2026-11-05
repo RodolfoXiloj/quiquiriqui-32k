@@ -4,7 +4,7 @@
 // Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
 // stand still, never bite, are not kills, and break into a prize. Some kinds act on their own
 // (`act`): the magpie keeps its distance and throws pebbles (`shots`); the weasel stops, blinks
-// and lunges in a straight line.
+// and lunges in a straight line. A skunk leaves a stink cloud where it falls (`clouds`).
 import { HALF_W, HALF_H } from './iso.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
@@ -25,6 +25,7 @@ export const BADGER = 4;
 export const CRATE = 5;
 export const MAGPIE = 6;
 export const WEASEL = 7;
+export const SKUNK = 8;
 
 /** What a kind does besides biting: chase the hen, keep away and throw pebbles, or lunge. */
 export const CHASE = 0;
@@ -35,7 +36,9 @@ export const CHARGE = 2;
  * Enemy kinds. hp: health at player level 1 · speed: tiles per second · r: body radius (tiles)
  * · dmg: bite damage (and pebble damage) · colors: palette indices for the hit puff · flying:
  * drawn in the air and only pushed apart from other flyers · act: CHASE (default), SHOOT or CHARGE ·
- * max: how many may be alive at once (waves.js sends another kind instead).
+ * max: how many may be alive at once (waves.js sends another kind instead) · stink: leaves a
+ * stink cloud where it falls · rare: when the pool is full, it takes the place of the farthest
+ * common predator (as a boss does), so it never misses its minute.
  */
 export const ENEMY_TYPES = [
   { name: 'rat', hp: 6, speed: 2.1, r: 0.32, dmg: 5, colors: [16, 17] },
@@ -44,9 +47,15 @@ export const ENEMY_TYPES = [
   { name: 'crow', hp: 9, speed: 3, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
   { name: 'badger', hp: 60, speed: 1.65, r: 0.55, dmg: 10, colors: [17, 13] },
   { name: 'crate', hp: 5, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
-  { name: 'magpie', hp: 12, speed: 2.6, r: 0.3, dmg: 6, colors: [15, 13], flying: true, act: SHOOT, max: 6 },
-  { name: 'weasel', hp: 14, speed: 2.4, r: 0.34, dmg: 7, colors: [19, 13], act: CHARGE },
+  { name: 'magpie', hp: 12, speed: 2.6, r: 0.3, dmg: 6, colors: [15, 13], flying: true, act: SHOOT, max: 6, rare: true },
+  { name: 'weasel', hp: 14, speed: 2.4, r: 0.34, dmg: 7, colors: [19, 13], act: CHARGE, rare: true },
+  { name: 'skunk', hp: 30, speed: 1.7, r: 0.45, dmg: 8, colors: [15, 13], stink: true, rare: true },
 ];
+
+/** A stink cloud lasts CLOUD_TIME seconds and hurts the hen inside CLOUD_R tiles every CLOUD_TICK. */
+export const CLOUD_TIME = 3;
+export const CLOUD_R = 1.6;
+const CLOUD_TICK = 0.5;
 
 /**
  * A lunger closer than DASH_FROM tiles (and farther than DASH_NEAR) stops and blinks for
@@ -142,6 +151,9 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   dirY: 0,
 }));
 
+/** Stink clouds left by skunks. */
+export const clouds = Array.from({ length: 12 }, () => ({ alive: false, x: 0, y: 0, life: 0, tick: 0, dmg: 0 }));
+
 /** Pebbles thrown by magpies, flying straight at where the hen was. */
 export const shots = Array.from({ length: 32 }, () => ({ alive: false, x: 0, y: 0, prevX: 0, prevY: 0, vx: 0, vy: 0, life: 0, dmg: 0 }));
 
@@ -153,7 +165,18 @@ function throwPebble(e, ux, uy) {
   sfxThrow();
 }
 
-function updateShots(dt) {
+/** Pebbles fly and hit; stink clouds hurt the hen while she stands in them, then clear. */
+function updateHazards(dt) {
+  for (const c of clouds) {
+    if (!c.alive) continue;
+    c.life -= dt;
+    c.tick -= dt;
+    if (c.life <= 0 || game.over) c.alive = false;
+    else if (c.tick <= 0 && Math.hypot(hen.x - c.x, hen.y - c.y) < CLOUD_R) {
+      c.tick = CLOUD_TICK;
+      damageHen(c.dmg, c.x, c.y);
+    }
+  }
   for (const s of shots) {
     if (!s.alive) continue;
     s.prevX = s.x;
@@ -202,8 +225,26 @@ export function spawnPoint(ahead = AHEAD_SHARE) {
   return { x: hen.x + cx * reach, y: hen.y + cy * reach };
 }
 
-/** Spawns a predator at (x, y), or just off-screen if no position is given. Returns it, or null when the pool is full. */
+/** Frees a slot in a full pool: the farthest predator that is not a boss leaves. */
+function makeRoom() {
+  let far = null;
+  let farD = -1;
+  for (const e of enemies) {
+    const d = (e.x - hen.x) ** 2 + (e.y - hen.y) ** 2;
+    if (!e.boss && !ENEMY_TYPES[e.kind].rare && d > farD) {
+      farD = d;
+      far = e;
+    }
+  }
+  if (far) far.alive = false;
+}
+
+/**
+ * Spawns a predator at (x, y), or just off-screen if no position is given. Returns it, or null
+ * when the pool is full (a rare kind makes room instead).
+ */
 export function spawnEnemy(kind, x, y) {
+  if (ENEMY_TYPES[kind].rare && !enemies.some((item) => !item.alive)) makeRoom();
   const e = enemies.find((item) => !item.alive);
   if (!e) return null;
   if (x === undefined) ({ x, y } = spawnPoint());
@@ -253,18 +294,7 @@ export function spawnEnemy(kind, x, y) {
  * makes room: a boss always arrives.
  */
 export function spawnBoss(kind) {
-  if (!enemies.some((e) => !e.alive)) {
-    let far = null;
-    let farD = -1;
-    for (const e of enemies) {
-      const d = (e.x - hen.x) ** 2 + (e.y - hen.y) ** 2;
-      if (!e.boss && d > farD) {
-        farD = d;
-        far = e;
-      }
-    }
-    if (far) far.alive = false;
-  }
+  if (!enemies.some((e) => !e.alive)) makeRoom();
   const e = spawnEnemy(kind);
   if (!e) return null;
   e.boss = true;
@@ -282,6 +312,7 @@ export function bossName(e) {
 export function clearEnemies() {
   for (const e of enemies) e.alive = false;
   for (const s of shots) s.alive = false;
+  for (const c of clouds) c.alive = false;
 }
 
 export function countEnemies() {
@@ -356,6 +387,10 @@ function killEnemy(e) {
     triggerShake(1, 0, 3, 0.2);
     sfxBoom();
   } else if (e.prop) crateDrop(e);
+  if (type.stink) {
+    const c = clouds.find((item) => !item.alive);
+    if (c) Object.assign(c, { alive: true, x: e.x, y: e.y, life: CLOUD_TIME, tick: 0, dmg: Math.ceil(e.dmg / 3) });
+  }
   // Corn is worth more the longer the run lasts.
   else if (gameRand() < DROP_CHANCE) spawnCorn(e.x, e.y, Math.floor(1 + game.time / 200));
 }
@@ -495,5 +530,5 @@ export function updateEnemies(dt) {
       a.y = hen.y + (k ? hy * k : 0);
     }
   }
-  updateShots(dt);
+  updateHazards(dt);
 }

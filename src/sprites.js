@@ -382,6 +382,20 @@ function weaselShape(step) {
   };
 }
 
+/** The skunk (18x12): black, with a white stripe along its back and up its bushy raised tail. */
+function skunkShape(step) {
+  const liftA = step === 'stepA';
+  const liftB = step === 'stepB';
+  return (x, y) => {
+    if (x === 16 && y === 8) return 17; // nose
+    if (inEllipse(x, y, 14, 7, 2.3, 2)) return x === 13 && y <= 6 ? 13 : 15; // head, white blaze
+    if (inEllipse(x, y, 8.5, 7.3, 4.6, 2.6)) return y <= 5 ? 13 : 15; // body, white back
+    if (inEllipse(x, y, 3.5, 4, 2.6, 3.4)) return x === 3 || x === 4 ? 13 : 15; // tail
+    if (y === 10 && (((x === 6 || x === 7) && !liftA) || ((x === 11 || x === 12) && !liftB))) return 15; // legs
+    return -1;
+  };
+}
+
 /** The badger (20x13): grey, with a white face crossed by a dark stripe. */
 function badgerShape(step) {
   const liftA = step === 'stepA' ? 1 : 0;
@@ -610,6 +624,7 @@ export function bakeWorldSprites() {
     [crateShape, 14, 14],
     [magpieShape, 18, 12],
     [weaselShape, 20, 10],
+    [skunkShape, 18, 12],
   ]) {
     const set = {};
     for (const step of POSES) set[step] = bakeSprite(w, h, shape(step));

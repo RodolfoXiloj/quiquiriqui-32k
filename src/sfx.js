@@ -150,6 +150,8 @@ const KILL_VOICES = [
   ],
   // weasel: a thin squeal
   [{ freq: 1600, endFreq: 2300, dur: 0.1, noise: 0.2, vol: 0.11, mod: 60 }],
+  // skunk: a long, low "pfff" as the stink cloud comes out
+  [{ freq: 220, endFreq: 110, dur: 0.35, noise: 0.9, vol: 0.14 }],
 ];
 
 /** A weasel lunges: a rising swish. */
