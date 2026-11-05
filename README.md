@@ -72,7 +72,14 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 
 Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden).
 
-Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the predators flee.
+Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the predators flee. Then choose: end the run, or **keep going** into day 2, 3, 4... where the timeline starts over with tougher, faster and more numerous predators each day, until she falls.
+
+### Playing again and again
+
+- **Levels never end.** Each level costs more corn than the last. Once every item is maxed, level-ups offer **boons** (more damage, speed, reach, health or fire rate, or a warm meal) with no limit.
+- **Peril 0 to 5.** A dawn unlocks the next peril: more predator health, speed, numbers and bite. Each peril keeps its own best time.
+- **Three hens.** The white hen starts with Egg Toss; the speckled hen (unlocked by your first dawn) with Peck; the black hen (a dawn at peril 2) with Feather Darts.
+- **Golden eggs and the shop.** Every run earns golden eggs (time, kills, dawn, peril). Spend them on five permanent upgrades: Tough Hide, Strong Legs, Sharp Eye, Big Crop and Quick Learner.
 
 ```mermaid
 flowchart LR
@@ -93,7 +100,8 @@ flowchart LR
 | Mouse | Hold a button and steer from the screen center | Click a card |
 | Touch | A stick opens wherever your thumb lands (works with the phone upright or sideways) | Tap a card |
 | Gamepad | Left stick | (planned) |
-| Music | M turns it off and on | |
+
+On the title screen: **Q / E** pick a hen, **Z / C** pick a peril, **B** opens the shop (1-5 buy), **M** turns the music off and on. On a touch screen, tap either half of a row. At dawn, **1** keeps going and **2** ends the run.
 
 The game pauses when the window loses focus.
 
@@ -136,6 +144,7 @@ Only the shipped file is gated: `dist/index.html` after Terser **and** Roadrolle
 | Polish and phone fit (measured Nov 5, 2026) | 44,333 B | 18,944 B (57.8%) |
 | Spawns on any screen and the audio pass (measured Nov 5, 2026) | 48,734 B | 20,800 B (63.5%) |
 | Faster hen, snappier magnet, new hit sound (measured Nov 5, 2026) | 49,013 B | 20,878 B (63.7%) |
+| Endless days, peril, hens, shop, boons (measured Nov 5, 2026) | 55,254 B | 23,347 B (71.2%) |
 | **Final target** | n/a | **≤ 32,768 bytes** |
 
 ---
@@ -168,7 +177,7 @@ To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?au
 | ✅ | **M1: Core loop** | Rats and Foxes on a wave timeline (minutes 0–3, then a ramp). Three weapons (Egg Toss, Peck, Feather Darts) and three passives (Running Boots, Feed Basket, Pot Helmet). Corn XP with a magnet, level-up cards (1/2/3, click, tap), bites, game over and a saved best time. |
 | ✅ | **M2: Dress-up** | Seven weapons (adds Corn Spray, Wing Gust, Chick Orbit, Thunder Comb) and six passives (adds Sunglasses, Hero Cape, Lucky Bandana). Every item drawn on the hen, with three looks as it levels; she is re-baked whenever her look changes. |
 | ✅ | **M3: The 10 minutes** | A ten-minute timeline with snakes, crows and badgers; bosses with chests; crates with a magnet, a bomb or food; rain, snow and night; the dawn win at 10:00. |
-| ⬜ | **M4: Polish & ship** | Difficulty tuning, a performance pass, a test on real phones, and the deploy to GitHub Pages. Done so far: the outfit and rat readability pass, the phone fit, predators born all around the hen on any screen, and the audio pass (original music, a voice per predator, a mixer). |
+| ⬜ | **M4: Polish & ship** | A performance pass, a test on real phones, and the deploy to GitHub Pages. Done so far: the outfit and rat readability pass, the phone fit, predators born all around the hen on any screen, the audio pass, and replayability (steeper XP, endless boons, endless days, peril levels, three hens, the shop). |
 
 ---
 
