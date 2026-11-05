@@ -23,6 +23,8 @@ export const MORE_PER_DAY = 0.5;
 export const ELITE_FROM = 60;
 export const RAINBOW_FROM = 180;
 const RAINBOW_SHARE = 0.2;
+/** During a FRENZY! (events.js) the waves come this many times as fast. */
+export const FRENZY_RATE = 3;
 
 export const TIMELINE = [
   { at: 0, kinds: [RAT], count: 4, over: 2 },
@@ -136,7 +138,7 @@ export function updateWaves(dt) {
   }
   for (let i = spawners.length - 1; i >= 0; i--) {
     const s = spawners[i];
-    s.timer += dt;
+    s.timer += game.frenzy > 0 ? dt * FRENZY_RATE : dt;
     while (s.timer >= s.period && s.left > 0) {
       s.timer -= s.period;
       s.left--;

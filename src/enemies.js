@@ -29,10 +29,18 @@ export const MAGPIE = 6;
 export const WEASEL = 7;
 export const SKUNK = 8;
 
-/** What a kind does besides biting: chase the hen, keep away and throw pebbles, or lunge. */
+/**
+ * What a predator does besides biting: chase the hen, keep away and throw pebbles, or lunge. The
+ * events (events.js) also send predators that RUN straight along (dirX, dirY) and leave, or CLOSE
+ * in on the point (dirX, dirY) for `timer` seconds before they chase.
+ */
 export const CHASE = 0;
 export const SHOOT = 1;
 export const CHARGE = 2;
+export const RUN = 3;
+export const CLOSE = 4;
+/** During a FRENZY! every predator runs this much faster. */
+export const FRENZY_SPEED = 1.2;
 
 /**
  * Enemy kinds. hp: health at player level 1 · speed: tiles per second · r: body radius (tiles)
@@ -446,6 +454,18 @@ function act(e, ux, uy, d, dt) {
         throwPebble(e, ux, uy);
       }
     }
+  } else if (e.act === RUN) {
+    mx = e.dirX;
+    my = e.dirY;
+  } else if (e.act === CLOSE) {
+    const cx = e.dirX - e.x;
+    const cy = e.dirY - e.y;
+    const c = Math.hypot(cx, cy) || 1;
+    mx = cx / c;
+    my = cy / c;
+    speed *= 0.5;
+    e.timer -= dt;
+    if (e.timer <= 0 || c < 1) e.act = CHASE;
   } else if (e.act === CHARGE) {
     e.timer -= dt;
     if (e.state === 1) {
@@ -474,6 +494,7 @@ function act(e, ux, uy, d, dt) {
       speed = 0;
     }
   }
+  if (game.frenzy > 0) speed *= FRENZY_SPEED;
   e.x += mx * speed * dt;
   e.y += my * speed * dt;
   e.walkPhase += dt * 8;
@@ -501,6 +522,11 @@ export function updateEnemies(dt) {
     }
 
     if (d > FAR_AWAY && !game.over) {
+      // A stampede rat has crossed the meadow: gone.
+      if (e.act === RUN) {
+        e.alive = false;
+        continue;
+      }
       // Left far behind: come back in front of her.
       const p = spawnPoint(1);
       e.x = e.prevX = p.x;
@@ -520,7 +546,8 @@ export function updateEnemies(dt) {
       e.y += (dy / d) * s;
       e.walkPhase += dt * 8;
     } else act(e, dx / d, dy / d, d, dt);
-    const screenDx = dx - dy;
+    // Face her, or (a stampede rat) the way it runs
+    const screenDx = e.act === RUN ? e.dirX - e.dirY : dx - dy;
     if (Math.abs(screenDx) > 0.05) e.facing = (screenDx > 0) === !game.over ? 1 : -1;
 
     if (!game.over && e.age > RISE_TIME && d < e.r + HEN_RADIUS && e.biteCooldown <= 0) {

@@ -13,6 +13,7 @@ import { enemies, clearEnemies, updateEnemies } from './enemies.js';
 import { clearCorn, scatterStartingCorn, updateCorn } from './corn.js';
 import { clearPickups, updatePickups } from './pickups.js';
 import { resetWaves, updateWaves } from './waves.js';
+import { resetEvents, updateEvents } from './events.js';
 import { resetWeapons, updateWeapons, updateProjectiles } from './weapons.js';
 import { juice, snapCamera, updateJuice } from './juice.js';
 import { clearPools, updatePools, spawnParticle, spawnPuff, spawnPopup } from './pool.js';
@@ -85,6 +86,7 @@ export function resetRun(seed = (Math.random() * 2 ** 31) | 0) {
   syncHenStats(); // the shop's Tough Hide
   dressHen();
   resetWaves();
+  resetEvents();
   resetWeapons();
   clearEnemies();
   clearCorn();
@@ -364,6 +366,7 @@ export function update(dt) {
     newDay();
   }
   updateWaves(simDt);
+  updateEvents(simDt);
   updateHen(simDt);
   updateWeapons(simDt);
   updateProjectiles(simDt);

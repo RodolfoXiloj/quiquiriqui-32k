@@ -90,7 +90,25 @@ import {
   clearEnemies,
 } from '../src/enemies.js';
 import { pickups, spawnPickup, CHEST, MAGNET, BOMB, FOOD } from '../src/pickups.js';
-import { TIMELINE, CRATE_EVERY, pickKind, ELITE_FROM, RAINBOW_FROM } from '../src/waves.js';
+import { TIMELINE, CRATE_EVERY, pickKind, ELITE_FROM, RAINBOW_FROM, FRENZY_RATE } from '../src/waves.js';
+import {
+  EVENTS,
+  EVENT_FROM,
+  EVENT_GAP,
+  HAWK,
+  STAMPEDE,
+  SURROUNDED,
+  FRENZY,
+  HAWK_DIVES,
+  HAWK_HUNT,
+  HAWK_STRIKE,
+  HAWK_CYCLE,
+  HAWK_DMG,
+  RING_R,
+  FRENZY_TIME,
+  hawk,
+  startEvent,
+} from '../src/events.js';
 import { spawnCorn } from '../src/corn.js';
 import {
   ITEMS,
@@ -1427,6 +1445,133 @@ describe('quiquiriqui at 5x: special predators', () => {
   });
 });
 
+describe('quiquiriqui at 5x: random events', () => {
+  /** A started run with a tough hen, no weapons and (unless `waves`) a peaceful meadow. */
+  function eventRun(waves = false) {
+    resetRun({ peaceful: !waves });
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    buildOrder.length = 0;
+  }
+  const alive = () => enemies.filter((e) => e.alive);
+
+  it('events start at 1:30, come every 45 to 75 s, never twice in a row, and not in a peaceful meadow', () => {
+    eventRun(true);
+    const seen = [];
+    while (game.time < 480 && !game.over) {
+      hen.hp = hen.maxHp = 1e6;
+      game.cards = [];
+      game.reward = [];
+      for (const e of enemies) if (e.boss) e.alive = false; // a boss would hold events back
+      update(STEP);
+      if (game.bannerTime === 2.5 && EVENTS.includes(game.banner)) seen.push({ time: game.time, name: game.banner });
+    }
+    assert.ok(seen.length >= 5, `${seen.length} events in 8 minutes`);
+    assert.ok(seen[0].time >= EVENT_FROM && seen[0].time < EVENT_FROM + 1, `the first came at ${seen[0].time}`);
+    for (let i = 1; i < seen.length; i++) {
+      const gap = seen[i].time - seen[i - 1].time;
+      assert.ok(gap >= EVENT_GAP - 0.1 && gap <= EVENT_GAP + 30.1, `a gap of ${gap.toFixed(1)} s`);
+      assert.notEqual(seen[i].name, seen[i - 1].name, `${seen[i].name} twice in a row`);
+    }
+    // Peaceful: nothing
+    eventRun();
+    game.time = 300;
+    steps(2);
+    assert.ok(!EVENTS.includes(game.banner), 'an event in a peaceful meadow');
+    resetRun();
+  });
+
+  it('HAWK!: its shadow follows her, then holds still; the dive hurts her only if she stays under it', () => {
+    eventRun();
+    startEvent(HAWK);
+    assert.equal(game.banner, EVENTS[HAWK]);
+    steps(HAWK_HUNT + 0.05);
+    assert.ok(Math.hypot(hawk.x - hen.x, hawk.y - hen.y) < 0.5, 'the shadow did not catch up with her');
+    // She runs out from under it: the dive misses
+    const [x0, y0] = [hawk.x, hawk.y];
+    hen.x += 3;
+    let hp = hen.hp;
+    steps(HAWK_STRIKE - HAWK_HUNT);
+    assert.ok(Math.hypot(hawk.x - x0, hawk.y - y0) < 0.01, 'the shadow moved after it took aim');
+    assert.equal(hen.hp, hp, 'a dive she ran from hit her');
+    steps(HAWK_CYCLE - HAWK_STRIKE);
+    assert.equal(hawk.dives, HAWK_DIVES - 1);
+    // She stays: the next dive hits, and so does a predator standing there
+    const rat = spawnEnemy(RAT, hen.x + 0.3, hen.y);
+    rat.age = 1;
+    rat.speed = 0;
+    rat.dmg = 0; // its bites cost her 1 each: the dive must cost more
+    hp = hen.hp;
+    steps(HAWK_STRIKE + 0.3);
+    assert.ok(hp - hen.hp >= HAWK_DMG, `a dive she stayed under missed (-${hp - hen.hp})`);
+    assert.ok(!rat.alive, 'the hawk did not hit the rat under it');
+    steps(HAWK_CYCLE * HAWK_DIVES);
+    assert.equal(hawk.dives, 0, 'the hawk never left');
+    resetRun();
+  });
+
+  it('STAMPEDE!: rats run straight across, not at her, then leave the meadow', () => {
+    eventRun();
+    startEvent(STAMPEDE);
+    const rats = alive();
+    assert.ok(rats.length >= 30, `${rats.length} rats`);
+    const before = rats.map((e) => [e.x, e.y]);
+    steps(1);
+    const dirs = rats.map((e, i) => Math.atan2(e.y - before[i][1], e.x - before[i][0]));
+    for (const a of dirs) assert.ok(Math.abs(Math.sin(a - dirs[0])) < 0.05, 'they do not all run the same way');
+    steps(16);
+    assert.equal(alive().length, 0, 'the stampede never left');
+    resetRun();
+  });
+
+  it('SURROUNDED!: a ring of predators around her closes in on where she stood', () => {
+    eventRun();
+    const [cx, cy] = [hen.x, hen.y];
+    startEvent(SURROUNDED);
+    const ring = alive();
+    assert.ok(ring.length >= 16, `${ring.length} in the ring`);
+    const mean = () => ring.reduce((s, e) => s + Math.hypot(e.x - cx, e.y - cy), 0) / ring.length;
+    assert.ok(Math.abs(mean() - RING_R) < 0.2, `the ring is ${mean().toFixed(1)} tiles wide`);
+    hen.x += 12; // she is gone, yet they close in on the spot
+    steps(2);
+    assert.ok(mean() < RING_R - 1.5, `the ring only closed to ${mean().toFixed(1)}`);
+    resetRun();
+  });
+
+  it('FRENZY!: for ten seconds the waves come three times as fast and predators run faster', () => {
+    const births = (frenzy) => {
+      eventRun(true);
+      const step = () => {
+        hen.hp = hen.maxHp = 1e6;
+        game.cards = [];
+        game.reward = [];
+        update(STEP);
+      };
+      while (game.time < 70) step();
+      if (frenzy) startEvent(FRENZY);
+      const n0 = countEnemies();
+      while (game.time < 76) step();
+      return countEnemies() - n0;
+    };
+    const calm = births(false);
+    const wild = births(true);
+    assert.ok(wild > calm * (FRENZY_RATE - 0.8), `${calm} births calm, ${wild} in a frenzy`);
+
+    eventRun();
+    const rat = spawnEnemy(RAT, hen.x + 10, hen.y);
+    rat.age = 1;
+    steps(0.5);
+    const calmStep = Math.hypot(rat.x - rat.prevX, rat.y - rat.prevY);
+    startEvent(FRENZY);
+    steps(0.5);
+    const wildStep = Math.hypot(rat.x - rat.prevX, rat.y - rat.prevY);
+    assert.ok(Math.abs(wildStep / calmStep - 1.2) < 0.01, `x${(wildStep / calmStep).toFixed(2)} speed`);
+    steps(FRENZY_TIME + 1); // bites pause the game a little (hitstop)
+    assert.equal(game.frenzy, 0, 'the frenzy never ended');
+    resetRun();
+  });
+});
+
 describe('quiquiriqui at 5x: the bot and a long run', () => {
   it('the bot survives the first minute', () => {
     resetRun({ peaceful: false });
@@ -1728,6 +1873,10 @@ describe('quiquiriqui: text and layout', () => {
     texts.push(gameOverLine(3599.9, 98765, 123), 'BEST 12:34   +99 GOLDEN EGGS', 'PERIL 5 UNLOCKED!', 'P5 DAY 12  59:59');
     texts.push('+25 HP', '+30', '-12', 'MISS', '0123456789', 'BOON', 'NEW!', 'LV 99', 'KILLS 9999', 'SHOP', 'B: BACK');
     for (let kind = 0; kind < ENEMY_TYPES.length; kind++) texts.push(bossName({ kind }));
+    // Banners: the events and the rainbow elites, drawn at scale 3
+    const banners = [...EVENTS, ...ENEMY_TYPES.map((type) => `RAINBOW ${type.name.toUpperCase()}!`)];
+    for (const banner of banners) assert.ok(textWidth(banner, 3) <= WIDTH - 16, `${banner} is too wide`);
+    texts.push(...banners, `+${ELITE_EGGS[0]} EGGS`, `+${ELITE_EGGS[1]} EGGS`);
     for (const text of texts) {
       for (const ch of text) assert.ok(GLYPHS[ch], `no glyph for "${ch}" in "${text}"`);
     }

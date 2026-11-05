@@ -154,6 +154,16 @@ const KILL_VOICES = [
   [{ freq: 220, endFreq: 110, dur: 0.35, noise: 0.9, vol: 0.14 }],
 ];
 
+/** An event begins: a two-tone farmyard alarm. */
+export function sfxAlarm() {
+  [880, 660, 880, 660].forEach((freq, i) => playTone({ freq, endFreq: freq, dur: 0.09, noise: 0.05, vol: 0.12, exact: true, delay: i * 0.11 }));
+}
+
+/** The hawk takes aim: a long, falling screech. */
+export function sfxScreech() {
+  playTone({ freq: 2600, endFreq: 1300, dur: 0.4, noise: 0.35, vol: 0.12, mod: 25 });
+}
+
 /** A weasel lunges: a rising swish. */
 export function sfxLunge() {
   if (gate('lunge', 150)) playTone({ freq: 300, endFreq: 1100, dur: 0.12, noise: 0.55, vol: 0.1 });

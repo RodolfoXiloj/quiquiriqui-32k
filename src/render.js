@@ -18,6 +18,7 @@ import { particles, popups, rings, bolts, RING_LIFE, BOLT_LIFE } from './pool.js
 import { input, STICK_RADIUS } from './input.js';
 import { game, formatClock, xpToNext } from './state.js';
 import { weatherAt, DAWN_START, RUN_LENGTH } from './weather.js';
+import { hawk, HAWK_HUNT, HAWK_STRIKE, HAWK_R } from './events.js';
 import { profile, MAX_PERIL, HENS, henUnlocked, SHOP, SHOP_COSTS } from './profile.js';
 
 /** Every fixed on-screen string. A test checks that each fits the 320 px canvas. */
@@ -328,6 +329,7 @@ function drawWorld(ctx, camX, camY, alpha, time) {
   ctx.globalAlpha = 1;
   drawRings(ctx, camX, camY);
   drawClouds(ctx, camX, camY, time);
+  drawHawkShadow(ctx, camX, camY, time);
 
   // Painter's algorithm: back to front.
   drawList.sort((a, b) => a.depth - b.depth);
@@ -423,6 +425,44 @@ function drawRings(ctx, camX, camY) {
     }
   }
   ctx.globalAlpha = 1;
+}
+
+/** Where the hawk is on screen, for its shadow and the hawk itself. */
+const hawkPos = (camX, camY) => [Math.round(toIsoX(hawk.x, hawk.y) - camX), Math.round(toIsoY(hawk.x, hawk.y) - camY)];
+
+/**
+ * The hawk's shadow grows as it comes down; once it takes aim it holds still inside a blinking
+ * red ring that closes in until the dive.
+ */
+function drawHawkShadow(ctx, camX, camY, time) {
+  if (!hawk.dives || hawk.t >= HAWK_STRIKE) return;
+  const [sx, sy] = hawkPos(camX, camY);
+  const rx = HAWK_R * HALF_W * Math.SQRT2;
+  const near = hawk.t / HAWK_STRIKE;
+  ctx.globalAlpha = 0.25 + 0.25 * near;
+  ctx.fillStyle = PALETTE[0];
+  ctx.beginPath();
+  ctx.ellipse(sx, sy, rx * (0.5 + 0.5 * near), rx * (0.25 + 0.25 * near), 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (hawk.t > HAWK_HUNT) {
+    const k = 1 + (2 * (HAWK_STRIKE - hawk.t)) / (HAWK_STRIKE - HAWK_HUNT);
+    ctx.globalAlpha = Math.floor(time * 16) % 2 ? 1 : 0.5;
+    ctx.strokeStyle = PALETTE[9];
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, rx * k, (rx * k) / 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** The hawk itself (a big brown crow): diving in from the upper left, climbing away to the right. */
+function drawHawk(ctx, camX, camY, time) {
+  const u = hawk.t - HAWK_STRIKE;
+  if (!hawk.dives || u < -0.25 || u > 0.4) return;
+  const [sx, sy] = hawkPos(camX, camY);
+  const k = u < 0 ? u / 0.25 : u / 0.4;
+  const sprite = tinted(enemySprites[3][Math.floor(time * 12) % 2 ? 'stepA' : 'stepB'], 19, 0.55);
+  drawSprite(ctx, sprite, sx + Math.round(k * 50), sy - 4 - Math.round(Math.abs(k) * 70), 1, false, false, 2);
 }
 
 /** Skunk stink: a violet haze over its reach, with puffs drifting around it; it fades as it clears. */
@@ -734,12 +774,22 @@ export function renderScene(ctx, alpha, time) {
   drawGround(ctx, camX, camY);
   drawWorld(ctx, camX, camY, alpha, time);
   drawEffects(ctx, camX, camY);
+  drawHawk(ctx, camX, camY, time);
   if (game.started) {
     const x = hen.prevX + (hen.x - hen.prevX) * alpha;
     const y = hen.prevY + (hen.y - hen.prevY) * alpha;
     drawWeather(ctx, time, Math.round(toIsoX(x, y) - camX), Math.round(toIsoY(x, y) - camY));
   }
   tint(ctx, 13, (juice.flash / juice.flashDur) * 0.7);
+  if (game.frenzy > 0 && !game.over) {
+    // FRENZY!: a red frame pulses around the screen
+    ctx.globalAlpha = 0.7 + 0.3 * Math.sin(time * 12);
+    ctx.strokeStyle = PALETTE[9];
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, WIDTH - 4, HEIGHT - 4);
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 1;
+  }
   drawStick(ctx);
   drawHud(ctx, time);
 }

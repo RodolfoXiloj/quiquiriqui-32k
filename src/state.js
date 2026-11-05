@@ -53,6 +53,8 @@ export const game = {
   eggBonus: 0,
   /** Chests waiting to be opened that hold three upgrades for sure (a rainbow elite's). */
   bigChests: 0,
+  /** Seconds left of a FRENZY! event (events.js): faster waves, faster predators. */
+  frenzy: 0,
 };
 
 /** Shows `text` across the screen for a few seconds. */
@@ -97,6 +99,7 @@ export function resetGame() {
   game.lockShake = 0;
   game.eggBonus = 0;
   game.bigChests = 0;
+  game.frenzy = 0;
 }
 
 /** Reads the saved best time of the current peril (0 if storage is missing or blocked). */
