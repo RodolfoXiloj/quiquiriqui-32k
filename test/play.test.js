@@ -61,6 +61,9 @@ import {
   BADGER,
   CRATE,
   MAGPIE,
+  WEASEL,
+  DASH_WARN,
+  DASH_TIME,
   ENEMY_TYPES,
   MAX_ENEMIES,
   shots,
@@ -1283,6 +1286,25 @@ describe('quiquiriqui at 5x: special predators', () => {
     resetRun();
   });
 
+  it('a weasel stops and blinks, then lunges in a straight line at where she was', () => {
+    quietRun();
+    const w = sturdy(WEASEL, 4.5, 0);
+    w.timer = 0;
+    update(STEP);
+    assert.ok(w.warn, 'no warning before the lunge');
+    const [x0, y0] = [w.x, w.y];
+    hen.y += 2; // she steps aside while it winds up
+    steps(DASH_WARN - 2 * STEP);
+    assert.ok(Math.hypot(w.x - x0, w.y - y0) < 0.01, 'it moved while winding up');
+    steps(2 * STEP + DASH_TIME);
+    assert.ok(x0 - w.x > 3.5, `it lunged only ${(x0 - w.x).toFixed(2)} tiles`);
+    assert.ok(Math.abs(w.y - y0) < 0.3, 'the lunge was not straight');
+    assert.equal(hen.hp, hen.maxHp, 'the lunge hit her although she stepped aside');
+    steps(0.05);
+    assert.equal(w.state, 0, 'it did not stop to rest');
+    resetRun();
+  });
+
   it('no more than six magpies at once: the waves send rats instead', () => {
     quietRun();
     for (let i = 0; i < ENEMY_TYPES[MAGPIE].max; i++) sturdy(MAGPIE, 6 + i, 0);
@@ -1320,7 +1342,7 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
     assert.equal(game.won, true, `stopped at ${game.time}`);
     assert.ok(peak >= 150, `the horde peaked at ${peak}`);
     assert.equal(Object.keys(firstSeen).length, ENEMY_TYPES.length, `seen: ${JSON.stringify(firstSeen)}`);
-    for (const [kind, from] of [[SNAKE, 180], [MAGPIE, 240], [CROW, 300], [BADGER, 420]]) {
+    for (const [kind, from] of [[WEASEL, 120], [SNAKE, 180], [MAGPIE, 240], [CROW, 300], [BADGER, 420]]) {
       assert.ok(firstSeen[kind] >= from && firstSeen[kind] < from + 20, `${ENEMY_TYPES[kind].name} first seen at ${firstSeen[kind]}`);
     }
     // Time a step with the pool full

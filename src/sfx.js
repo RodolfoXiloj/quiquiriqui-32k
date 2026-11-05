@@ -148,7 +148,14 @@ const KILL_VOICES = [
     { freq: 1300, endFreq: 900, dur: 0.05, noise: 0.45, vol: 0.12 },
     { freq: 1250, endFreq: 850, dur: 0.05, noise: 0.45, vol: 0.12, delay: 0.08 },
   ],
+  // weasel: a thin squeal
+  [{ freq: 1600, endFreq: 2300, dur: 0.1, noise: 0.2, vol: 0.11, mod: 60 }],
 ];
+
+/** A weasel lunges: a rising swish. */
+export function sfxLunge() {
+  if (gate('lunge', 150)) playTone({ freq: 300, endFreq: 1100, dur: 0.12, noise: 0.55, vol: 0.1 });
+}
 
 /** A magpie throws a pebble: a short whoosh. */
 export function sfxThrow() {

@@ -367,6 +367,21 @@ function magpieShape(step) {
   };
 }
 
+/** The weasel (20x10): long, low and russet, with a white throat and a dark tail tip. */
+function weaselShape(step) {
+  const liftA = step === 'stepA';
+  const liftB = step === 'stepB';
+  return (x, y) => {
+    if (x === 17 && y === 4) return 0; // eye
+    if (x === 15 && y === 2) return 19; // ear
+    if (inEllipse(x, y, 16, 4.6, 2.4, 1.8)) return y >= 6 ? 13 : 19; // head, white throat
+    if (inEllipse(x, y, 9.5, 5.5, 5.5, 1.7)) return y >= 7 && x >= 11 ? 13 : 19; // body
+    if (y === 5 && x >= 1 && x <= 4) return x <= 2 ? 17 : 19; // tail
+    if (y === 8 && (((x === 5 || x === 6) && !liftA) || ((x === 13 || x === 14) && !liftB))) return 19; // legs
+    return -1;
+  };
+}
+
 /** The badger (20x13): grey, with a white face crossed by a dark stripe. */
 function badgerShape(step) {
   const liftA = step === 'stepA' ? 1 : 0;
@@ -594,6 +609,7 @@ export function bakeWorldSprites() {
     [badgerShape, 20, 13],
     [crateShape, 14, 14],
     [magpieShape, 18, 12],
+    [weaselShape, 20, 10],
   ]) {
     const set = {};
     for (const step of POSES) set[step] = bakeSprite(w, h, shape(step));

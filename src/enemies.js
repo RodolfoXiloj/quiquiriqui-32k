@@ -3,7 +3,8 @@
 // them, knock them back and float a damage number; a kill drops corn most of the time.
 // Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
 // stand still, never bite, are not kills, and break into a prize. Some kinds act on their own
-// (`act`): the magpie keeps its distance and throws pebbles (`shots`).
+// (`act`): the magpie keeps its distance and throws pebbles (`shots`); the weasel stops, blinks
+// and lunges in a straight line.
 import { HALF_W, HALF_H } from './iso.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
@@ -13,7 +14,7 @@ import { spawnCorn } from './corn.js';
 import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
-import { sfxPeck, sfxBoom, sfxKill, sfxThrow } from './sfx.js';
+import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge } from './sfx.js';
 import { PERIL } from './profile.js';
 
 export const RAT = 0;
@@ -23,15 +24,17 @@ export const CROW = 3;
 export const BADGER = 4;
 export const CRATE = 5;
 export const MAGPIE = 6;
+export const WEASEL = 7;
 
-/** What a kind does besides biting: chase the hen, or keep away and throw pebbles. */
+/** What a kind does besides biting: chase the hen, keep away and throw pebbles, or lunge. */
 export const CHASE = 0;
 export const SHOOT = 1;
+export const CHARGE = 2;
 
 /**
  * Enemy kinds. hp: health at player level 1 · speed: tiles per second · r: body radius (tiles)
  * · dmg: bite damage (and pebble damage) · colors: palette indices for the hit puff · flying:
- * drawn in the air and only pushed apart from other flyers · act: CHASE (default) or SHOOT ·
+ * drawn in the air and only pushed apart from other flyers · act: CHASE (default), SHOOT or CHARGE ·
  * max: how many may be alive at once (waves.js sends another kind instead).
  */
 export const ENEMY_TYPES = [
@@ -42,7 +45,20 @@ export const ENEMY_TYPES = [
   { name: 'badger', hp: 60, speed: 1.65, r: 0.55, dmg: 10, colors: [17, 13] },
   { name: 'crate', hp: 5, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
   { name: 'magpie', hp: 12, speed: 2.6, r: 0.3, dmg: 6, colors: [15, 13], flying: true, act: SHOOT, max: 6 },
+  { name: 'weasel', hp: 14, speed: 2.4, r: 0.34, dmg: 7, colors: [19, 13], act: CHARGE },
 ];
+
+/**
+ * A lunger closer than DASH_FROM tiles (and farther than DASH_NEAR) stops and blinks for
+ * DASH_WARN seconds, aiming where the hen is, then lunges that way at DASH_SPEED for DASH_TIME and
+ * rests DASH_REST before the next one. Stepping aside while it blinks makes it miss.
+ */
+const DASH_FROM = 6;
+const DASH_NEAR = 2.5;
+export const DASH_WARN = 0.5;
+export const DASH_TIME = 0.45;
+const DASH_SPEED = 11;
+const DASH_REST = 1.5;
 
 /** A shooter comes closer from farther than this (tiles), backs off from nearer, and circles between. */
 const KEEP_FAR = 6;
@@ -120,6 +136,10 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   warn: false,
   /** Which way a shooter circles the hen: 1 or -1. */
   side: 1,
+  /** A lunger: 0 chasing, 1 winding up, 2 lunging along (dirX, dirY). */
+  state: 0,
+  dirX: 0,
+  dirY: 0,
 }));
 
 /** Pebbles thrown by magpies, flying straight at where the hen was. */
@@ -223,6 +243,7 @@ export function spawnEnemy(kind, x, y) {
     timer: SHOT_EVERY * (0.5 + phase / 2),
     warn: false,
     side: phase < 1 ? 1 : -1,
+    state: 0,
   });
   return e;
 }
@@ -340,8 +361,9 @@ function killEnemy(e) {
 }
 
 /**
- * One step of what predator `e` does, the hen being `d` tiles away along (ux, uy): chase her, or
- * (a shooter) hold its distance, circle her and throw a pebble now and then while on screen.
+ * One step of what predator `e` does, the hen being `d` tiles away along (ux, uy): chase her;
+ * (a shooter) hold its distance, circle her and throw a pebble now and then while on screen; or
+ * (a lunger) now and then stop, blink, and lunge at where she was.
  */
 function act(e, ux, uy, d, dt) {
   let mx = ux;
@@ -359,6 +381,33 @@ function act(e, ux, uy, d, dt) {
         e.timer = SHOT_EVERY;
         throwPebble(e, ux, uy);
       }
+    }
+  } else if (e.act === CHARGE) {
+    e.timer -= dt;
+    if (e.state === 1) {
+      // Winding up: still, blinking, aimed
+      e.warn = true;
+      speed = 0;
+      if (e.timer <= 0) {
+        e.state = 2;
+        e.timer = DASH_TIME;
+        sfxLunge();
+      }
+    } else if (e.state === 2) {
+      mx = e.dirX;
+      my = e.dirY;
+      speed = DASH_SPEED;
+      if (e.timer <= 0) {
+        e.state = 0;
+        e.timer = DASH_REST;
+      }
+    } else if (e.timer <= 0 && d < DASH_FROM && d > DASH_NEAR) {
+      e.state = 1;
+      e.timer = DASH_WARN;
+      e.dirX = ux;
+      e.dirY = uy;
+      e.warn = true;
+      speed = 0;
     }
   }
   e.x += mx * speed * dt;

@@ -335,7 +335,8 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     ctx.globalAlpha = rise;
     // White: just hit, or blinking before it acts (a magpie about to throw)
     const white = e.flash > 0.1 || (e.warn && Math.floor(time * 16) % 2 === 0);
-    drawSprite(ctx, set[pose], d.sx, d.sy - lift, e.facing, white, false, e.boss ? 2 : 1);
+    const shake = e.warn ? (Math.floor(time * 30) % 2) * 2 - 1 : 0;
+    drawSprite(ctx, set[pose], d.sx + shake, d.sy - lift, e.facing, white, false, e.boss ? 2 : 1);
     ctx.globalAlpha = 1;
   }
   if (game.started && !game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);
