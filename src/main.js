@@ -21,7 +21,7 @@ import { game, settings, resetGame, loadBest, saveBest, xpToNext } from './state
 import { RUN_LENGTH, weatherAt } from './weather.js';
 import { updateMusic, loadMusicSetting, toggleMusic } from './music.js';
 import { renderScene, cardAt, titleRowAt, shopRowAt } from './render.js';
-import { profile, loadProfile, choosePeril, chooseHen, unlockAfterDawn, HENS, eggsEarned, bankEggs, buyUpgrade, SHOP } from './profile.js';
+import { profile, loadProfile, choosePeril, chooseHen, henUnlocked, unlockAfterDawn, HENS, eggsEarned, bankEggs, buyUpgrade, SHOP } from './profile.js';
 
 /** Real seconds before a card can be picked once the cards open. */
 const CARD_LOCK = 0.35;
@@ -150,8 +150,7 @@ function titleMenu() {
     loadBest();
   }
   if (hen) {
-    chooseHen(hen);
-    game.hen = profile.hen;
+    game.hen = chooseHen(game.hen, hen);
     resetBuild(HENS[game.hen].start);
     dressHen();
   }
@@ -301,6 +300,13 @@ export function update(dt) {
     if (game.titleLock > 0) {
       game.titleLock -= dt;
       input.anyAction = false;
+    }
+    game.lockShake = Math.max(0, game.lockShake - dt);
+    if (input.anyAction && !henUnlocked(game.hen)) {
+      // A locked hen is only on show: she cannot start a run. Her padlock shakes instead.
+      input.anyAction = false;
+      if (!game.lockShake) sfxSplat();
+      game.lockShake = 0.3;
     }
     if (!input.anyAction) {
       updateJuice(dt, hen.x, hen.y);

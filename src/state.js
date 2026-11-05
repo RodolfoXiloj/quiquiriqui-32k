@@ -47,6 +47,8 @@ export const game = {
   eggs: 0,
   /** True while the shop is open on the title screen. */
   shopOpen: false,
+  /** Seconds the padlock of a locked hen keeps shaking after a try to start with her. */
+  lockShake: 0,
 };
 
 /** Test and dev switches. They survive resetRun(). */
@@ -82,6 +84,7 @@ export function resetGame() {
   game.unlockNote = '';
   game.eggs = 0;
   game.shopOpen = false;
+  game.lockShake = 0;
 }
 
 /** Reads the saved best time of the current peril (0 if storage is missing or blocked). */

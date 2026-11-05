@@ -1068,12 +1068,28 @@ describe('quiquiriqui at 5x: peril levels', () => {
     resetRun();
   });
 
-  it('locked hens are skipped; the first dawn brings the speckled hen, peril 2 the black hen', () => {
+  it('locked hens are on show but cannot start a run; the first dawn brings the speckled hen, peril 2 the black hen', () => {
     freshProfile();
     resetRun();
     tapKey('KeyE');
-    assert.equal(profile.hen, 0, 'chose a locked hen');
+    assert.equal(game.hen, 1, 'E did not show the next hen');
+    assert.equal(profile.hen, 0, 'a locked hen became the saved choice');
+    assert.ok(henLine().endsWith('LOCKED'), henLine());
+    assert.deepEqual(buildOrder, ['peck'], 'the title did not show her weapon');
+    holdKey('KeyD', true);
+    steps(0.5);
+    holdKey('KeyD', false);
+    tapAt(10, 10);
+    update(STEP);
+    assert.equal(game.started, false, 'a locked hen started a run');
+    assert.ok(game.lockShake > 0, 'the padlock did not shake');
+    tapKey('KeyE');
+    assert.equal(game.hen, 2, 'the black hen was skipped');
+    tapKey('KeyE');
+    assert.equal(game.hen, 0);
+    assert.ok(!henLine().includes('LOCKED'));
     start();
+    assert.equal(game.started, true, 'the white hen did not start');
     hen.hp = hen.maxHp = 1e6;
     game.time = RUN_LENGTH - 0.05;
     for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
@@ -1085,8 +1101,11 @@ describe('quiquiriqui at 5x: peril levels', () => {
     assert.equal(profile.hen, 1);
     assert.deepEqual(buildOrder, ['peck'], 'the title did not switch to her weapon');
     tapKey('KeyE');
-    assert.equal(profile.hen, 0, 'did not skip the locked black hen');
+    assert.equal(game.hen, 2, 'the black hen is not on show');
+    assert.equal(profile.hen, 1, 'the locked black hen became the saved choice');
     assert.equal(game.started, false);
+    resetRun({ hen: profile.hen });
+    assert.equal(game.hen, 1, 'back on the title, the last unlocked hen she chose is not on show');
     // A dawn at peril 2 or more brings the black hen
     profile.perilUnlocked = MAX_PERIL;
     assert.deepEqual(unlockAfterDawn(2), ['BLACK HEN!']);
@@ -1396,9 +1415,11 @@ describe('quiquiriqui: text and layout', () => {
     Object.assign(profile, { perilUnlocked: 0, hens: 1, hen: 0 });
     assert.ok(textWidth(perilLine(), 1) <= WIDTH - 16, 'peril line');
     for (let i = 0; i < HENS.length; i++) {
-      profile.hen = i;
+      game.hen = i;
       assert.ok(textWidth(henLine(), 1) <= WIDTH - 16, 'hen line');
+      if (HENS[i].hint) assert.ok(textWidth(HENS[i].hint, 1) <= WIDTH - 16, 'unlock hint');
     }
+    game.hen = 0;
     profile.eggs = 99999;
     assert.ok(textWidth(shopLine(), 1) <= WIDTH - 16, 'shop line');
     for (const upgrade of SHOP) {
@@ -1482,7 +1503,9 @@ describe('quiquiriqui: text and layout', () => {
     const texts = [...Object.values(HUD_STRINGS)];
     for (const item of [...ITEMS, ...BOONS]) texts.push(item.name, ...(item.text || []), ...(item.up || []));
     for (const upgrade of SHOP) texts.push(upgrade.name, upgrade.text);
-    for (const hen of HENS) texts.push(hen.name, `${hen.name}!`);
+    for (const hen of HENS) texts.push(hen.name, `${hen.name}!`, hen.hint || '');
+    for (game.hen = 0; game.hen < HENS.length; game.hen++) texts.push(henLine());
+    game.hen = 0;
     for (const [level, eggs, hens, peril] of [[0, 0, 1, 0], [5, 99999, 7, 5]]) {
       Object.assign(profile, { eggs, hens, perilUnlocked: peril, peril, shop: SHOP.map(() => level) });
       texts.push(shopLine(), perilLine(), henLine(), ...SHOP.map((_, i) => shopCost(i)));

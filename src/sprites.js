@@ -440,6 +440,8 @@ const EGG_LOOKS = [
 ];
 /** A Chick Orbit chick (9x8), facing right. */
 export let chickSprite = null;
+/** The padlock (9x11) beside a locked hen on the title screen. */
+export let lockSprite = null;
 
 /** 14x14 icons for the upgrade cards, the HUD and the shop, by item id (profile.js SHOP ids too). */
 export const iconSprites = {};
@@ -605,4 +607,9 @@ export function bakeWorldSprites() {
     return -1;
   });
   for (const [id, shape] of Object.entries(ICON_SHAPES)) iconSprites[id] = bakeSprite(14, 14, shape);
+  lockSprite = bakeSprite(9, 11, (x, y) => {
+    if (y <= 4) return (y === 1 && x >= 3 && x <= 5) || (y > 1 && (x === 2 || x === 6)) ? 16 : -1; // shackle
+    if (x === 4 && (y === 6 || y === 7)) return 0; // keyhole
+    return x === 2 && y === 6 ? 13 : 10;
+  });
 }

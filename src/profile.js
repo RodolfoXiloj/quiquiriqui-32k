@@ -7,14 +7,17 @@ export const MAX_PERIL = 5;
 /** Each peril level adds these shares: predator health, speed, numbers and bite damage. */
 export const PERIL = { hp: 0.25, speed: 0.06, spawns: 0.2, bite: 0.1 };
 
-/** The hens to play: each starts with its own weapon (and wears its own feathers, sprites.js). */
-export const HENS = [
-  { name: 'WHITE HEN', start: 'egg' },
-  { name: 'SPECKLED HEN', start: 'peck' },
-  { name: 'BLACK HEN', start: 'darts' },
-];
 /** Peril at which a dawn brings the black hen. */
 const BLACK_HEN_PERIL = 2;
+/**
+ * The hens to play: each starts with its own weapon (and wears its own feathers, sprites.js).
+ * `hint` tells, on the title screen, how to unlock a locked one.
+ */
+export const HENS = [
+  { name: 'WHITE HEN', start: 'egg' },
+  { name: 'SPECKLED HEN', start: 'peck', hint: 'WIN A DAWN TO UNLOCK' },
+  { name: 'BLACK HEN', start: 'darts', hint: `WIN A DAWN AT PERIL ${BLACK_HEN_PERIL}` },
+];
 
 /** Permanent upgrades: each level adds `per` to a stat of every run (items.js sums them in). */
 export const SHOP = [
@@ -73,13 +76,17 @@ export function buyUpgrade(i) {
 /** True if hen `i` is unlocked. */
 export const henUnlocked = (i) => !!(profile.hens & (1 << i));
 
-/** Steps the chosen hen by `step` (+1 / -1), skipping locked ones. */
-export function chooseHen(step) {
-  let h = profile.hen;
-  do h = (h + step + HENS.length) % HENS.length;
-  while (!henUnlocked(h));
-  profile.hen = h;
-  saveProfile();
+/**
+ * The hen `step` (+1 / -1) away from hen `from`. Locked hens are included, so the title screen can
+ * show them, but only an unlocked one becomes the saved choice.
+ */
+export function chooseHen(from, step) {
+  const h = (from + step + HENS.length) % HENS.length;
+  if (henUnlocked(h)) {
+    profile.hen = h;
+    saveProfile();
+  }
+  return h;
 }
 
 export function saveProfile() {

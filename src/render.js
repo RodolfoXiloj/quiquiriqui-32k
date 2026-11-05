@@ -6,7 +6,7 @@ import { drawPixelText, textWidth } from './font.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
-import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier } from './sprites.js';
+import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier, lockSprite } from './sprites.js';
 import { hen } from './hen.js';
 import { enemies, bossName, RISE_TIME } from './enemies.js';
 import { pickups, CHEST } from './pickups.js';
@@ -141,10 +141,9 @@ function drawShop(ctx) {
   drawText(ctx, 'B: BACK', WIDTH / 2, shopRowY(SHOP.length), 1, 13);
 }
 
-/** The hen row of the title screen. */
+/** The hen row of the title screen: the hen on show, locked or not. */
 export function henLine() {
-  const locked = HENS.filter((_, i) => !henUnlocked(i)).length;
-  return `Q < ${HENS[profile.hen].name} > E` + (locked ? `   ${locked} LOCKED` : '');
+  return `Q < ${HENS[game.hen].name} > E` + (henUnlocked(game.hen) ? '' : '  LOCKED');
 }
 
 /** The peril row of the title screen. */
@@ -533,7 +532,12 @@ function drawHud(ctx, time) {
     drawText(ctx, S.title, WIDTH / 2, cy - 58, Z.title, 10);
     drawText(ctx, S.subtitle, WIDTH / 2, cy - 41, Z.subtitle, 13);
     if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, cy - 31, 1, 10);
-    if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 22, Z.start, 13);
+    if (!henUnlocked(game.hen)) {
+      // A locked hen is only on show: a padlock beside her, and how to unlock her instead of START
+      const shake = game.lockShake > 0 ? Math.round(Math.sin(time * 60) * 1.5) : 0;
+      ctx.drawImage(lockSprite.normal, WIDTH / 2 + 8 + shake, cy - 18);
+      drawText(ctx, HENS[game.hen].hint, WIDTH / 2, cy + 22, 1, 10);
+    } else if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 22, Z.start, 13);
     drawText(ctx, henLine(), WIDTH / 2, cy + TITLE_ROWS.hen, 1, 13);
     drawText(ctx, perilLine(), WIDTH / 2, cy + TITLE_ROWS.peril, 1, profile.peril ? 10 : 13);
     drawText(ctx, shopLine(), WIDTH / 2, cy + TITLE_ROWS.shop, 1, 10);
