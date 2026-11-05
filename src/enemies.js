@@ -12,7 +12,7 @@ import { spawnCorn } from './corn.js';
 import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
-import { sfxPeck, sfxBoom } from './sfx.js';
+import { sfxPeck, sfxBoom, sfxKill } from './sfx.js';
 
 export const RAT = 0;
 export const FOX = 1;
@@ -258,6 +258,7 @@ function crateDrop(e) {
 function killEnemy(e) {
   e.alive = false;
   if (!e.prop) game.kills++;
+  sfxKill(e.kind);
   const type = ENEMY_TYPES[e.kind];
   const puffs = e.boss ? 30 : 8;
   for (let i = 0; i < puffs; i++) {

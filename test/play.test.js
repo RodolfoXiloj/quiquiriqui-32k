@@ -73,6 +73,7 @@ import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
+import { audio, sfxKill, sfxLevelUp, sfxPeck } from '../src/sfx.js';
 
 /** Holds `code` for `seconds` of scenario time and returns the hen's screen-space shift. */
 function walk(code, seconds) {
@@ -876,6 +877,85 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
     for (let i = 0; i < 120; i++) update(STEP);
     worst = (performance.now() - t0) / 120;
     assert.ok(worst < 4, `${worst.toFixed(2)} ms per step`);
+  });
+});
+
+/**
+ * A stand-in AudioContext that records what the synth does: buffers rendered, sources started and
+ * the nodes they connect to. Lets the tests run the audio code under Node.
+ */
+class FakeAudioContext {
+  constructor() {
+    this.currentTime = 0;
+    this.state = 'running';
+    this.destination = { name: 'speakers' };
+    this.started = [];
+  }
+  node(name) {
+    return { name, gain: { value: 1 }, threshold: { value: 0 }, ratio: { value: 1 }, connect(to) { this.to = to; } };
+  }
+  createGain() {
+    return this.node('gain');
+  }
+  createDynamicsCompressor() {
+    return this.node('compressor');
+  }
+  createBuffer(channels, length) {
+    const data = new Float32Array(length);
+    return { length, getChannelData: () => data };
+  }
+  createBufferSource() {
+    const ctx = this;
+    return {
+      buffer: null,
+      connect(to) {
+        this.to = to;
+      },
+      start(at) {
+        ctx.started.push({ at, buffer: this.buffer, to: this.to });
+      },
+    };
+  }
+  resume() {}
+}
+
+/** Runs `fn` with the fake AudioContext installed and a fresh mixer, then removes both. */
+function withFakeAudio(fn) {
+  // Sounds are rate-limited on real time; let any limit left by earlier tests run out.
+  const until = performance.now() + 60;
+  while (performance.now() < until);
+  globalThis.AudioContext = FakeAudioContext;
+  audio.ctx = null;
+  try {
+    fn();
+  } finally {
+    delete globalThis.AudioContext;
+    audio.ctx = audio.sfx = audio.music = null;
+  }
+}
+
+describe('quiquiriqui: sound', () => {
+  it('every sound goes through the effects bus into a compressor', () => {
+    withFakeAudio(() => {
+      sfxPeck();
+      const ctx = audio.ctx;
+      assert.ok(ctx.started.length === 1);
+      assert.equal(ctx.started[0].to, audio.sfx);
+      assert.equal(audio.sfx.to.name, 'compressor');
+      assert.equal(audio.music.to.name, 'compressor');
+      assert.ok(ctx.started[0].buffer.getChannelData(0).some((v) => v !== 0), 'silent buffer');
+    });
+  });
+
+  it('jingles stay in tune and in order; every predator has its own last sound', () => {
+    withFakeAudio(() => {
+      sfxLevelUp();
+      const times = audio.ctx.started.map((s) => s.at);
+      assert.deepEqual(times, [0, 0.08, 0.16, 0.24]);
+      audio.ctx.started.length = 0;
+      for (let kind = 0; kind < ENEMY_TYPES.length; kind++) sfxKill(kind);
+      assert.ok(audio.ctx.started.length >= ENEMY_TYPES.length, `${audio.ctx.started.length} kill sounds`);
+    });
   });
 });
 

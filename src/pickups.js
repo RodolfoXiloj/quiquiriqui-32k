@@ -7,7 +7,7 @@ import { pullAllCorn } from './corn.js';
 import { enemies, hitEnemy, onScreen } from './enemies.js';
 import { triggerShake, triggerFlash } from './juice.js';
 import { spawnParticle, spawnPopup } from './pool.js';
-import { sfxPickup, sfxBoom } from './sfx.js';
+import { sfxPickup, sfxBoom, sfxMagnet, sfxFood } from './sfx.js';
 
 export const CHEST = 0;
 export const MAGNET = 1;
@@ -50,9 +50,12 @@ function grab(p) {
     spawnParticle(p.x, p.y, 6, Math.cos(a) * 1.8, Math.sin(a) * 1.8, 25, i % 2 ? 10 : 13, 1, 0.4);
   }
   if (p.kind === CHEST) game.chests++;
-  else if (p.kind === MAGNET) pullAllCorn();
-  else if (p.kind === BOMB) detonate();
+  else if (p.kind === MAGNET) {
+    pullAllCorn();
+    sfxMagnet();
+  } else if (p.kind === BOMB) detonate();
   else {
+    sfxFood();
     const healed = Math.min(FOOD_HEAL, hen.maxHp - hen.hp);
     hen.hp += healed;
     spawnPopup(hen.x, hen.y, `+${healed}`, 10);

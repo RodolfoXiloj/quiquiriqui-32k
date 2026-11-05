@@ -16,7 +16,7 @@ import { resetWaves, updateWaves } from './waves.js';
 import { resetWeapons, updateWeapons, updateProjectiles } from './weapons.js';
 import { juice, snapCamera, updateJuice } from './juice.js';
 import { clearPools, updatePools, spawnParticle, spawnPuff, spawnPopup } from './pool.js';
-import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow } from './sfx.js';
+import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow, sfxChest } from './sfx.js';
 import { game, settings, resetGame, loadBest, saveBest, xpToNext } from './state.js';
 import { RUN_LENGTH } from './weather.js';
 import { renderScene, cardAt } from './render.js';
@@ -142,7 +142,7 @@ function openChest() {
   }
   syncHenStats();
   dressHen();
-  sfxLevelUp();
+  sfxChest();
   if (!reward.length) {
     hen.hp = Math.min(hen.maxHp, hen.hp + MAXED_HEAL);
     spawnPopup(hen.x, hen.y, `+${MAXED_HEAL} HP`, 10);
