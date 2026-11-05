@@ -9,7 +9,7 @@ import { initInput, updateInput, releaseAllInput, releasePointer, input } from '
 import { seedGame, gameRand } from './rng.js';
 import { hen, resetHen, updateHen, syncHenStats } from './hen.js';
 import { build, resetBuild, rollCards, applyCard } from './items.js';
-import { clearEnemies, updateEnemies } from './enemies.js';
+import { enemies, clearEnemies, updateEnemies } from './enemies.js';
 import { clearCorn, scatterStartingCorn, updateCorn } from './corn.js';
 import { clearPickups, updatePickups } from './pickups.js';
 import { resetWaves, updateWaves } from './waves.js';
@@ -18,7 +18,8 @@ import { juice, snapCamera, updateJuice } from './juice.js';
 import { clearPools, updatePools, spawnParticle, spawnPuff, spawnPopup } from './pool.js';
 import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow, sfxChest } from './sfx.js';
 import { game, settings, resetGame, loadBest, saveBest, xpToNext } from './state.js';
-import { RUN_LENGTH } from './weather.js';
+import { RUN_LENGTH, weatherAt } from './weather.js';
+import { updateMusic, loadMusicSetting, toggleMusic } from './music.js';
 import { renderScene, cardAt } from './render.js';
 
 /** Real seconds before a card can be picked once the cards open. */
@@ -55,7 +56,16 @@ export function boot(canvas) {
   initInput(canvas);
   addEventListener('blur', handleBlur);
   loadBest();
+  loadMusicSetting();
   resetRun();
+}
+
+/** Which part of the music fits the moment, or null for silence. */
+function musicMood() {
+  if (!game.started) return null;
+  if (game.over) return game.won ? 'dawn' : null;
+  if (enemies.some((e) => e.alive && e.boss)) return 'boss';
+  return weatherAt(game.time).night > 0.5 ? 'night' : 'day';
 }
 
 /**
@@ -185,6 +195,9 @@ function cardPicked() {
 export function update(dt) {
   time += dt;
   updateInput();
+  if (input.pressed.has('KeyM')) toggleMusic();
+  // Menus and the pause keep the music, quieter.
+  updateMusic(musicMood(), game.paused || game.cards.length || game.reward.length ? 0.3 : 1);
 
   if (game.paused) {
     if (input.anyAction) {

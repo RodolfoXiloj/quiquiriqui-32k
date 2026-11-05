@@ -74,6 +74,7 @@ import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
 import { audio, sfxKill, sfxLevelUp, sfxPeck } from '../src/sfx.js';
+import { music, PARTS, notesAt, sectionLength } from '../src/music.js';
 
 /** Holds `code` for `seconds` of scenario time and returns the hen's screen-space shift. */
 function walk(code, seconds) {
@@ -892,7 +893,13 @@ class FakeAudioContext {
     this.started = [];
   }
   node(name) {
-    return { name, gain: { value: 1 }, threshold: { value: 0 }, ratio: { value: 1 }, connect(to) { this.to = to; } };
+    const gain = {
+      value: 1,
+      setTargetAtTime(v) {
+        this.value = v;
+      },
+    };
+    return { name, gain, threshold: { value: 0 }, ratio: { value: 1 }, connect(to) { this.to = to; } };
   }
   createGain() {
     return this.node('gain');
@@ -956,6 +963,72 @@ describe('quiquiriqui: sound', () => {
       for (let kind = 0; kind < ENEMY_TYPES.length; kind++) sfxKill(kind);
       assert.ok(audio.ctx.started.length >= ENEMY_TYPES.length, `${audio.ctx.started.length} kill sounds`);
     });
+  });
+});
+
+describe('quiquiriqui: music', () => {
+  it('the score is whole: every part has a melody, a bass line and drums, in full bars', () => {
+    for (const [name, part] of Object.entries(PARTS)) {
+      const n = sectionLength(name);
+      assert.equal(n % 8, 0, `${name} is not whole bars`);
+      for (const voice of ['hum', 'bass', 'drums']) assert.equal(part[voice].length, n, `${name}.${voice}`);
+      let melody = 0;
+      for (let i = 0; i < n; i++) melody += notesAt(name, i).filter((note) => note.voice === 'hum').length;
+      assert.ok(melody >= 4, `${name} has ${melody} melody notes`);
+    }
+  });
+
+  it('the music follows the run: day, a boss, night, the dawn fanfare once; M turns it off', () => {
+    withFakeAudio(() => {
+      localStorage.removeItem('qq_mute');
+      music.on = true;
+      resetRun();
+      start(); // the first sound (the cluck) opens the mixer
+      const ctx = audio.ctx;
+      const tick = (seconds) => {
+        for (let i = 0; i < Math.round(seconds / STEP); i++) {
+          ctx.currentTime += STEP;
+          update(STEP);
+        }
+      };
+      tick(0.5);
+      assert.equal(music.mood, 'day');
+      assert.ok(ctx.started.some((s) => s.to === audio.music), 'no music notes');
+      assert.ok(audio.music.gain.value > 0);
+      const boss = spawnBoss(FOX);
+      boss.speed = 0;
+      tick(2.5);
+      assert.equal(music.mood, 'boss', 'a boss did not bring the chorus');
+      clearAll();
+      game.time = 500;
+      tick(2.5);
+      assert.equal(music.mood, 'night');
+      tapKey('KeyM');
+      assert.equal(music.on, false);
+      assert.equal(localStorage.getItem('qq_mute'), '1');
+      tick(0.1);
+      assert.equal(audio.music.gain.value, 0, 'M did not silence the music');
+      tapKey('KeyM');
+      assert.equal(music.on, true);
+      game.time = RUN_LENGTH - 0.01;
+      tick(0.1);
+      assert.equal(game.won, true);
+      tick(5);
+      assert.equal(music.mood, 'dawn');
+      const notes = ctx.started.length;
+      tick(3);
+      assert.equal(ctx.started.length, notes, 'the dawn fanfare kept playing');
+    });
+  });
+
+  it('M on the title screen does not start a run', () => {
+    resetRun();
+    const on = music.on;
+    tapKey('KeyM');
+    update(STEP);
+    assert.equal(game.started, false);
+    assert.equal(music.on, !on);
+    tapKey('KeyM');
   });
 });
 

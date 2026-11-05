@@ -76,7 +76,8 @@ export function initInput(canvas) {
   addEventListener('keydown', (e) => {
     if (!e.repeat) freshKeys.add(e.code);
     keys.add(e.code);
-    input.anyAction = true;
+    // M only toggles the music: it does not start a run or close a screen.
+    if (e.code !== 'KeyM') input.anyAction = true;
     if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   });
   addEventListener('keyup', (e) => keys.delete(e.code));

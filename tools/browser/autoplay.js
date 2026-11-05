@@ -24,6 +24,7 @@ import { pickups, spawnPickup } from '/pickups.js';
 import { ITEMS, ITEM_BY_ID, build, buildOrder, applyCard } from '/items.js';
 import { bakeHen, outfitOf } from '/sprites.js';
 import { cardRect } from '/render.js';
+import { music } from '/music.js';
 import { createBot } from '/__dev/bot.js';
 
 const params = new URLSearchParams(location.search);
@@ -61,6 +62,7 @@ window.__qq = {
     paused: game.paused,
     over: game.over,
     won: game.won,
+    music: { on: music.on, mood: music.mood },
     time: game.time,
     level: game.level,
     xp: game.xp,

@@ -24,6 +24,7 @@ export const HUD_STRINGS = {
   subtitle: 'SURVIVE UNTIL DAWN',
   start: 'MOVE TO START',
   controls: 'WASD / ARROWS / HOLD MOUSE / TOUCH',
+  music: 'M: MUSIC ON / OFF',
   paused: 'PAUSED',
   resume: 'PRESS ANY KEY',
   levelUp: 'LEVEL UP!',
@@ -33,6 +34,7 @@ export const HUD_STRINGS = {
   gameOver: 'GAME OVER',
   dawn: 'DAWN!',
   crow: 'THE ROOSTER CROWS',
+  nod: 'HOLDING OUT FOR A HEN',
   newBest: 'NEW BEST!',
   tutorial: 'PICK UP CORN TO LEVEL UP',
 };
@@ -43,6 +45,7 @@ export const HUD_SIZES = {
   subtitle: 7,
   start: 8,
   controls: 7,
+  music: 7,
   paused: 14,
   resume: 8,
   levelUp: 12,
@@ -52,6 +55,7 @@ export const HUD_SIZES = {
   gameOver: 16,
   dawn: 16,
   crow: 8,
+  nod: 7,
   newBest: 8,
   tutorial: 7,
 };
@@ -419,6 +423,7 @@ function drawGameOver(ctx, time) {
   if (won) {
     drawText(ctx, S.dawn, WIDTH / 2, cy - 52, Z.dawn, 10);
     drawText(ctx, S.crow, WIDTH / 2, cy - 35, Z.crow, 13);
+    drawText(ctx, S.nod, WIDTH / 2, cy - 24, Z.nod, 10);
   } else {
     drawText(ctx, S.gameOver, WIDTH / 2, cy - 34, Z.gameOver, 9);
   }
@@ -439,6 +444,7 @@ function drawHud(ctx, time) {
     if (game.best > 0) drawText(ctx, `BEST ${formatClock(game.best)}`, WIDTH / 2, cy - 14, 7, 10);
     if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 46, Z.start, 13);
     drawText(ctx, S.controls, WIDTH / 2, cy + 60, Z.controls, 13);
+    drawText(ctx, S.music, WIDTH / 2, cy + 72, Z.music, 13);
     return;
   }
   drawTopBar(ctx, time);

@@ -29,6 +29,7 @@ const KEYS = {
   KeyW: ['w', 87],
   KeyS: ['s', 83],
   KeyX: ['x', 88],
+  KeyM: ['m', 77],
   Space: [' ', 32],
   Digit1: ['1', 49],
   Digit2: ['2', 50],
@@ -468,8 +469,23 @@ async function dayScenarios(page, base) {
   });
 }
 
+async function musicScenario(page, base) {
+  await check('19. the music waits for the first key, follows the run, and M turns it off and on', async () => {
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+    const before = await page.snapshot();
+    expect(before.music.mood === null, `music before any key: ${before.music.mood}`);
+    await page.tapKey('KeyD', 100);
+    await page.waitFor(`window.__qq.snapshot().music.mood === 'day'`, 3000);
+    await page.tapKey('KeyM', 50);
+    await page.waitFor('window.__qq.snapshot().music.on === false', 2000);
+    await page.tapKey('KeyM', 50);
+    await page.waitFor('window.__qq.snapshot().music.on === true', 2000);
+    expect((await page.snapshot()).started, 'the run stopped');
+  });
+}
+
 async function mobileScenario(page, client, base) {
-  await check('19. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
+  await check('20. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
     await client.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     try {
@@ -513,7 +529,7 @@ async function mobileScenario(page, client, base) {
 }
 
 async function distScenario(page) {
-  await check('20. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
+  await check('21. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
     await access(DIST).catch(() => {
       throw new Error('dist/index.html is missing: run npm run build first');
     });
@@ -551,10 +567,11 @@ async function main() {
     await playScenarios(page, client, base);
     await outfitScenarios(page, client, base);
     await dayScenarios(page, base);
+    await musicScenario(page, base);
     await mobileScenario(page, client, base);
     await distScenario(page);
     results.push({
-      name: '21. no exceptions, console errors or failed loads',
+      name: '22. no exceptions, console errors or failed loads',
       ok: problems.length === 0,
       error: problems.slice(0, 5).join(' | '),
     });
