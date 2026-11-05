@@ -81,9 +81,14 @@ export function saveBest(seconds) {
   return true;
 }
 
-/** Corn needed to go from `level` to the next one: 4, 8, 10, 13, 16, 18... (sub-linear growth). */
+/**
+ * Corn needed to go from `level` to the next one: 5, 9, 13, 18, 23... Each level costs more than
+ * the last (about 214 corn in all to reach level 10, 1,040 to 20, 2,730 to 30), so a run that
+ * gathers everything ends near level 30, and levels never run out.
+ */
 export function xpToNext(level) {
-  return Math.floor(4 * (1 + Math.pow(level - 1, 0.8)));
+  const n = level - 1;
+  return 5 + 4 * n + Math.floor((n * n) / 8);
 }
 
 /** Formats seconds as MM:SS. */

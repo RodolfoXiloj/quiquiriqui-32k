@@ -26,8 +26,9 @@ import { renderScene, cardAt } from './render.js';
 const CARD_LOCK = 0.35;
 /** Seconds after the fall before a key or tap leaves the game-over screen. */
 const GAME_OVER_WAIT = 1.5;
-/** Health restored instead of cards when every upgrade is maxed. */
+/** Health restored when nothing at all can be offered (a safety net), and by the Warm Meal boon. */
 const MAXED_HEAL = 25;
+const MEAL_HEAL = 30;
 /** Real seconds the chest screen ignores input. */
 const REWARD_LOCK = 0.6;
 /** Chance that a chest holds three upgrades instead of one. */
@@ -164,8 +165,13 @@ function openChest() {
 
 /** Card `i` was picked with a key, a click or a tap. */
 function pickCard(i) {
-  applyCard(game.cards[i]);
+  const card = game.cards[i];
+  applyCard(card);
   syncHenStats();
+  if (card.id === 'meal') {
+    hen.hp = Math.min(hen.maxHp, hen.hp + MEAL_HEAL);
+    spawnPopup(hen.x, hen.y, `+${MEAL_HEAL}`, 10);
+  }
   game.cards = [];
   releasePointer();
   sfxPickup();

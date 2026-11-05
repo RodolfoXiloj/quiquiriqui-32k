@@ -68,7 +68,22 @@ import {
 import { pickups, spawnPickup, CHEST, MAGNET, BOMB, FOOD } from '../src/pickups.js';
 import { TIMELINE, CRATE_EVERY } from '../src/waves.js';
 import { spawnCorn } from '../src/corn.js';
-import { ITEMS, ITEM_BY_ID, MAX_ITEM_LEVEL, SLOTS, build, buildOrder, applyCard, rollCards, cardText, stats, weaponDamage } from '../src/items.js';
+import {
+  ITEMS,
+  BOONS,
+  ITEM_BY_ID,
+  MAX_ITEM_LEVEL,
+  SLOTS,
+  build,
+  buildOrder,
+  boons,
+  applyCard,
+  rollCards,
+  cardText,
+  stats,
+  weaponDamage,
+  weaponCooldown,
+} from '../src/items.js';
 import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
@@ -469,7 +484,36 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     for (const id of buildOrder) assert.equal(build[id], MAX_ITEM_LEVEL, id);
     const weapons = ITEMS.filter((item) => item.weapon);
     assert.equal(buildOrder.filter((id) => ITEM_BY_ID[id].weapon).length, Math.min(SLOTS, weapons.length));
-    assert.equal(rollCards(false).length, 0);
+  });
+
+  it('once everything is maxed, levels go on: three different boons, and each one counts', () => {
+    start();
+    for (let k = 0; k < 80; k++) {
+      const cards = rollCards(false);
+      if (cards[0].boon) break;
+      applyCard(cards[0]);
+    }
+    const cards = rollCards(false);
+    assert.equal(cards.length, 3);
+    assert.ok(cards.every((c) => c.boon), 'not boons');
+    assert.equal(new Set(cards.map((c) => c.id)).size, 3);
+    const damage = stats.damage;
+    const cooldown = weaponCooldown('egg');
+    applyCard({ id: 'grit', boon: true });
+    applyCard({ id: 'wings', boon: true });
+    assert.ok(Math.abs(stats.damage - (damage + 0.06)) < 1e-9);
+    assert.ok(weaponCooldown('egg') < cooldown);
+    assert.equal(boons.grit, 1);
+    for (let k = 0; k < 40; k++) applyCard(rollCards(false)[0]);
+    assert.ok(Object.values(boons).reduce((a, b) => a + b, 0) >= 42, 'boons ran out');
+  });
+
+  it('predators born later in the run are tougher, at the same hen level', () => {
+    start();
+    const early = spawnEnemy(RAT, 20, 0);
+    game.time = 300;
+    const late = spawnEnemy(RAT, 20, 1);
+    assert.ok(late.maxHp >= early.maxHp * 2, `${early.maxHp} -> ${late.maxHp}`);
   });
 
   it('Sunglasses scale every weapon hit', () => {
@@ -1061,6 +1105,12 @@ describe('quiquiriqui: text and layout', () => {
   });
 
   it('every card name and description fits its card', () => {
+    for (const boon of BOONS) {
+      assert.ok(estimateTextWidth(boon.name, CARD_NAME_SIZE) <= CARD_W - 6, `${boon.id} name`);
+      for (const line of cardText({ id: boon.id, level: 0, boon: true })) {
+        assert.ok(estimateTextWidth(line, CARD_TEXT_SIZE) <= CARD_W - 6, `${boon.id}: "${line}"`);
+      }
+    }
     for (const item of ITEMS) {
       assert.ok(estimateTextWidth(item.name, CARD_NAME_SIZE) <= CARD_W - 6, `${item.id} name`);
       for (let level = 1; level <= MAX_ITEM_LEVEL; level++) {
@@ -1120,9 +1170,17 @@ describe('quiquiriqui: text and layout', () => {
     assert.equal(formatClock(600), '10:00');
   });
 
-  it('the XP curve grows, but slower than linear', () => {
-    assert.equal(xpToNext(1), 4);
-    for (let l = 1; l < 30; l++) assert.ok(xpToNext(l + 1) >= xpToNext(l));
-    assert.ok(xpToNext(21) < 20 * xpToNext(2) / 2);
+  it('the XP curve: quick at first, each level dearer than the last', () => {
+    assert.equal(xpToNext(1), 5);
+    assert.equal(xpToNext(2), 9);
+    let total = 0;
+    const reach = {};
+    for (let l = 1; l < 60; l++) {
+      assert.ok(xpToNext(l + 1) > xpToNext(l));
+      total += xpToNext(l);
+      reach[l + 1] = total;
+    }
+    assert.ok(reach[10] > 180 && reach[10] < 260, `level 10 at ${reach[10]}`);
+    assert.ok(reach[30] > 2400 && reach[30] < 3000, `level 30 at ${reach[30]}`);
   });
 });

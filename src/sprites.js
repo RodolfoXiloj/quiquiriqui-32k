@@ -447,6 +447,15 @@ const ICON_BOLT = [
 ];
 
 const ICON_SHAPES = {
+  // Every boon shares one icon: a gold star
+  boon: (x, y) => {
+    const dx = x - 6.5;
+    const dy = y - 6.8;
+    const r = Math.hypot(dx, dy);
+    const a = Math.atan2(dy, dx) + Math.PI / 2;
+    const spike = 2.6 + 3 * Math.max(0, Math.cos(a * 5)) ** 2;
+    return r <= spike ? (r < 1.6 ? 13 : 10) : -1;
+  },
   egg: (x, y) => (inEllipse(x, y, 6.5, 7, 3.6, 4.6) ? (x <= 5 && y <= 5 ? 13 : x >= 8 && y >= 8 ? 8 : 7) : -1),
   peck: (x, y) => {
     if (x < 3 || x > 11 || Math.abs(y - 6.5) > (11.5 - x) / 2) return -1;

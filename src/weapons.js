@@ -10,7 +10,7 @@
 //   Thunder Comb:  bolts strike random predators on screen.
 // Stats per level come from items.js; Sunglasses scale every hit (weaponDamage).
 import { hen } from './hen.js';
-import { buildOrder, weaponStat, weaponDamage } from './items.js';
+import { buildOrder, weaponStat, weaponDamage, weaponCooldown } from './items.js';
 import { enemies, hitEnemy, nearestEnemy, onScreen } from './enemies.js';
 import { gameRand } from './rng.js';
 import { game } from './state.js';
@@ -218,7 +218,7 @@ export function updateWeapons(dt) {
       }
       t.cd -= dt;
       if (t.cd <= 0 && nearestEnemy(hen.x, hen.y)) {
-        t.cd = weaponStat(id, 'cd');
+        t.cd = weaponCooldown(id);
         t.shots = weaponStat(id, 'n');
         t.gap = 0;
       }
@@ -226,7 +226,7 @@ export function updateWeapons(dt) {
     }
     if (!(id in WEAPON_ACTIONS)) continue; // passives
     t.cd -= dt;
-    if (t.cd <= 0 && WEAPON_ACTIONS[id](id)) t.cd = weaponStat(id, 'cd');
+    if (t.cd <= 0 && WEAPON_ACTIONS[id](id)) t.cd = weaponCooldown(id);
   }
 }
 

@@ -395,17 +395,18 @@ function drawCards(ctx, time, cards, title, note, lock, numbered) {
   const n = cards.length;
   cards.forEach((card, i) => {
     const item = ITEM_BY_ID[card.id];
+    const icon = iconSprites[card.boon ? 'boon' : card.id];
     const r = cardRect(i, n);
     const y = r.y + slide;
     const cx = r.x + r.w / 2;
-    ctx.fillStyle = PALETTE[item.weapon ? 9 : 12];
+    ctx.fillStyle = PALETTE[card.boon ? 10 : item.weapon ? 9 : 12];
     ctx.fillRect(r.x, y, r.w, r.h);
     ctx.fillStyle = PALETTE[15];
     ctx.fillRect(r.x + 2, y + 2, r.w - 4, r.h - 4);
     if (numbered) drawText(ctx, String(i + 1), r.x + 8, y + 9, 7, 10);
-    ctx.drawImage(iconSprites[card.id].normal, cx - 14, y + 10 + Math.round(Math.sin(time * 4 + i) * 1.5), 28, 28);
+    ctx.drawImage(icon.normal, cx - 14, y + 10 + Math.round(Math.sin(time * 4 + i) * 1.5), 28, 28);
     drawText(ctx, item.name, cx, y + 50, CARD_NAME_SIZE, 13);
-    drawText(ctx, card.level === 1 ? 'NEW!' : `LV ${card.level}`, cx, y + 61, 7, card.level === 1 ? 10 : 12);
+    drawText(ctx, card.boon ? 'BOON' : card.level === 1 ? 'NEW!' : `LV ${card.level}`, cx, y + 61, 7, card.boon || card.level === 1 ? 10 : 12);
     const [a, b] = cardText(card);
     drawText(ctx, a, cx, y + 76, CARD_TEXT_SIZE, 7);
     if (b) drawText(ctx, b, cx, y + 85, CARD_TEXT_SIZE, 7);

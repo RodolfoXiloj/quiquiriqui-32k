@@ -123,18 +123,33 @@ export const ITEMS = [
   },
 ];
 
-export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((item) => [item.id, item]));
+/**
+ * Boons: offered once nothing is left to upgrade, with no limit, so levels never run out. Each adds
+ * `per` to a stat (or heals, see main.js); they are not worn and take no slot.
+ */
+export const BOONS = [
+  { id: 'grit', name: 'GRIT', text: ['+6% DAMAGE', 'NO LIMIT'], stat: 'damage', per: 0.06 },
+  { id: 'spring', name: 'SPRING STEP', text: ['+4% SPEED', 'NO LIMIT'], stat: 'speed', per: 0.04 },
+  { id: 'appetite', name: 'BIG APPETITE', text: ['+0.3 CORN REACH', 'NO LIMIT'], stat: 'magnet', per: 0.3 },
+  { id: 'feathers', name: 'THICK FEATHERS', text: ['+10 MAX HEALTH', 'AND A HEAL'], stat: 'maxHp', per: 10 },
+  { id: 'wings', name: 'QUICK WINGS', text: ['WEAPONS 5% FASTER', 'NO LIMIT'], stat: 'haste', per: 0.05 },
+  { id: 'meal', name: 'WARM MEAL', text: ['HEALS 30 HEALTH', 'RIGHT NOW'] },
+];
+
+export const ITEM_BY_ID = Object.fromEntries([...ITEMS, ...BOONS].map((item) => [item.id, item]));
 
 /**
  * Base stats before passives: speed multiplier, corn magnet radius (tiles), flat armor, damage
- * multiplier, extra max health and dodge chance.
+ * multiplier, extra max health, dodge chance, and haste (weapon cooldowns are divided by it).
  */
-const BASE_STATS = { speed: 1, magnet: 3, armor: 0, damage: 1, maxHp: 0, dodge: 0 };
+const BASE_STATS = { speed: 1, magnet: 3, armor: 0, damage: 1, maxHp: 0, dodge: 0, haste: 1 };
 export const stats = { ...BASE_STATS };
 
 /** Owned item levels by id, and the order they were taken in (for the HUD). */
 export const build = {};
 export const buildOrder = [];
+/** Boons taken this run, by id. */
+export const boons = {};
 
 function recomputeStats() {
   Object.assign(stats, BASE_STATS);
@@ -142,11 +157,16 @@ function recomputeStats() {
     const item = ITEM_BY_ID[id];
     if (item.stat) stats[item.stat] += item.per * build[id];
   }
+  for (const id of Object.keys(boons)) {
+    const boon = ITEM_BY_ID[id];
+    if (boon.stat) stats[boon.stat] += boon.per * boons[id];
+  }
 }
 
 /** A new run starts with Egg Toss only. */
 export function resetBuild() {
   for (const id of Object.keys(build)) delete build[id];
+  for (const id of Object.keys(boons)) delete boons[id];
   buildOrder.length = 0;
   applyCard({ id: 'egg' });
 }
@@ -154,6 +174,11 @@ export function resetBuild() {
 /** The value of weapon stat `key` at the level the hen owns. */
 export function weaponStat(id, key) {
   return ITEM_BY_ID[id].lv[key][build[id] - 1];
+}
+
+/** Seconds between volleys of weapon `id`, with Quick Wings applied. */
+export function weaponCooldown(id) {
+  return weaponStat(id, 'cd') / stats.haste;
 }
 
 /** Damage per hit of weapon `id`, with Sunglasses applied. */
@@ -164,7 +189,8 @@ export function weaponDamage(id) {
 /**
  * Up to three different cards, shuffled from every item that can still level up and fits a free
  * slot. The first level-up offers weapons only, so a run always gets a second weapon early.
- * Each card is { id, level } where `level` is the level the item reaches if picked.
+ * Each card is { id, level } where `level` is the level the item reaches if picked. Once nothing
+ * can level up, three different boons are offered instead ({ id, level: 0, boon: true }).
  */
 export function rollCards(weaponsOnly) {
   const used = { true: 0, false: 0 };
@@ -176,15 +202,27 @@ export function rollCards(weaponsOnly) {
     return !weaponsOnly || item.weapon;
   });
   if (weaponsOnly && !pool.length) return rollCards(false);
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(gameRand() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.slice(0, 3).map((item) => ({ id: item.id, level: (build[item.id] || 0) + 1 }));
+  if (!pool.length) return shuffle([...BOONS]).slice(0, 3).map((boon) => ({ id: boon.id, level: 0, boon: true }));
+  return shuffle(pool)
+    .slice(0, 3)
+    .map((item) => ({ id: item.id, level: (build[item.id] || 0) + 1 }));
 }
 
-/** Adds one level of the card's item to the build. */
+function shuffle(list) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(gameRand() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
+
+/** Adds one level of the card's item to the build (or one more of a boon). */
 export function applyCard(card) {
+  if (card.boon) {
+    boons[card.id] = (boons[card.id] || 0) + 1;
+    recomputeStats();
+    return;
+  }
   if (!build[card.id]) {
     build[card.id] = 0;
     buildOrder.push(card.id);
@@ -196,6 +234,6 @@ export function applyCard(card) {
 /** The two description lines a card shows. */
 export function cardText(card) {
   const item = ITEM_BY_ID[card.id];
-  if (card.level === 1) return item.text;
+  if (card.boon || card.level === 1) return item.text;
   return [item.up[Math.min(card.level - 2, item.up.length - 1)], ''];
 }
