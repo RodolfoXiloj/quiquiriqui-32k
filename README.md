@@ -91,7 +91,7 @@ flowchart LR
 |--------|------|-----------------|
 | Keyboard | WASD or arrow keys | 1, 2, 3 |
 | Mouse | Hold a button and steer from the screen center | Click a card |
-| Touch | A stick opens wherever your thumb lands | Tap a card |
+| Touch | A stick opens wherever your thumb lands (works with the phone upright or sideways) | Tap a card |
 | Gamepad | Left stick | (planned) |
 
 The game pauses when the window loses focus.
@@ -112,7 +112,7 @@ The game pauses when the window loses focus.
 The engine is reused from our own earlier prototype (see [Archive](#archive)), adapted for an open field:
 
 - **Single `index.html`**, everything inlined.
-- **320×180 internal resolution**, integer-upscaled with smoothing off.
+- **320 pixels wide, as tall as the screen's shape allows** (180 on a wide screen, up to 640 on a phone held upright), scaled up with smoothing off: by whole numbers from 2× up, by a fraction on small screens so a phone is filled edge to edge.
 - **2:1 isometric projection**. Input is read as a screen direction and converted to world space, so "up" always walks up the screen.
 - **Endless meadow**: five flat tile types baked once, pixel by pixel so diamonds tile without seams; each cell picks its tile from a stateless hash, and only visible cells are drawn.
 - **Procedural pixel sprites**: shape functions rasterized at boot with an automatic 1 px outline and a hit-flash copy. The hen is a stack of layers (items in front, her body, the cape behind) re-baked whenever her outfit changes, so one outline wraps everything she wears.
@@ -131,6 +131,7 @@ Only the shipped file is gated: `dist/index.html` after Terser **and** Roadrolle
 | M1 core loop (measured Nov 5, 2026) | 28,358 B | 13,426 B (41.0%) |
 | M2 dress-up (measured Nov 5, 2026) | 36,099 B | 16,188 B (49.4%) |
 | M3 the ten minutes (measured Nov 5, 2026) | 43,915 B | 18,784 B (57.3%) |
+| Polish and phone fit (measured Nov 5, 2026) | 44,333 B | 18,944 B (57.8%) |
 | **Final target** | n/a | **≤ 32,768 bytes** |
 
 ---
@@ -163,7 +164,7 @@ To watch a bot play at 5x, run `npm run dev` and open `http://localhost:8080/?au
 | ✅ | **M1: Core loop** | Rats and Foxes on a wave timeline (minutes 0–3, then a ramp). Three weapons (Egg Toss, Peck, Feather Darts) and three passives (Running Boots, Feed Basket, Pot Helmet). Corn XP with a magnet, level-up cards (1/2/3, click, tap), bites, game over and a saved best time. |
 | ✅ | **M2: Dress-up** | Seven weapons (adds Corn Spray, Wing Gust, Chick Orbit, Thunder Comb) and six passives (adds Sunglasses, Hero Cape, Lucky Bandana). Every item drawn on the hen, with three looks as it levels; she is re-baked whenever her look changes. |
 | ✅ | **M3: The 10 minutes** | A ten-minute timeline with snakes, crows and badgers; bosses with chests; crates with a magnet, a bomb or food; rain, snow and night; the dawn win at 10:00. |
-| ⬜ | **M4: Polish & ship** | Music, difficulty tuning, mobile and performance passes, deploy to GitHub Pages. |
+| ⬜ | **M4: Polish & ship** | Music, difficulty tuning, a performance pass and a test on real phones, deploy to GitHub Pages. The outfit and rat readability pass and the phone fit are done. |
 
 ---
 
