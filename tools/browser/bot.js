@@ -89,7 +89,7 @@ export function pickCard(cards) {
   let best = 0;
   let bestRank = -1;
   cards.forEach((card, i) => {
-    const rank = (card.weapon ? 2 : 0) + (card.level === 1 ? 1 : 0) + (card.weapon ? 0 : card.id === 'boots' ? 0.5 : 0);
+    const rank = (card.hatch ? 10 : 0) + (card.weapon ? 2 : 0) + (card.level === 1 ? 1 : 0) + (card.weapon ? 0 : card.id === 'boots' ? 0.5 : 0);
     if (rank > bestRank) {
       bestRank = rank;
       best = i;

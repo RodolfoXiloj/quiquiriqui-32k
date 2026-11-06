@@ -115,6 +115,9 @@ import {
 } from '../src/events.js';
 import { spawnCorn } from '../src/corn.js';
 import {
+  HATCH_LEVEL,
+  hatchReady,
+  weaponStat,
   ITEMS,
   BOONS,
   ITEM_BY_ID,
@@ -540,12 +543,12 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
       const cards = rollCards(false);
       if (!cards.length) break;
       assert.equal(new Set(cards.map((c) => c.id)).size, cards.length);
-      for (const c of cards) assert.ok(c.level <= MAX_ITEM_LEVEL);
+      for (const c of cards) assert.ok(c.level <= (c.hatch ? HATCH_LEVEL : MAX_ITEM_LEVEL));
       applyCard(cards[0]);
       const weapons = buildOrder.filter((id) => ITEM_BY_ID[id].weapon).length;
       assert.ok(weapons <= SLOTS, `${weapons} weapons`);
     }
-    for (const id of buildOrder) assert.equal(build[id], MAX_ITEM_LEVEL, id);
+    for (const id of buildOrder) assert.ok(build[id] >= MAX_ITEM_LEVEL, id);
     const weapons = ITEMS.filter((item) => item.weapon);
     assert.equal(buildOrder.filter((id) => ITEM_BY_ID[id].weapon).length, Math.min(SLOTS, weapons.length));
   });
@@ -1791,6 +1794,111 @@ describe('quiquiriqui at 5x: peril rules', () => {
   });
 });
 
+describe('quiquiriqui at 5x: hatching', () => {
+  /** A started run with weapon `id` at level 5 and nothing else but `partner` (if given). */
+  function armed(id, partner) {
+    resetRun({ hen: 0 });
+    start();
+    buildOrder.length = 0;
+    for (const key of Object.keys(build)) delete build[key];
+    for (let i = 0; i < MAX_ITEM_LEVEL; i++) applyCard({ id });
+    if (partner) applyCard({ id: partner });
+  }
+  const hatch = (id) => applyCard({ id, level: HATCH_LEVEL, hatch: true });
+  /** A predator `kind` at (dx, dy) from the hen, risen, standing still, with health to spare. */
+  function dummy(kind, dx, dy) {
+    const e = spawnEnemy(kind, hen.x + dx, hen.y + dy);
+    Object.assign(e, { age: 1, speed: 0, hp: 1e6, maxHp: 1e6 });
+    return e;
+  }
+
+  it('a weapon at 5 with its partner passive offers HATCH! first; a chest hatches it', () => {
+    armed('egg');
+    assert.ok(!rollCards(false).some((c) => c.hatch), 'no partner yet');
+    applyCard({ id: 'shades' });
+    assert.deepEqual(hatchReady(), ['egg']);
+    assert.deepEqual(rollCards(false)[0], { id: 'egg', level: HATCH_LEVEL, hatch: true });
+    game.chests = 1;
+    update(STEP);
+    assert.equal(build.egg, HATCH_LEVEL, 'the chest did not hatch it');
+    assert.ok(game.reward.some((c) => c.hatch));
+    assert.equal(game.banner, 'GOLDEN OMELETTE!');
+    assert.ok(!rollCards(false).some((c) => c.hatch), 'it hatched twice');
+    resetRun();
+  });
+
+  it('GOLDEN OMELETTE: an egg bursts wide, so a predator next to its target is hit too', () => {
+    for (const [hatchIt, expectHit] of [[false, false], [true, true]]) {
+      armed('egg', 'shades');
+      if (hatchIt) hatch('egg');
+      const target = dummy(RAT, 3, 0);
+      const beside = dummy(RAT, 3, 1.3);
+      for (let i = 0; i < 90 && beside.hp === beside.maxHp && target.hp === target.maxHp; i++) update(STEP);
+      steps(0.3);
+      assert.ok(target.hp < target.maxHp, 'the target was not hit');
+      assert.equal(beside.hp < beside.maxHp, expectHit, hatchIt ? 'the omelette did not burst wide' : 'a plain egg burst wide');
+    }
+    resetRun();
+  });
+
+  it('IRON BEAK: one jab hits four predators and ignores armor', () => {
+    armed('peck', 'helmet');
+    hatch('peck');
+    const foes = [dummy(BADGER, 1, 0), dummy(RAT, -1, 0), dummy(RAT, 0, 1), dummy(RAT, 0, -1), dummy(RAT, 1, 1)];
+    steps(0.5);
+    assert.ok(foes.filter((e) => e.hp < e.maxHp).length >= 4, 'fewer than four were jabbed');
+    assert.equal((foes[0].maxHp - foes[0].hp) % weaponDamage('peck'), 0, 'armor took some off');
+    resetRun();
+  });
+
+  it('QUILL STORM: the darts fly all around her', () => {
+    armed('darts', 'boots');
+    hatch('darts');
+    dummy(RAT, 4, 0);
+    for (let i = 0; i < 120 && !projectiles.some((p) => p.alive); i++) update(STEP);
+    const angles = projectiles.filter((p) => p.alive).map((p) => Math.atan2(p.vy, p.vx)).sort((a, b) => a - b);
+    assert.equal(angles.length, weaponStat('darts', 'n'));
+    let widest = Math.PI * 2 - (angles[angles.length - 1] - angles[0]);
+    for (let i = 1; i < angles.length; i++) widest = Math.max(widest, angles[i] - angles[i - 1]);
+    assert.ok(widest < Math.PI / 4, `a gap of ${((widest * 180) / Math.PI).toFixed(0)} degrees`);
+    resetRun();
+  });
+
+  it('WHIRLWIND: the gust heals her for what it hits', () => {
+    armed('gust', 'cape');
+    hatch('gust');
+    hen.hp = 50;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1]]) dummy(RAT, dx, dy).dmg = 0;
+    steps(1.2);
+    assert.ok(hen.hp > 50, `still ${hen.hp}`);
+    resetRun();
+  });
+
+  it('BROOD: six chicks', () => {
+    armed('chicks', 'bandana');
+    hatch('chicks');
+    update(STEP);
+    assert.equal(chicks.count, 6);
+    resetRun();
+  });
+
+  it('STORM POT: bolts jump on to another predator', () => {
+    armed('thunder', 'helmet');
+    const foes = [];
+    for (let k = 0; k < 12; k++) foes.push(dummy(RAT, -6 + k, (k % 3) - 1));
+    steps(2);
+    const plain = foes.filter((e) => e.hp < e.maxHp).length;
+    armed('thunder', 'helmet');
+    hatch('thunder');
+    const again = [];
+    for (let k = 0; k < 12; k++) again.push(dummy(RAT, -6 + k, (k % 3) - 1));
+    for (let i = 0; i < 120 && !again.some((e) => e.hp < e.maxHp); i++) update(STEP);
+    const struck = again.filter((e) => e.hp < e.maxHp).length;
+    assert.ok(struck > weaponStat('thunder', 'n') || struck > plain, `${struck} struck (plain: ${plain})`);
+    resetRun();
+  });
+});
+
 describe('quiquiriqui at 5x: the bot and a long run', () => {
   it('the bot survives the first minute', () => {
     resetRun({ peaceful: false });
@@ -2033,8 +2141,16 @@ describe('quiquiriqui: text and layout', () => {
           assert.ok(textWidth(line, CARD_TEXT_SCALE) <= CARD_W - 6, `${item.id}: "${line}"`);
         }
       }
-      if (item.weapon) for (const key of Object.keys(item.lv)) assert.equal(item.lv[key].length, MAX_ITEM_LEVEL);
+      if (!item.weapon) continue;
+      for (const key of Object.keys(item.lv)) assert.equal(item.lv[key].length, HATCH_LEVEL, `${item.id}.${key}`);
+      // Its hatched self: a name and two lines that fit, and a partner passive that exists
+      assert.ok(textWidth(item.hatch.name, CARD_NAME_SCALE) <= CARD_W - 6, `${item.hatch.name}`);
+      for (const line of cardText({ id: item.id, level: HATCH_LEVEL, hatch: true })) {
+        assert.ok(textWidth(line, CARD_TEXT_SCALE) <= CARD_W - 6, `${item.hatch.name}: "${line}"`);
+      }
+      assert.ok(ITEM_BY_ID[item.hatch.with] && !ITEM_BY_ID[item.hatch.with].weapon, `${item.id} hatches with a passive`);
     }
+    assert.equal(new Set(ITEMS.filter((item) => item.weapon).map((item) => item.hatch.name)).size, 7, 'hatch names repeat');
   });
 
   it('a phone held upright gets a taller view, and the menus and spawns follow it', () => {
@@ -2085,6 +2201,7 @@ describe('quiquiriqui: text and layout', () => {
     const saved = JSON.parse(JSON.stringify(profile));
     const texts = [...Object.values(HUD_STRINGS)];
     for (const item of [...ITEMS, ...BOONS]) texts.push(item.name, ...(item.text || []), ...(item.up || []), item.cost || '');
+    for (const item of ITEMS) if (item.hatch) texts.push(item.hatch.name, `${item.hatch.name}!`, ...item.hatch.text, 'HATCH!');
     for (const upgrade of SHOP) texts.push(upgrade.name, upgrade.text);
     for (const hen of HENS) texts.push(hen.name, `${hen.name}!`, hen.hint || '');
     for (game.hen = 0; game.hen < HENS.length; game.hen++) texts.push(henLine());

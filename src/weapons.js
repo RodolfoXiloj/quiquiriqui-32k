@@ -8,25 +8,35 @@
 //   Wing Gust:     a burst of wind around her that hurts and shoves back everything close.
 //   Chick Orbit:   chicks circle her and nip what they touch (each foe at most every 0.5 s).
 //   Thunder Comb:  bolts strike random predators on screen.
-// Stats per level come from items.js; Sunglasses scale every hit (weaponDamage).
+// Stats per level come from items.js; Sunglasses scale every hit (weaponDamage). Hatched weapons
+// (items.js HATCH_LEVEL) also change what they do: GOLDEN OMELETTE eggs burst in a wide splash even
+// on a hit; IRON BEAK jabs four and ignores armor; QUILL STORM darts fly all around; POPCORN
+// kernels burst where they hit; WHIRLWIND heals her for what it hits; BROOD is six chicks; and
+// STORM POT bolts jump to a second predator.
 import { hen } from './hen.js';
-import { buildOrder, weaponStat, weaponDamage, weaponCooldown } from './items.js';
+import { buildOrder, weaponStat, weaponDamage, weaponCooldown, hatched } from './items.js';
 import { enemies, hitEnemy, nearestEnemy, onScreen } from './enemies.js';
 import { gameRand } from './rng.js';
 import { game } from './state.js';
 import { triggerShake } from './juice.js';
-import { spawnParticle, spawnRing, spawnBolt } from './pool.js';
+import { spawnParticle, spawnRing, spawnBolt, spawnPopup } from './pool.js';
 import { sfxSplat, sfxGust, sfxThunder } from './sfx.js';
 
 export const EGG = 0;
 export const DART = 1;
 export const KERNEL = 2;
 export const MAX_PROJECTILES = 96;
-export const MAX_CHICKS = 4;
+export const MAX_CHICKS = 6;
 
 const EGG_SPEED = 12; // tiles per second, faster than the hen
 const EGG_ARC = 14; // peak height in pixels
 const EGG_SPLASH = 0.75; // tiles
+const OMELETTE_SPLASH = 1.9; // a hatched egg's splash
+const POPCORN_SPLASH = 0.8; // a hatched kernel's burst
+const STORM_JUMP = 3; // tiles a hatched bolt jumps
+/** Health a hatched gust gives back per predator it hits, and at most per gust. */
+const WHIRL_HEAL = 1;
+const WHIRL_HEAL_MAX = 5;
 const EGG_GAP = 0.22; // seconds between eggs of one volley
 const PECK_RANGE = 2.1;
 const DART_SPEED = 14;
@@ -121,9 +131,10 @@ function peck(id) {
   const first = nearestEnemy(hen.x, hen.y, PECK_RANGE);
   if (!first) return false;
   const hits = [first];
-  if (weaponStat(id, 'n') > 1) {
-    const second = nearestEnemy(hen.x, hen.y, PECK_RANGE, first);
-    if (second) hits.push(second);
+  const n = weaponStat(id, 'n');
+  for (const e of enemies) {
+    if (hits.length >= n) break;
+    if (e.alive && e !== first && !e.prop && (e.x - hen.x) ** 2 + (e.y - hen.y) ** 2 < PECK_RANGE * PECK_RANGE) hits.push(e);
   }
   const dx = first.x - hen.x;
   const dy = first.y - hen.y;
@@ -135,7 +146,7 @@ function peck(id) {
     for (let i = 0; i < 4; i++) {
       spawnParticle(e.x, e.y, 7, (Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5, 20, i % 2 ? 10 : 13);
     }
-    hitEnemy(e, weaponDamage(id), hen.x, hen.y, 9);
+    hitEnemy(e, weaponDamage(id), hen.x, hen.y, 9, false, hatched(id)); // IRON BEAK pierces armor
   }
   return true;
 }
@@ -143,11 +154,20 @@ function peck(id) {
 /** Wing Gust: hurts and shoves back everything within reach. Returns false if nothing was close. */
 function gust(id) {
   const r = weaponStat(id, 'r');
-  let any = false;
+  let hits = 0;
   for (const e of enemies) {
     if (!e.alive || (e.x - hen.x) ** 2 + (e.y - hen.y) ** 2 > (r + e.r) ** 2) continue;
-    any = true;
+    hits++;
     hitEnemy(e, weaponDamage(id), hen.x, hen.y, GUST_KNOCK, true);
+  }
+  const any = hits > 0;
+  if (any && hatched(id)) {
+    // WHIRLWIND: she gets back a little for every predator it catches
+    const healed = Math.min(hen.maxHp - hen.hp, WHIRL_HEAL * Math.min(hits, WHIRL_HEAL_MAX));
+    if (healed > 0) {
+      hen.hp += healed;
+      spawnPopup(hen.x, hen.y, `+${healed}`, 10, 0.5);
+    }
   }
   if (any) {
     spawnRing(hen.x, hen.y, r);
@@ -167,6 +187,12 @@ function thunder(id) {
     targets.pop();
     spawnBolt(e.x, e.y);
     splash(e.x, e.y, BOLT_SPLASH, weaponDamage(id));
+    // STORM POT: the bolt jumps on to the nearest other predator
+    const next = hatched(id) && nearestEnemy(e.x, e.y, STORM_JUMP, e);
+    if (next) {
+      spawnBolt(next.x, next.y);
+      splash(next.x, next.y, BOLT_SPLASH, weaponDamage(id));
+    }
   }
   triggerShake(0, 1, 1.5, 0.1);
   sfxThunder();
@@ -237,7 +263,10 @@ const WEAPON_ACTIONS = {
   thunder,
   darts(id) {
     if (!gatherTargets()) return false;
-    fan(DART, weaponStat(id, 'n'), Math.atan2(-hen.dirY, -hen.dirX), DART_SPREAD, DART_SPEED, DART_LIFE, weaponDamage(id), DART_PIERCE);
+    // QUILL STORM: the darts fan all the way around her, and pierce two more
+    const n = weaponStat(id, 'n');
+    const storm = hatched(id);
+    fan(DART, n, Math.atan2(-hen.dirY, -hen.dirX), storm ? (Math.PI * 2) / n : DART_SPREAD, DART_SPEED, DART_LIFE, weaponDamage(id), DART_PIERCE + (storm ? 2 : 0));
     return true;
   },
   corn(id) {
@@ -276,7 +305,7 @@ export function updateProjectiles(dt) {
       const u = Math.min(1, p.age / p.life);
       p.z = 8 * (1 - u) + EGG_ARC * 4 * u * (1 - u);
       if (u >= 1) {
-        splash(p.x, p.y, EGG_SPLASH, p.dmg);
+        splash(p.x, p.y, hatched('egg') ? OMELETTE_SPLASH : EGG_SPLASH, p.dmg);
         breakEgg(p);
         continue;
       }
@@ -289,6 +318,10 @@ export function updateProjectiles(dt) {
       const r = e.r + HIT_PAD;
       if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 >= r * r) continue;
       hitEnemy(e, p.dmg, p.x - p.vx * 0.05, p.y - p.vy * 0.05);
+      // A hatched egg (GOLDEN OMELETTE) or kernel (POPCORN) bursts where it hits
+      if (p.kind === EGG ? hatched('egg') : p.kind === KERNEL && hatched('corn')) {
+        splash(p.x, p.y, p.kind === EGG ? OMELETTE_SPLASH : POPCORN_SPLASH, p.kind === EGG ? p.dmg : p.dmg >> 1);
+      }
       if (p.kind === EGG) {
         breakEgg(p);
         break;

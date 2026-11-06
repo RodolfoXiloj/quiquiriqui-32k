@@ -571,8 +571,9 @@ function drawTopBar(ctx, time) {
     const x = 4 + column[row]++ * 16;
     const y = 21 + row * 19;
     ctx.drawImage(iconSprites[id].normal, x, y);
-    ctx.fillStyle = PALETTE[10];
-    for (let l = 0; l < build[id]; l++) ctx.fillRect(x + 1 + l * 3, y + 15, 2, 2);
+    // Gold level pips; a hatched weapon's turn red
+    ctx.fillStyle = PALETTE[build[id] > 5 ? 9 : 10];
+    for (let l = 0; l < Math.min(5, build[id]); l++) ctx.fillRect(x + 1 + l * 3, y + 15, 2, 2);
   }
 }
 
@@ -596,14 +597,15 @@ function drawCards(ctx, time, cards, title, note, lock, numbered) {
     const r = cardRect(i, n);
     const y = r.y + slide;
     const cx = r.x + r.w / 2;
-    ctx.fillStyle = PALETTE[card.boon ? 10 : item.weapon ? 9 : 12];
+    ctx.fillStyle = PALETTE[card.boon || card.hatch ? 10 : item.weapon ? 9 : 12];
     ctx.fillRect(r.x, y, r.w, r.h);
     ctx.fillStyle = PALETTE[15];
     ctx.fillRect(r.x + 2, y + 2, r.w - 4, r.h - 4);
     if (numbered) drawText(ctx, String(i + 1), r.x + 8, y + 9, 1, 10);
     ctx.drawImage(icon.normal, cx - 14, y + 10 + Math.round(Math.sin(time * 4 + i) * 1.5), 28, 28);
-    drawText(ctx, item.name, cx, y + 50, CARD_NAME_SCALE, 13);
-    drawText(ctx, card.boon ? 'BOON' : card.level === 1 ? 'NEW!' : `LV ${card.level}`, cx, y + 61, 1, card.boon || card.level === 1 ? 10 : 12);
+    drawText(ctx, card.hatch ? item.hatch.name : item.name, cx, y + 50, CARD_NAME_SCALE, card.hatch ? 10 : 13);
+    const label = card.hatch ? 'HATCH!' : card.boon ? 'BOON' : card.level === 1 ? 'NEW!' : `LV ${card.level}`;
+    drawText(ctx, label, cx, y + 61, 1, card.boon || card.hatch || card.level === 1 ? 10 : 12);
     const [a, b] = cardText(card);
     drawText(ctx, a, cx, y + 76, CARD_TEXT_SCALE, 7);
     // A cost (Running Boots, Pot Helmet) reads in red

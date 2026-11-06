@@ -5,6 +5,12 @@ import { gameRand } from './rng.js';
 import { profile, SHOP } from './profile.js';
 
 export const MAX_ITEM_LEVEL = 5;
+/**
+ * A weapon at MAX_ITEM_LEVEL whose partner passive (`hatch.with`) she owns can hatch:
+ * a HATCH! card at the next level-up, or a chest, takes it to this
+ * level, the sixth value of its `lv` stats, and changes what it does (weapons.js).
+ */
+export const HATCH_LEVEL = 6;
 /** Slots per kind: at most this many different weapons and passives. */
 export const SLOTS = 6;
 
@@ -12,7 +18,8 @@ export const SLOTS = 6;
  * Item table. Weapons list one value per level (1..5) for each stat they use:
  *   cd: seconds between volleys   n: shots per volley (Peck: targets; Chick Orbit: chicks;
  *   Thunder Comb: bolts)   dmg: damage per hit   r: Wing Gust radius (tiles)   spin: Chick Orbit
- *   turn rate (radians per second)
+ *   turn rate (radians per second). The sixth value of each is the hatched weapon's.
+ * `hatch` names what it hatches into and the passive it needs.
  * Passives add `per` to one entry of `stats` for each level owned (plain sums), and some `per2` to
  * a second one: a gain with a cost (light boots cost health, a heavy pot slows her).
  * `text` is the two-line card description of a new item; `up` the one-line text of each
@@ -25,7 +32,8 @@ export const ITEMS = [
     name: 'EGG TOSS',
     text: ['LOBS AN EGG AT', 'THE NEAREST FOE'],
     up: ['+1 EGG', 'THROWS FASTER', '+1 EGG', '+8 DAMAGE'],
-    lv: { cd: [1.3, 1.3, 1, 1, 1], n: [1, 2, 2, 3, 3], dmg: [10, 10, 10, 10, 18] },
+    lv: { cd: [1.3, 1.3, 1, 1, 1, 0.9], n: [1, 2, 2, 3, 3, 3], dmg: [10, 10, 10, 10, 18, 27] },
+    hatch: { with: 'shades', name: 'GOLDEN OMELETTE', text: ['EGGS BURST IN A', 'GOLDEN SPLASH'] },
   },
   {
     id: 'peck',
@@ -33,7 +41,8 @@ export const ITEMS = [
     name: 'PECK',
     text: ['JABS THE CLOSEST', 'FOE UP CLOSE'],
     up: ['PECKS FASTER', '+5 DAMAGE', 'PECKS FASTER', 'HITS 2 FOES'],
-    lv: { cd: [0.9, 0.7, 0.7, 0.55, 0.55], n: [1, 1, 1, 1, 2], dmg: [14, 14, 19, 19, 19] },
+    lv: { cd: [0.9, 0.7, 0.7, 0.55, 0.55, 0.4], n: [1, 1, 1, 1, 2, 4], dmg: [14, 14, 19, 19, 19, 24] },
+    hatch: { with: 'helmet', name: 'IRON BEAK', text: ['JABS 4 FOES AND', 'PIERCES ARMOR'] },
   },
   {
     id: 'darts',
@@ -41,7 +50,8 @@ export const ITEMS = [
     name: 'FEATHER DARTS',
     text: ['TAIL FEATHERS FLY', 'BEHIND HER'],
     up: ['+1 DART', '+3 DAMAGE', '+1 DART', 'FIRES FASTER'],
-    lv: { cd: [1.4, 1.4, 1.4, 1.4, 1], n: [3, 4, 4, 5, 5], dmg: [6, 6, 9, 9, 9] },
+    lv: { cd: [1.4, 1.4, 1.4, 1.4, 1, 1], n: [3, 4, 4, 5, 5, 12], dmg: [6, 6, 9, 9, 9, 12] },
+    hatch: { with: 'boots', name: 'QUILL STORM', text: ['DARTS FLY ALL', 'AROUND HER'] },
   },
   {
     id: 'corn',
@@ -49,7 +59,8 @@ export const ITEMS = [
     name: 'CORN SPRAY',
     text: ['A SPRAY OF KERNELS', 'AT A RANDOM FOE'],
     up: ['+1 KERNEL', '+3 DAMAGE', 'SPRAYS FASTER', '+2 KERNELS'],
-    lv: { cd: [1.5, 1.5, 1.5, 1.2, 1.2], n: [3, 4, 4, 4, 6], dmg: [5, 5, 8, 8, 8] },
+    lv: { cd: [1.5, 1.5, 1.5, 1.2, 1.2, 1], n: [3, 4, 4, 4, 6, 8], dmg: [5, 5, 8, 8, 8, 10] },
+    hatch: { with: 'basket', name: 'POPCORN', text: ['KERNELS BURST', 'WHERE THEY HIT'] },
   },
   {
     id: 'gust',
@@ -57,7 +68,8 @@ export const ITEMS = [
     name: 'WING GUST',
     text: ['A GUST OF WIND', 'PUSHES FOES AWAY'],
     up: ['WIDER GUST', 'GUSTS MORE OFTEN', '+4 DAMAGE', 'BIGGER AND FASTER'],
-    lv: { cd: [2.2, 2.2, 1.8, 1.8, 1.5], r: [1.6, 1.9, 1.9, 1.9, 2.4], dmg: [6, 6, 6, 10, 12] },
+    lv: { cd: [2.2, 2.2, 1.8, 1.8, 1.5, 1], r: [1.6, 1.9, 1.9, 1.9, 2.4, 3.2], dmg: [6, 6, 6, 10, 12, 14] },
+    hatch: { with: 'cape', name: 'WHIRLWIND', text: ['A HUGE GUST THAT', 'HEALS AS IT HITS'] },
   },
   {
     id: 'chicks',
@@ -65,7 +77,8 @@ export const ITEMS = [
     name: 'CHICK ORBIT',
     text: ['CHICKS CIRCLE HER', 'AND NIP FOES'],
     up: ['+1 CHICK', '+4 DAMAGE', 'ONE MORE, FASTER', '+1 CHICK'],
-    lv: { n: [1, 2, 2, 3, 4], dmg: [8, 8, 12, 12, 14], spin: [2.6, 2.6, 2.6, 3.2, 3.2] },
+    lv: { n: [1, 2, 2, 3, 4, 6], dmg: [8, 8, 12, 12, 14, 21], spin: [2.6, 2.6, 2.6, 3.2, 3.2, 3.8] },
+    hatch: { with: 'bandana', name: 'BROOD', text: ['SIX FIERCE CHICKS', 'GUARD HER'] },
   },
   {
     id: 'thunder',
@@ -73,7 +86,8 @@ export const ITEMS = [
     name: 'THUNDER COMB',
     text: ['LIGHTNING STRIKES', 'FOES ON SCREEN'],
     up: ['+8 DAMAGE', '+1 BOLT, FASTER', '+8 DAMAGE', '+1 BOLT, FASTER'],
-    lv: { cd: [2.6, 2.6, 2.2, 2.2, 1.8], n: [1, 1, 2, 2, 3], dmg: [22, 30, 30, 38, 46] },
+    lv: { cd: [2.6, 2.6, 2.2, 2.2, 1.8, 1.2], n: [1, 1, 2, 2, 3, 5], dmg: [22, 30, 30, 38, 46, 46] },
+    hatch: { with: 'helmet', name: 'STORM POT', text: ['FIVE BOLTS, EACH', 'JUMPS TO ANOTHER'] },
   },
   {
     // Light on her feet: faster, and frailer
@@ -205,9 +219,23 @@ export function weaponDamage(id) {
  * Up to three different cards, shuffled from every item that can still level up and fits a free
  * slot. The first level-up offers weapons only, so a run always gets a second weapon early.
  * Each card is { id, level } where `level` is the level the item reaches if picked. Once nothing
- * can level up, three different boons are offered instead ({ id, level: 0, boon: true }).
+ * can level up, three different boons are offered instead ({ id, level: 0, boon: true }). A weapon
+ * ready to hatch always comes first ({ id, level: HATCH_LEVEL, hatch: true }).
  */
 export function rollCards(weaponsOnly) {
+  const ready = hatchReady().map((id) => ({ id, level: HATCH_LEVEL, hatch: true }));
+  return [...ready, ...rollItems(weaponsOnly)].slice(0, 3);
+}
+
+/** Weapons at their top level whose partner passive she owns. */
+export function hatchReady() {
+  return buildOrder.filter((id) => build[id] === MAX_ITEM_LEVEL && ITEM_BY_ID[id].hatch && build[ITEM_BY_ID[id].hatch.with]);
+}
+
+/** True if weapon `id` has hatched. */
+export const hatched = (id) => build[id] === HATCH_LEVEL;
+
+function rollItems(weaponsOnly) {
   const used = { true: 0, false: 0 };
   for (const id of buildOrder) used[!!ITEM_BY_ID[id].weapon]++;
   const pool = ITEMS.filter((item) => {
@@ -216,7 +244,7 @@ export function rollCards(weaponsOnly) {
     if (!level && used[!!item.weapon] >= SLOTS) return false;
     return !weaponsOnly || item.weapon;
   });
-  if (weaponsOnly && !pool.length) return rollCards(false);
+  if (weaponsOnly && !pool.length) return rollItems(false);
   if (!pool.length) return shuffle([...BOONS]).slice(0, 3).map((boon) => ({ id: boon.id, level: 0, boon: true }));
   return shuffle(pool)
     .slice(0, 3)
@@ -242,13 +270,14 @@ export function applyCard(card) {
     build[card.id] = 0;
     buildOrder.push(card.id);
   }
-  build[card.id] = Math.min(MAX_ITEM_LEVEL, build[card.id] + 1);
+  build[card.id] = card.hatch ? HATCH_LEVEL : Math.min(MAX_ITEM_LEVEL, build[card.id] + 1);
   recomputeStats();
 }
 
 /** The two description lines a card shows; an item with a cost shows it second (in red). */
 export function cardText(card) {
   const item = ITEM_BY_ID[card.id];
+  if (card.hatch) return item.hatch.text;
   const gain = card.boon || card.level === 1 ? item.text : [item.up[Math.min(card.level - 2, item.up.length - 1)], ''];
   return item.cost ? [gain[0], item.cost] : gain;
 }

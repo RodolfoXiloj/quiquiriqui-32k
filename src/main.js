@@ -8,7 +8,7 @@ import { bakeHen, bakeWorldSprites, outfitOf, outfitKey, henLook } from './sprit
 import { initInput, updateInput, releaseAllInput, releasePointer, input } from './input.js';
 import { seedGame, gameRand } from './rng.js';
 import { hen, resetHen, updateHen, syncHenStats } from './hen.js';
-import { build, resetBuild, rollCards, applyCard } from './items.js';
+import { build, resetBuild, rollCards, applyCard, ITEM_BY_ID } from './items.js';
 import { enemies, clearEnemies, updateEnemies } from './enemies.js';
 import { clearCorn, scatterStartingCorn, updateCorn } from './corn.js';
 import { clearPickups, updatePickups } from './pickups.js';
@@ -224,6 +224,7 @@ function openChest() {
     if (!cards.length) break;
     const card = cards.find((c) => build[c.id]) || cards[0];
     applyCard(card);
+    celebrateHatch(card);
     reward.push(card);
   }
   syncHenStats();
@@ -239,9 +240,21 @@ function openChest() {
 }
 
 /** Card `i` was picked with a key, a click or a tap. */
+/** A weapon hatched: its new name across the screen, a chime and a burst of gold. */
+function celebrateHatch(card) {
+  if (!card.hatch) return;
+  showBanner(`${ITEM_BY_ID[card.id].hatch.name}!`);
+  sfxChest();
+  for (let k = 0; k < 24; k++) {
+    const a = (k / 24) * Math.PI * 2;
+    spawnParticle(hen.x, hen.y, 10, Math.cos(a) * 3, Math.sin(a) * 3, 40, k % 2 ? 10 : 13, 2, 0.7);
+  }
+}
+
 function pickCard(i) {
   const card = game.cards[i];
   applyCard(card);
+  celebrateHatch(card);
   syncHenStats();
   if (card.id === 'meal') {
     hen.hp = Math.min(hen.maxHp, hen.hp + MEAL_HEAL);
