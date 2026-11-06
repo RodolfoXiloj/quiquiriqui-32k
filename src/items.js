@@ -140,12 +140,15 @@ export const ITEMS = [
     per: 250,
   },
   {
+    // Luck both ways: bites miss her, and her hits land true
     id: 'bandana',
     name: 'LUCKY BANDANA',
-    text: ['7% CHANCE TO', 'DODGE A BITE'],
-    up: ['+7% DODGE'],
+    text: ['+7% DODGE AND', '+3% CRITICAL HITS'],
+    up: ['+7% DODGE, +3% CRIT'],
     stat: 'dodge',
     per: 0.07,
+    stat2: 'crit',
+    per2: 0.03,
   },
 ];
 
@@ -167,9 +170,10 @@ export const ITEM_BY_ID = Object.fromEntries([...ITEMS, ...BOONS].map((item) => 
 /**
  * Base stats before passives: speed multiplier, corn magnet radius (tiles), guard (the share of
  * every bite she shrugs off), damage multiplier, extra max health, dodge chance, haste (weapon
- * cooldowns are divided by it) and the XP multiplier. The shop's permanent upgrades are added on top.
+ * cooldowns are divided by it), the XP multiplier and the chance of a critical hit (enemies.js
+ * `hitEnemy`). The shop's permanent upgrades are added on top.
  */
-const BASE_STATS = { speed: 1, magnet: 3, guard: 0, damage: 1, maxHp: 0, dodge: 0, haste: 1, xp: 1 };
+const BASE_STATS = { speed: 1, magnet: 3, guard: 0, damage: 1, maxHp: 0, dodge: 0, haste: 1, xp: 1, crit: 0.05 };
 export const stats = { ...BASE_STATS };
 
 /** Owned item levels by id, and the order they were taken in (for the HUD). */

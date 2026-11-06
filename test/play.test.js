@@ -86,6 +86,7 @@ import {
   BOSS_ARMOR,
   MIN_HIT,
   BIG_HIT,
+  CRIT_MULT,
   BOSS_HP,
   BOSS_SIZE,
   BOSS_BITE,
@@ -663,6 +664,7 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     const badger = spawnEnemy(BADGER, hen.x + 5, hen.y);
     const rat = spawnEnemy(RAT, hen.x + 5, hen.y + 2);
     badger.hp = badger.maxHp = rat.hp = rat.maxHp = 10000;
+    stats.crit = 0;
     hitEnemy(badger, 20, hen.x, hen.y);
     assert.equal(badger.hp, 10000 - MIN_HIT, 'at least MIN_HIT should get through');
     hitEnemy(badger, 100, hen.x, hen.y, 6, true);
@@ -689,6 +691,7 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     start();
     buildOrder.length = 0;
     const rat = sturdy(RAT, hen.x + 5, hen.y);
+    stats.crit = 0;
     hitEnemy(rat, 100, hen.x, hen.y);
     hitEnemy(rat, 100, hen.x, hen.y);
     hitEnemy(rat, BIG_HIT, hen.x, hen.y);
@@ -699,6 +702,32 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.equal(alive(popups).length, 3, 'the numbers left too soon');
     steps(0.1);
     assert.equal(alive(popups).length, 0, 'the numbers stayed too long');
+    resetRun();
+  });
+
+  it('critical hits: a 5% chance on every hit, Lucky Bandana adds 3% a level, double damage in big gold', () => {
+    start();
+    assert.equal(stats.crit, 0.05);
+    applyCard({ id: 'bandana' });
+    applyCard({ id: 'bandana' });
+    assert.ok(Math.abs(stats.crit - 0.11) < 1e-9, 'bandana: +3% crit a level');
+    assert.ok(Math.abs(stats.dodge - 0.14) < 1e-9, 'bandana still dodges');
+    buildOrder.length = 0;
+    const rat = sturdy(RAT, hen.x + 5, hen.y);
+    stats.crit = 1;
+    hitEnemy(rat, 100, hen.x, hen.y);
+    assert.equal(rat.maxHp - rat.hp, 100 * CRIT_MULT);
+    const p = alive(popups).find((q) => q.text === String(100 * CRIT_MULT));
+    assert.deepEqual([p.color, p.scale], [10, 2], 'a crit shows big and gold');
+    stats.crit = 0;
+    for (let i = 0; i < 50; i++) hitEnemy(rat, 100, hen.x, hen.y);
+    assert.equal(rat.maxHp - rat.hp, 100 * CRIT_MULT + 50 * 100, 'a crit at 0%');
+    // Over many hits the base chance shows
+    stats.crit = 0.05;
+    const before = rat.hp;
+    for (let i = 0; i < 4000; i++) hitEnemy(rat, 100, hen.x, hen.y);
+    const share = (before - rat.hp - 4000 * 100) / 100 / 4000;
+    assert.ok(share > 0.035 && share < 0.065, `${(share * 100).toFixed(1)}% critical hits`);
     resetRun();
   });
 
@@ -774,6 +803,7 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.equal(chicks.count, 1);
     const rat = sturdy(RAT, chicks.list[0].x, chicks.list[0].y);
     rat.speed = 0;
+    stats.crit = 0;
     for (let i = 0; i < 60; i++) {
       // Keep the rat right on the chick for 1 s
       rat.x = chicks.list[0].x;

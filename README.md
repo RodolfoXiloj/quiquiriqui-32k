@@ -68,7 +68,7 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 | **Pot Helmet** | Takes 10% less damage a level, but runs 4% slower | A pot on her head |
 | **Sunglasses** | +15% damage a level | Dark shades |
 | **Hero Cape** | +250 max health a level | A red cape |
-| **Lucky Bandana** | Dodges 7% of bites a level | A dotted neckerchief |
+| **Lucky Bandana** | Dodges 7% of bites and adds 3% critical hits a level | A dotted neckerchief |
 
 Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden). Two passives come with a cost (in red on the card), so a choice is a style: light boots or a heavy pot.
 
@@ -121,7 +121,7 @@ Quiquiriqui is **hard by default**: a new player usually falls between minutes 4
 | Weasel | lunges | 160 (+80) | 90 (+15) | 2.8 | 50% | |
 | Skunk | stink cloud | 350 (+150) | 90 (+15) | 1.9 | 50% | 10 |
 
-  The hen runs 6 tiles a second and starts with 1000 health, shown as a number on a bar beside her level; numbers run in the tens and hundreds (an egg hits for 100), and every hit's number pops up at its own spot for 0.8 s, twice as big for a strong hit. Armor comes off every hit (at least 10 gets through, shown in grey), so small, fast hits barely scratch a badger; elites (+20) and bosses (+30) are armored and hard to push too.
+  The hen runs 6 tiles a second and starts with 1000 health, shown as a number on a bar beside her level; numbers run in the tens and hundreds (an egg hits for 100), and every hit's number pops up at its own spot for 0.8 s, twice as big for a strong hit. One hit in twenty is **critical**: double damage, its number big and gold; Lucky Bandana adds 3% a level. Armor comes off every hit (at least 10 gets through, shown in grey), so small, fast hits barely scratch a badger; elites (+20) and bosses (+30) are armored and hard to push too.
 - **Levels are earned.** Predators drop corn 80% of the time and each level costs more (6, 10, 14, 19, 25...), so every card counts.
 - **Peril adds rules**, one per level and cumulative:
 

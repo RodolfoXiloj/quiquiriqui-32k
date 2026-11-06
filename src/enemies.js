@@ -12,6 +12,7 @@ import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
 import { game } from './state.js';
 import { hen, HEN_RADIUS, damageHen } from './hen.js';
+import { stats } from './items.js';
 import { spawnCorn } from './corn.js';
 import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
@@ -75,6 +76,8 @@ export const ENEMY_TYPES = [
 export const MIN_HIT = 10;
 /** A hit this strong shows its number twice as big. */
 export const BIG_HIT = 250;
+/** A critical hit (a `stats.crit` chance on every hit) deals this many times as much. */
+export const CRIT_MULT = 2;
 
 /** An elite's health, size and speed against its kind's; a rainbow one is tougher still. */
 export const ELITE_HP = 6;
@@ -392,18 +395,21 @@ export function nearestEnemy(x, y, range = Infinity, skip = null) {
 }
 
 /**
- * Deals `dmg` to predator `e`, hit from world point (fromX, fromY): its armor comes off first (at
- * least MIN_HIT gets through, and an armored hit shows grey) unless `ignoreArmor`. `knock` is the
+ * Deals `dmg` to predator `e`, hit from world point (fromX, fromY). A critical hit doubles it and
+ * shows big and gold. Its armor comes off next (at least MIN_HIT gets through, and an armored hit
+ * shows grey) unless `ignoreArmor`. `knock` is the
  * knockback speed in tiles per second, cut by its resistance, applied on a kill and on half of the
  * other hits (on every hit when `alwaysKnock` is set, as Wing Gust does).
  */
 export function hitEnemy(e, dmg, fromX, fromY, knock = 6, alwaysKnock = false, ignoreArmor = false) {
   if (!e.alive) return;
+  const crit = gameRand() < stats.crit;
+  if (crit) dmg *= CRIT_MULT;
   const armor = ignoreArmor ? 0 : e.armor;
   dmg = Math.max(MIN_HIT, dmg - armor);
   e.hp -= dmg;
   e.flash = HIT_FLASH;
-  spawnPopup(e.x, e.y, String(dmg), armor ? 16 : 13, dmg >= BIG_HIT ? 2 : 1);
+  spawnPopup(e.x, e.y, String(dmg), crit ? 10 : armor ? 16 : 13, crit || dmg >= BIG_HIT ? 2 : 1);
   const type = ENEMY_TYPES[e.kind];
   for (let i = 0; i < 3; i++) {
     spawnParticle(e.x, e.y, 6, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 15 + Math.random() * 20, i ? 13 : type.colors[0]);
