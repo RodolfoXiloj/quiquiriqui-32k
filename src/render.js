@@ -713,6 +713,9 @@ function tint(ctx, color, alpha) {
   ctx.globalAlpha = 1;
 }
 
+/** The night's steps of darkness: [radius around the hen (px), opacity], widest first. */
+export const NIGHT_STEPS = [[100, 0.45], [80, 0.4], [62, 0.3], [48, 0.2]];
+
 /**
  * The day arc over the world: rain streaks, snowflakes, the night with a pool of light around the
  * hen and fireflies, then a warm dawn with the sun coming up. (hx, hy): the hen on screen.
@@ -744,9 +747,9 @@ function drawWeather(ctx, time, hx, hy) {
     }
   }
   if (w.night > 0) {
-    // Three soft steps of darkness, each with a hole around the hen.
+    // Soft steps of darkness, each with a hole around the hen: about 80% dark beyond her light.
     ctx.fillStyle = PALETTE[0];
-    for (const [r, a] of [[96, 0.32], [74, 0.26], [54, 0.2]]) {
+    for (const [r, a] of NIGHT_STEPS) {
       ctx.globalAlpha = a * w.night;
       ctx.beginPath();
       ctx.rect(0, 0, WIDTH, HEIGHT);
