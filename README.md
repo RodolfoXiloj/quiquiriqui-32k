@@ -67,7 +67,7 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 | **Feed Basket** | Pulls corn from farther away, +8% XP | A basket of corn on her back |
 | **Pot Helmet** | Takes 10% less damage a level, but runs 4% slower | A pot on her head |
 | **Sunglasses** | +15% damage a level | Dark shades |
-| **Hero Cape** | +250 max health a level | A red cape |
+| **Hero Cape** | +250 max health a level | A red cape that flies behind her |
 | **Lucky Bandana** | Dodges 7% of bites and adds 3% critical hits a level | A dotted neckerchief |
 
 Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden). Two passives come with a cost (in red on the card), so a choice is a style: light boots or a heavy pot.
@@ -181,7 +181,7 @@ The engine is reused from our own earlier prototype (see [Archive](#archive)), a
 - **320 pixels wide, as tall as the screen's shape allows** (180 on a wide screen, up to 640 on a phone held upright), scaled up with smoothing off: by whole numbers from 2× up, by a fraction on small screens so a phone is filled edge to edge.
 - **2:1 isometric projection**. Input is read as a screen direction and converted to world space, so "up" always walks up the screen.
 - **Endless meadow**: five flat tile types baked once, pixel by pixel so diamonds tile without seams; each cell picks its tile from a stateless hash, and only visible cells are drawn.
-- **Procedural pixel sprites**: shape functions rasterized at boot with an automatic 1 px outline and a hit-flash copy. The hen is a stack of layers (items in front, her body, the cape behind) re-baked whenever her outfit changes, so one outline wraps everything she wears.
+- **Procedural pixel sprites**: shape functions rasterized at boot with an automatic 1 px outline and a hit-flash copy. The hen is a stack of layers (items in front, her body, a cape over her back that flutters behind her as she walks) re-baked whenever her outfit changes, so one outline wraps everything she wears.
 - **Our own 3×5 pixel font**, written as data in the code (five octal digits per glyph) and drawn pixel-exact with an ink outline, so text stays as crisp as the art at any scale. No font files, no system fonts.
 - **Fixed 60 Hz timestep**, object pools (300 predators, 300 kernels, 96 projectiles), hitstop, screen shake and a smoothed camera. Every frame blends the last two steps, the camera too, and the view's pixel is taken from the hen's, so she holds still on screen while the meadow scrolls evenly on 60, 120 or 144 Hz displays.
 - **Seeded gameplay randomness**: a run replays exactly from its seed, which keeps tests and the bot reproducible.

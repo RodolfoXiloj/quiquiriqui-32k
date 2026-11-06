@@ -78,15 +78,16 @@ export function bakeSprite(w, h, shapeFn, footY = h - 2) {
 
 // --- The hen and her outfit ----------------------------------------------------------------------
 //
-// The hen's sprite is 24x24: her body keeps its 18x18 design, moved by (HEN_OX, HEN_OY) to leave
-// room for a pot on her head, a cape behind her and a basket on her back. Every worn item is a
-// layer (bx, by, tier) -> palette index or -1, in the body's own coordinates. The tier is 1
-// (levels 1-2), 2 (levels 3-4) or 3 (level 5, golden). Front layers cover the body, the body
-// covers the cape, and items that reshape her (comb, beak, wing, tail, boots) live in the body.
-// bakeSprite then wraps the whole outfit in one ink outline.
+// The hen's sprite is 30x24: her body keeps its 18x18 design, moved by (HEN_OX, HEN_OY) to leave
+// room for a pot on her head, a basket on her back and a cape flying behind her. Every worn item
+// is a layer (bx, by, tier) -> palette index or -1, in the body's own coordinates. The tier is 1
+// (levels 1-2), 2 (levels 3-4) or 3 (level 5, golden). Front layers cover the body; items that
+// reshape her (comb, beak, wing, tail, boots) live in the body, and the cape lies over her back
+// under her head, wing and tail. bakeSprite then wraps the whole outfit in one ink outline.
 
-export const HEN_SIZE = 24;
-const HEN_OX = 3;
+export const HEN_W = 30;
+export const HEN_H = 24;
+const HEN_OX = 6;
 const HEN_OY = 4;
 
 const POSES = ['idle', 'stepA', 'stepB'];
@@ -200,11 +201,23 @@ const FRONT_LAYERS = [
   ],
 ];
 
-/** Hero Cape, behind the body: longer from tier 2, gold-trimmed at tier 3. */
-function capeLayer(x, y, t) {
-  const ry = t >= 2 ? 5.6 : 4.8;
-  if (y < 6 || !inEllipse(x, y, 5.2, 10.6, 5.4, ry)) return -1;
-  return t === 3 && !inEllipse(x, y, 5.2, 10.6, 4.6, ry - 0.9) ? 10 : 9;
+/**
+ * Hero Cape, flying: from her neck it covers the top of her back, then streams out past her tail,
+ * rising and widening in the wind, forked at the end. Its wave moves with her steps, so it flutters
+ * as she walks, and the darker folds show its underside. Longer from tier 2, gold-hemmed at tier 3.
+ */
+function capeLayer(x, y, t, step) {
+  const end = t > 1 ? -5 : -3;
+  const d = 11 - x; // from her neck back
+  if (x < end || d < 0) return -1;
+  const phase = step === 'stepA' ? 1.6 : step === 'stepB' ? -1.6 : 0;
+  const free = Math.max(0, d - 6); // past her back, in the wind
+  const dy = y - 7 + 0.3 * free - Math.sin(0.9 * d - phase) * Math.min(1, free / 4);
+  const half = 0.7 + 0.14 * d;
+  if (Math.abs(dy) > half || (x === end && Math.abs(dy) < 0.7)) return -1; // the forked end
+  if (free && dy > half - 1) return t > 2 ? 10 : 19; // the underside, or a gold hem
+  if (t > 2 && (x === end || d === 0)) return 10; // gold tips and clasp
+  return free && Math.cos(0.9 * d - phase) < -0.5 ? 19 : 9; // folds
 }
 
 /** Wing ellipse per Wing Gust tier, plus how many columns of flight feathers show. */
@@ -228,12 +241,18 @@ function henBody(x, y, step, o) {
   if (x === 14 && (y === 7 || y === 8)) return 9;
   // Head with one ink eye
   if (inEllipse(x, y, 12.5, 5, 2.6, 2.4)) return x === 13 && y === 5 ? 0 : 7;
+  // Hero Cape over her back and tail, under her wing
+  const wing = WINGS[o.gust || 0];
+  const inWing = inEllipse(x, y, wing[0], wing[1], wing[2], wing[3]);
+  if (o.cape && !inWing) {
+    const c = capeLayer(x, y, o.cape, step);
+    if (c >= 0) return c;
+  }
   // Tail feathers fanning up and back; Feather Darts tip them blue (gold at tier 3) and lengthen them
   const tip = o.darts === 3 ? 10 : o.darts ? 12 : 8;
   if (o.darts >= 2 ? inTaper(x, y, 3, 1, 9, 0.8, 3) : inTaper(x, y, 3.5, 3, 9, 0.6, 2.6)) return x <= 2 ? tip : 7;
   // Folded wing; Wing Gust makes it bigger with sky-blue flight feathers
-  const wing = WINGS[o.gust || 0];
-  if (inEllipse(x, y, wing[0], wing[1], wing[2], wing[3])) {
+  if (inWing) {
     if (o.gust && x <= wing[0] - wing[2] + wing[4]) return o.gust === 3 && x % 2 ? 13 : 12;
     return y <= 9 ? 7 : 8;
   }
@@ -272,15 +291,14 @@ export function henShape(step, outfit = {}) {
       if (c === 7 && speckle >= 0 && (bx * 7 + by * 3) % 5 === 0) return speckle;
       return c === 7 ? body : shade;
     }
-    if (c >= 0 || !outfit.cape) return c;
-    return capeLayer(bx, by, outfit.cape);
+    return c;
   };
 }
 
 /** Bakes the hen's poses wearing `outfit`. Called at boot and whenever her look changes. */
 export function bakeHen(outfit = {}) {
   for (const step of POSES) {
-    henSprites[step] = bakeSprite(HEN_SIZE, HEN_SIZE, henShape(step, outfit), 16 + HEN_OY);
+    henSprites[step] = bakeSprite(HEN_W, HEN_H, henShape(step, outfit), 16 + HEN_OY);
   }
   henLook.key = outfitKey(outfit);
   henLook.bakes++;

@@ -23,7 +23,7 @@
     </style>
   </head>
   <body>
-    <p>Dev-only wardrobe: every worn item at its three looks (levels 1-2, 3-4, 5), then the full outfit walking.</p>
+    <p>Dev-only wardrobe: every worn item at its three looks (levels 1-2, 3-4, 5), the cape walking, then the full outfit walking.</p>
     <canvas id="w"></canvas>
     <script type="module">
       // Dev-only (served by tools/dev.mjs from tools/browser/, never bundled). It imports the game's
@@ -33,9 +33,9 @@
       import { ITEM_BY_ID } from '/items.js';
 
       const SCALE = 3;
-      const CELL = 28;
+      const CELL = 32;
       const LABEL = 112;
-      const rows = WORN_ITEMS.length + 3;
+      const rows = WORN_ITEMS.length + 4;
       const canvas = document.getElementById('w');
       canvas.width = LABEL + CELL * 4;
       canvas.height = rows * CELL + 6;
@@ -74,6 +74,13 @@
 
       const full = (tier) => Object.fromEntries(WORN_ITEMS.map((id) => [id, tier]));
       let row = WORN_ITEMS.length + 1;
+      label('CAPE IN THE WIND', row);
+      for (const tier of [2, 3]) {
+        const cape = look({ cape: tier });
+        ctx.drawImage(cape.stepA, cellX(tier * 2 - 4), row * CELL + 2);
+        ctx.drawImage(cape.stepB, cellX(tier * 2 - 3), row * CELL + 2);
+      }
+      row++;
       label('ALL, 3 LOOKS', row);
       for (const tier of [1, 2, 3]) ctx.drawImage(look(full(tier)).idle, cellX(tier - 1), row * CELL + 2);
       row++;

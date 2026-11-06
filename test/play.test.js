@@ -24,7 +24,8 @@ import { groundTileAt, GROUND_PALETTE_INDICES } from '../src/ground.js';
 import {
   HEN_PALETTE_INDICES,
   ENEMY_PALETTE_INDICES,
-  HEN_SIZE,
+  HEN_W,
+  HEN_H,
   WORN_ITEMS,
   henShape,
   henLook,
@@ -215,12 +216,20 @@ function armedWith(id) {
   applyCard({ id });
 }
 
-/** The hen's 24x24 shape as a flat array of palette indices, for one pose and outfit. */
+/** The hen's 30x24 shape as a flat array of palette indices, for one pose and outfit. */
 function henGrid(outfit, step = 'idle') {
   const shape = henShape(step, outfit);
   const grid = [];
-  for (let y = 1; y < HEN_SIZE - 1; y++) for (let x = 1; x < HEN_SIZE - 1; x++) grid.push(shape(x, y));
+  for (let y = 1; y < HEN_H - 1; y++) for (let x = 1; x < HEN_W - 1; x++) grid.push(shape(x, y));
   return grid.join(',');
+}
+
+/** The colors of the hen's shape in sprite columns [x0, x1) and rows [y0, y1), one string per pose. */
+function henPatch(outfit, step, x0, x1, y0, y1) {
+  const shape = henShape(step, outfit);
+  const cells = [];
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) cells.push(shape(x, y));
+  return cells;
 }
 
 describe('quiquiriqui at 5x: moving around', () => {
@@ -882,6 +891,31 @@ describe('quiquiriqui: the hen dresses up', () => {
       assert.notEqual(looks[0], bare, `${id} does not show`);
       assert.notEqual(looks[1], looks[0], `${id}: tier 2 looks like tier 1`);
       assert.notEqual(looks[2], looks[1], `${id}: tier 3 looks like tier 2`);
+    }
+  });
+
+  it('the Hero Cape lies over her back and flies behind her tail, fluttering as she walks; the tail tips still show', () => {
+    const red = (cells) => cells.filter((c) => c === 9 || c === 19).length; // red, and its darker folds
+    for (const tier of [1, 2, 3]) {
+      for (const step of ['idle', 'stepA', 'stepB']) {
+        // Behind her (left of her body and tail, where the bare hen has nothing)
+        assert.equal(red(henPatch({}, step, 1, 6, 1, HEN_H - 1)), 0);
+        assert.ok(red(henPatch({ cape: tier }, step, 1, 6, 1, HEN_H - 1)) >= 4, `tier ${tier} ${step}: no cape behind her`);
+        // Over the top of her back, between her tail and her head
+        assert.ok(red(henPatch({ cape: tier }, step, 11, 17, 10, 13)) >= 4, `tier ${tier} ${step}: no cape on her back`);
+      }
+      // Walking, the part in the wind changes from step to step (the bare hen's back half does not)
+      const flag = (outfit, step) => henPatch(outfit, step, 1, 12, 1, HEN_H - 1).join(',');
+      assert.equal(flag({}, 'stepA'), flag({}, 'stepB'));
+      assert.notEqual(flag({ cape: tier }, 'stepA'), flag({ cape: tier }, 'stepB'), `tier ${tier}: the cape does not flutter`);
+    }
+    // Longer from tier 2
+    assert.ok(red(henPatch({ cape: 2 }, 'idle', 1, 4, 1, HEN_H - 1)) > red(henPatch({ cape: 1 }, 'idle', 1, 4, 1, HEN_H - 1)));
+    // Feather Darts' blue tips still peek out of the cape
+    for (const darts of [1, 2]) {
+      for (const step of ['idle', 'stepA', 'stepB']) {
+        assert.ok(henGrid({ cape: 3, darts }, step).split(',').includes('12'), `darts ${darts} under the cape, ${step}`);
+      }
     }
   });
 

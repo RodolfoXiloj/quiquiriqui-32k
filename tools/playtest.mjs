@@ -422,7 +422,7 @@ async function outfitScenarios(page, client, base) {
 
   await check('14. the wardrobe page shows every worn item', async () => {
     // The wardrobe is a tall page: grow the viewport for its screenshot, then put it back.
-    await client.send('Emulation.setDeviceMetricsOverride', { width: 700, height: 1260, deviceScaleFactor: 1, mobile: false });
+    await client.send('Emulation.setDeviceMetricsOverride', { width: 760, height: 1520, deviceScaleFactor: 1, mobile: false });
     try {
       await page.open(`${base}/__dev/wardrobe.html`, 'window.__wardrobeReady === true');
       const rows = await page.evaluate('window.__wardrobeRows');
