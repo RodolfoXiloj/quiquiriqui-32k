@@ -560,6 +560,31 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.ok(drops >= 68 && drops <= 92, `${drops} drops in 100 kills (80% expected)`);
   });
 
+  it('the starting corn spreads evenly all around her, on screen and never clumped', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      resetRun({ peaceful: false, seed });
+      start();
+      const kernels = corn.filter((c) => c.alive);
+      assert.equal(kernels.length, 12);
+      // On screen, around her (screen pixels from her)
+      const spots = kernels.map((c) => [toIsoX(c.x - hen.x, c.y - hen.y), toIsoY(c.x - hen.x, c.y - hen.y)]);
+      for (const [sx, sy] of spots) assert.ok(Math.abs(sx) < WIDTH / 2 - 10 && Math.abs(sy) < HEIGHT / 2 - 10, `a kernel off screen at ${sx}, ${sy}`);
+      // All beyond her starting reach (3 tiles): she walks to eat them
+      for (const c of kernels) assert.ok(Math.hypot(c.x - hen.x, c.y - hen.y) > 3.2, 'a kernel within her reach at the start');
+      for (const [name, side] of [['right', ([x]) => x > 0], ['left', ([x]) => x < 0], ['below', ([, y]) => y > 0], ['above', ([, y]) => y < 0]]) {
+        assert.ok(spots.filter(side).length >= 3, `seed ${seed}: few kernels ${name} her`);
+      }
+      // Apart from each other
+      for (let i = 0; i < kernels.length; i++) {
+        for (let j = i + 1; j < kernels.length; j++) {
+          const d = Math.hypot(kernels[i].x - kernels[j].x, kernels[i].y - kernels[j].y);
+          assert.ok(d >= 1.5, `seed ${seed}: two kernels ${d.toFixed(2)} tiles apart`);
+        }
+      }
+    }
+    resetRun();
+  });
+
   it('a kernel at the edge of her reach is eaten within 0.35 s', () => {
     start();
     spawnCorn(hen.x + stats.magnet - 0.05, hen.y, 1, 0);
@@ -1106,8 +1131,12 @@ describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
     start();
     buildOrder.length = 0; // nothing breaks the crates
     hen.hp = hen.maxHp = 1e6;
-    // Bites freeze the action for a moment, so wait on the game clock, not on steps.
-    while (game.time < CRATE_EVERY * 2 + 1) update(STEP);
+    // Bites freeze the action for a moment, so wait on the game clock, not on steps (and close
+    // any cards, or the clock would stop for good).
+    while (game.time < CRATE_EVERY * 2 + 1) {
+      game.cards = [];
+      update(STEP);
+    }
     assert.equal(enemies.filter((e) => e.alive && e.prop).length, 2);
     resetRun();
     start();
@@ -1268,6 +1297,7 @@ describe('quiquiriqui at 5x: peril levels', () => {
       buildOrder.length = 0; // no weapons: everything born stays
       while (game.time < 30) {
         hen.hp = hen.maxHp = 1e6;
+        game.cards = []; // open cards would stop the clock for good
         update(STEP);
       }
       return enemies.filter((e) => e.alive && !e.prop).length;

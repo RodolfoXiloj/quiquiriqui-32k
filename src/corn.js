@@ -74,11 +74,15 @@ export function clearCorn() {
   for (const c of corn) c.alive = false;
 }
 
-/** The kernels scattered around the hen when a run starts. */
+/**
+ * The kernels scattered around the hen when a run starts: evenly all around her, every other one
+ * on a farther ring, so they spread over the screen instead of clumping, all beyond her reach: she
+ * walks to eat them.
+ */
 export function scatterStartingCorn() {
   for (let i = 0; i < STARTING_CORN; i++) {
-    const a = gameRand() * Math.PI * 2;
-    const d = 2.6 + gameRand() * 3.5;
+    const a = ((i + gameRand() * 0.6) / STARTING_CORN) * Math.PI * 2;
+    const d = i % 2 ? 6 + gameRand() * 2.5 : 3.5 + gameRand();
     spawnCorn(hen.x + Math.cos(a) * d, hen.y + Math.sin(a) * d, 1, 0);
   }
 }
