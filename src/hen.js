@@ -88,7 +88,7 @@ export function syncHenStats() {
 
 /**
  * A bite of `amount` from world point (fromX, fromY). Lucky Bandana may dodge it; Pot Helmet
- * takes off a flat amount.
+ * takes off a share (`stats.guard`).
  */
 export function damageHen(amount, fromX, fromY) {
   if (game.over) return;
@@ -96,7 +96,7 @@ export function damageHen(amount, fromX, fromY) {
     spawnPopup(hen.x, hen.y, 'MISS', 12, 0.5, 6);
     return;
   }
-  const taken = Math.max(1, Math.round(amount - stats.armor));
+  const taken = Math.max(1, Math.round(amount * (1 - stats.guard)));
   hen.hp = Math.max(0, hen.hp - taken);
   hen.hurtTime = HURT_FLASH;
   spawnPopup(hen.x, hen.y, '-' + taken, 9);

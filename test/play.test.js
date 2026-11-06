@@ -363,8 +363,8 @@ describe('quiquiriqui at 5x: predators', () => {
     applyCard({ id: 'helmet' });
     applyCard({ id: 'helmet' });
     const before = hen.hp;
-    damageHen(5, rat.x, rat.y);
-    assert.equal(before - hen.hp, 3);
+    damageHen(10, rat.x, rat.y);
+    assert.equal(before - hen.hp, 8, 'two pots should take 20% off a bite');
   });
 
   it('the predator pool never overflows', () => {
@@ -636,7 +636,7 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.equal(weaponDamage('egg'), 10);
     applyCard({ id: 'shades' });
     applyCard({ id: 'shades' });
-    assert.equal(weaponDamage('egg'), 12);
+    assert.equal(weaponDamage('egg'), 13);
   });
 
   it('Hero Cape raises max health and heals what it adds', () => {
@@ -644,11 +644,11 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     hen.hp = 50;
     applyCard({ id: 'cape' });
     syncHenStats();
-    assert.equal(hen.maxHp, 120);
-    assert.equal(hen.hp, 70);
+    assert.equal(hen.maxHp, 125);
+    assert.equal(hen.hp, 75);
   });
 
-  it('Lucky Bandana dodges about 6% of bites per level', () => {
+  it('Lucky Bandana dodges about 7% of bites per level', () => {
     start();
     for (let i = 0; i < 3; i++) applyCard({ id: 'bandana' });
     hen.hp = hen.maxHp = 1e6;
@@ -658,7 +658,7 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
       damageHen(5, hen.x + 1, hen.y);
       if (hen.hp === before) dodged++;
     }
-    assert.ok(dodged / 2000 > 0.14 && dodged / 2000 < 0.22, `${dodged / 20}% dodged`);
+    assert.ok(dodged / 2000 > 0.17 && dodged / 2000 < 0.25, `${dodged / 20}% dodged`);
   });
 
   it('Corn Spray fires a fan of kernels at a foe on screen', () => {
@@ -712,13 +712,19 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.equal(far.hp, far.maxHp, 'a rat off screen was struck');
   });
 
-  it('passives add up into the stats', () => {
-    const speed = stats.speed;
+  it('passives add up into the stats, costs included', () => {
+    const { speed, maxHp, xp, guard } = stats;
     applyCard({ id: 'boots' });
     applyCard({ id: 'boots' });
-    assert.ok(Math.abs(stats.speed - (speed + 0.16)) < 1e-9);
+    assert.ok(Math.abs(stats.speed - (speed + 0.2)) < 1e-9, 'boots: +10% speed a level');
+    assert.equal(stats.maxHp, maxHp - 10, 'boots: -5 max health a level');
+    applyCard({ id: 'helmet' });
+    assert.ok(Math.abs(stats.guard - (guard + 0.1)) < 1e-9, 'pot: 10% less damage');
+    assert.ok(Math.abs(stats.speed - (speed + 0.2 - 0.04)) < 1e-9, 'pot: -4% speed');
     applyCard({ id: 'basket' });
     assert.ok(stats.magnet > 3);
+    assert.ok(Math.abs(stats.xp - (xp + 0.08)) < 1e-9, 'basket: +8% XP');
+    assert.deepEqual(cardText({ id: 'boots', level: 1 }), ['RUN 10% FASTER', '-5 MAX HEALTH'], 'the cost is on the card');
   });
 
   it('Feather Darts fly behind the hen', () => {
@@ -2078,7 +2084,7 @@ describe('quiquiriqui: text and layout', () => {
   it('every text the game can show has a glyph for each of its characters', () => {
     const saved = JSON.parse(JSON.stringify(profile));
     const texts = [...Object.values(HUD_STRINGS)];
-    for (const item of [...ITEMS, ...BOONS]) texts.push(item.name, ...(item.text || []), ...(item.up || []));
+    for (const item of [...ITEMS, ...BOONS]) texts.push(item.name, ...(item.text || []), ...(item.up || []), item.cost || '');
     for (const upgrade of SHOP) texts.push(upgrade.name, upgrade.text);
     for (const hen of HENS) texts.push(hen.name, `${hen.name}!`, hen.hint || '');
     for (game.hen = 0; game.hen < HENS.length; game.hen++) texts.push(henLine());

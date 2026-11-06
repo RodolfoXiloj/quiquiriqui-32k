@@ -606,7 +606,8 @@ function drawCards(ctx, time, cards, title, note, lock, numbered) {
     drawText(ctx, card.boon ? 'BOON' : card.level === 1 ? 'NEW!' : `LV ${card.level}`, cx, y + 61, 1, card.boon || card.level === 1 ? 10 : 12);
     const [a, b] = cardText(card);
     drawText(ctx, a, cx, y + 76, CARD_TEXT_SCALE, 7);
-    if (b) drawText(ctx, b, cx, y + 85, CARD_TEXT_SCALE, 7);
+    // A cost (Running Boots, Pot Helmet) reads in red
+    if (b) drawText(ctx, b, cx, y + 85, CARD_TEXT_SCALE, item.cost ? 9 : 7);
   });
 }
 

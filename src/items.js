@@ -13,9 +13,10 @@ export const SLOTS = 6;
  *   cd: seconds between volleys   n: shots per volley (Peck: targets; Chick Orbit: chicks;
  *   Thunder Comb: bolts)   dmg: damage per hit   r: Wing Gust radius (tiles)   spin: Chick Orbit
  *   turn rate (radians per second)
- * Passives add `per` to one entry of `stats` for each level owned (plain sums).
+ * Passives add `per` to one entry of `stats` for each level owned (plain sums), and some `per2` to
+ * a second one: a gain with a cost (light boots cost health, a heavy pot slows her).
  * `text` is the two-line card description of a new item; `up` the one-line text of each
- * level-up (index 0 is the text for level 2).
+ * level-up (index 0 is the text for level 2); `cost`, if any, is shown in red under either.
  */
 export const ITEMS = [
   {
@@ -75,52 +76,62 @@ export const ITEMS = [
     lv: { cd: [2.6, 2.6, 2.2, 2.2, 1.8], n: [1, 1, 2, 2, 3], dmg: [22, 30, 30, 38, 46] },
   },
   {
+    // Light on her feet: faster, and frailer
     id: 'boots',
     name: 'RUNNING BOOTS',
-    text: ['RUN 8% FASTER', 'PER LEVEL'],
-    up: ['+8% SPEED'],
+    text: ['RUN 10% FASTER'],
+    up: ['+10% SPEED'],
+    cost: '-5 MAX HEALTH',
     stat: 'speed',
-    per: 0.08,
+    per: 0.1,
+    stat2: 'maxHp',
+    per2: -5,
   },
   {
     id: 'basket',
     name: 'FEED BASKET',
-    text: ['PULLS CORN IN', 'FROM FARTHER AWAY'],
-    up: ['+0.6 CORN REACH'],
+    text: ['+0.6 CORN REACH', 'AND +8% XP'],
+    up: ['+0.6 REACH, +8% XP'],
     stat: 'magnet',
     per: 0.6,
+    stat2: 'xp',
+    per2: 0.08,
   },
   {
+    // A heavy pot: bites hurt less, and she runs slower
     id: 'helmet',
     name: 'POT HELMET',
-    text: ['TAKE 1 LESS', 'DAMAGE PER BITE'],
-    up: ['-1 DAMAGE TAKEN'],
-    stat: 'armor',
-    per: 1,
+    text: ['10% LESS DAMAGE'],
+    up: ['-10% DAMAGE TAKEN'],
+    cost: '-4% SPEED',
+    stat: 'guard',
+    per: 0.1,
+    stat2: 'speed',
+    per2: -0.04,
   },
   {
     id: 'shades',
     name: 'SUNGLASSES',
-    text: ['LOOKING COOL:', '+10% DAMAGE'],
-    up: ['+10% DAMAGE'],
+    text: ['LOOKING COOL:', '+15% DAMAGE'],
+    up: ['+15% DAMAGE'],
     stat: 'damage',
-    per: 0.1,
+    per: 0.15,
   },
   {
     id: 'cape',
     name: 'HERO CAPE',
-    text: ['+20 MAX HEALTH', 'AND A QUICK HEAL'],
-    up: ['+20 MAX HEALTH'],
+    text: ['+25 MAX HEALTH', 'AND A QUICK HEAL'],
+    up: ['+25 MAX HEALTH'],
     stat: 'maxHp',
-    per: 20,
+    per: 25,
   },
   {
     id: 'bandana',
     name: 'LUCKY BANDANA',
-    text: ['6% CHANCE TO', 'DODGE A BITE'],
-    up: ['+6% DODGE'],
+    text: ['7% CHANCE TO', 'DODGE A BITE'],
+    up: ['+7% DODGE'],
     stat: 'dodge',
-    per: 0.06,
+    per: 0.07,
   },
 ];
 
@@ -140,11 +151,11 @@ export const BOONS = [
 export const ITEM_BY_ID = Object.fromEntries([...ITEMS, ...BOONS].map((item) => [item.id, item]));
 
 /**
- * Base stats before passives: speed multiplier, corn magnet radius (tiles), flat armor, damage
- * multiplier, extra max health, dodge chance, haste (weapon cooldowns are divided by it) and the
- * XP multiplier. The shop's permanent upgrades are added on top.
+ * Base stats before passives: speed multiplier, corn magnet radius (tiles), guard (the share of
+ * every bite she shrugs off), damage multiplier, extra max health, dodge chance, haste (weapon
+ * cooldowns are divided by it) and the XP multiplier. The shop's permanent upgrades are added on top.
  */
-const BASE_STATS = { speed: 1, magnet: 3, armor: 0, damage: 1, maxHp: 0, dodge: 0, haste: 1, xp: 1 };
+const BASE_STATS = { speed: 1, magnet: 3, guard: 0, damage: 1, maxHp: 0, dodge: 0, haste: 1, xp: 1 };
 export const stats = { ...BASE_STATS };
 
 /** Owned item levels by id, and the order they were taken in (for the HUD). */
@@ -159,6 +170,7 @@ function recomputeStats() {
   for (const id of buildOrder) {
     const item = ITEM_BY_ID[id];
     if (item.stat) stats[item.stat] += item.per * build[id];
+    if (item.stat2) stats[item.stat2] += item.per2 * build[id];
   }
   for (const id of Object.keys(boons)) {
     const boon = ITEM_BY_ID[id];
@@ -234,9 +246,9 @@ export function applyCard(card) {
   recomputeStats();
 }
 
-/** The two description lines a card shows. */
+/** The two description lines a card shows; an item with a cost shows it second (in red). */
 export function cardText(card) {
   const item = ITEM_BY_ID[card.id];
-  if (card.boon || card.level === 1) return item.text;
-  return [item.up[Math.min(card.level - 2, item.up.length - 1)], ''];
+  const gain = card.boon || card.level === 1 ? item.text : [item.up[Math.min(card.level - 2, item.up.length - 1)], ''];
+  return item.cost ? [gain[0], item.cost] : gain;
 }
