@@ -10,7 +10,7 @@ export const PERIL = { hp: 0.15, bite: 0.15 };
 /**
  * Peril levels add a rule each, and keep those below:
  * events come more often; elites twice as often; two bosses each time, and
- * predators bite only by hopping at her (they blink first: stepping away dodges); two cards to
+ * predators close by hop at her now and then (a step away dodges); two cards to
  * choose from instead of three; and no mercy (a fuller meadow, faster predators). The title shows
  * the rule of the chosen level.
  */

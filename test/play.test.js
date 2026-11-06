@@ -80,9 +80,8 @@ import {
   ELITE_EGGS,
   DASH_WARN,
   DASH_TIME,
-  HOP_WARN,
   HOP_TIME,
-  RUN,
+  HOP_EVERY,
   ENEMY_TYPES,
   MAX_ENEMIES,
   shots,
@@ -1980,65 +1979,64 @@ describe('quiquiriqui at 5x: peril rules', () => {
     resetRun();
   });
 
-  /**
-   * A run at `peril` with no weapons and a hen too tough to fall, and a sturdy rat `gap` tiles from
-   * her body (to her side), ready to act; it only moves by hopping.
-   */
-  function ratBeside(peril, gap) {
+  /** A run at `peril` with no weapons and a hen too tough to fall. */
+  function hopRun(peril) {
     resetRun({ peril });
     start();
     hen.hp = hen.maxHp = 1e6;
     buildOrder.length = 0;
-    const rat = sturdy(RAT, hen.x + ENEMY_TYPES[RAT].r + HEN_RADIUS + gap, hen.y);
+  }
+
+  /** A sturdy rat `gap` tiles from her body, on her screen-right, ready to hop; it only moves by hopping. */
+  function ratAt(gap) {
+    const d = ENEMY_TYPES[RAT].r + HEN_RADIUS + gap;
+    const rat = sturdy(RAT, hen.x + d * Math.SQRT1_2, hen.y - d * Math.SQRT1_2);
     rat.age = 1;
     rat.timer = 0;
     rat.speed = 0;
     return rat;
   }
 
-  it(`peril ${HOPS}, HOPS: right next to her a predator blinks, then hops and bites; walking off dodges it`, () => {
-    assert.ok(HOP_WARN >= 0.3, 'too quick to react to');
+  it(`peril ${HOPS}, HOPS: close by, a predator now and then hops at her at once; standing still it bites, walking away dodges it`, () => {
     assert.ok(HOP_TIME <= 0.2, 'a slow hop');
-    // She stands still: it blinks without biting, then lands on her
-    const rat = ratBeside(HOPS, 0.6);
+    // She stands still: it leaves the ground on the next step, with no warning, and lands on her
+    hopRun(HOPS);
+    const rat = ratAt(0.5);
     update(STEP);
-    assert.ok(rat.warn && rat.hop, 'no warning before the hop');
-    steps(HOP_WARN - 2 * STEP);
-    assert.equal(hen.hp, hen.maxHp, 'it bit while blinking');
-    assert.equal(rat.state, 1, 'it left the ground too early');
-    steps(2 * STEP + HOP_TIME);
+    assert.ok(rat.hop && rat.state === 2 && !rat.warn, 'it did not hop at once');
+    steps(HOP_TIME + 0.1); // the bite's hitstop holds everything a moment
     assert.equal(hen.maxHp - hen.hp, rat.dmg, 'the hop did not bite her');
-    // She walks off (screen left, away from it) while it blinks: it lands where she was
-    const missed = ratBeside(HOPS, 0.6);
-    update(STEP);
-    assert.ok(missed.warn);
+    assert.equal(rat.state, 0, 'it is still in the air');
+    // Only now and then: the next hop comes 2 to 4 s later
+    assert.ok(rat.timer > HOP_EVERY - 0.1 && rat.timer <= 2 * HOP_EVERY, `the next hop in ${rat.timer.toFixed(2)} s`);
+    // Walking away (screen left) when it hops: it lands short of her
+    hopRun(HOPS);
     holdKey('KeyA', true);
-    steps(HOP_WARN + HOP_TIME + 0.1);
+    steps(0.3);
+    const missed = ratAt(0.5);
+    steps(HOP_TIME + 0.2);
     holdKey('KeyA', false);
-    assert.equal(hen.hp, hen.maxHp, 'walking off did not dodge the hop');
-    // Farther than a hop away it just comes closer
-    const far = ratBeside(HOPS, 2);
-    update(STEP);
-    assert.ok(!far.warn, 'it got ready to hop from too far');
+    assert.ok(missed.hop, 'it did not hop');
+    assert.equal(hen.hp, hen.maxHp, 'walking away did not dodge the hop');
+    // Farther than a hop away it does not jump
+    hopRun(HOPS);
+    const far = ratAt(1.5);
+    steps(0.5);
+    assert.ok(!far.hop && far.state === 0, 'it hopped from too far');
     resetRun();
   });
 
-  it(`peril ${HOPS}: a touch no longer bites (a stampede still runs her over); below it, a touch bites at once`, () => {
-    // Pressed against her while it rests from a hop: no bite
-    let rat = ratBeside(HOPS, -0.2);
-    rat.timer = 10;
+  it(`peril ${HOPS}: a touch still bites at once; one level easier nobody hops`, () => {
+    hopRun(HOPS);
+    let rat = ratAt(-0.2);
+    update(STEP);
+    assert.equal(rat.state, 0, 'it hopped while touching her');
+    assert.equal(hen.maxHp - hen.hp, rat.dmg, 'a touch did not bite');
+    hopRun(HOPS - 1);
+    rat = ratAt(0.5);
     steps(1);
-    assert.equal(hen.hp, hen.maxHp, 'a touch bit her at HOPS');
-    // A stampede rat running through her
-    rat = ratBeside(HOPS, -0.2);
-    Object.assign(rat, { act: RUN, dirX: -1, dirY: 0, speed: ENEMY_TYPES[RAT].speed });
-    update(STEP);
-    assert.equal(hen.maxHp - hen.hp, rat.dmg, 'the stampede rat did not bite');
-    // One level easier, the same touch bites at once, with no warning
-    rat = ratBeside(HOPS - 1, -0.2);
-    update(STEP);
-    assert.ok(!rat.warn, 'it blinked below HOPS');
-    assert.equal(hen.maxHp - hen.hp, rat.dmg, 'a touch did not bite below HOPS');
+    assert.ok(!rat.hop && rat.state === 0, 'it hopped below HOPS');
+    assert.equal(hen.hp, hen.maxHp, 'it reached her below HOPS');
     resetRun();
   });
 

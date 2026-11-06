@@ -18,7 +18,7 @@ import { game, settings, formatClock, xpToNext } from '/state.js';
 import { hen, damageHen, syncHenStats } from '/hen.js';
 import { holdKey } from '/input.js';
 import { toIsoX, toIsoY } from '/iso.js';
-import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, CRATE, shots, clouds, CLOUD_R, makeElite, HOP_SPEED, HOP_TIME } from '/enemies.js';
+import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, CRATE, shots, clouds, CLOUD_R, makeElite } from '/enemies.js';
 import { hawk, startEvent, EVENTS, HAWK_R, HAWK_HUNT, HAWK_STRIKE } from '/events.js';
 import { corn } from '/corn.js';
 import { pickups, spawnPickup } from '/pickups.js';
@@ -83,7 +83,7 @@ window.__qq = {
     enemies: countEnemies(),
     bosses: enemies.filter((e) => e.alive && e.boss).length,
     elites: enemies.filter((e) => e.alive && e.elite).map((e) => e.elite),
-    /** Each predator about to hop (1, blinking) or hopping (2). */
+    /** Each predator in the middle of a hop (2). */
     hops: enemies.filter((e) => e.alive && e.hop && e.state).map((e) => e.state),
     banner: game.bannerTime > 0 ? game.banner : '',
     hawkDives: hawk.dives,
@@ -214,7 +214,7 @@ if (!externalDriver) {
       holdKey(tapped, false);
       tapped = null;
     }
-    const hazards = hazardsOf(shots, clouds, hawk, { cloudR: CLOUD_R, hawkR: HAWK_R, hawkHunt: HAWK_HUNT, hawkStrike: HAWK_STRIKE, hopLen: HOP_SPEED * HOP_TIME }, enemies);
+    const hazards = hazardsOf(shots, clouds, hawk, { cloudR: CLOUD_R, hawkR: HAWK_R, hawkHunt: HAWK_HUNT, hawkStrike: HAWK_STRIKE });
     const { keys, tap } = bot.decide({ hen, enemies, corn, pickups, hazards, game, cards: cardsWithKind() });
     for (const code of MOVE_KEYS) holdKey(code, keys.includes(code));
     if (tap) {

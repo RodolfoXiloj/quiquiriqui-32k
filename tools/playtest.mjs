@@ -610,36 +610,37 @@ async function progressScenarios(page, base) {
 }
 
 async function hopScenario(page, base) {
-  await check('25. at NO MERCY a rat beside her blinks and hops: standing still it bites, walking off dodges it', async () => {
-    // Real time (speed 1), so the real key comes while the rat blinks
+  await check('25. at NO MERCY a rat close by hops at her at once: standing still it bites, walking away dodges it', async () => {
+    // Real time (speed 1), so the real key is down before the rat hops
     await page.evaluate('localStorage.removeItem("qq_profile")');
     await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=1`, ready);
     await page.tapKey('KeyD', 60);
     await page.waitFor('window.__qq.snapshot().started', 2000);
     await sleep(300);
-    const hp = (await page.snapshot()).hen.hp;
-    // A hop lasts a fifth of a second: wait for each moment inside the page, frame by frame
-    const until = (state) =>
+    // A rat comes close; the hop lasts 0.15 s, so it is caught from inside the page, frame by frame
+    const ratHops = () =>
       page.evaluate(`new Promise((done) => {
-        const look = () => (window.__qq.snapshot().hops[0] === ${state} ? done(true) : requestAnimationFrame(look));
+        window.__qq.cheat.near('rat', 1.25);
+        const until = performance.now() + 500;
+        const look = () =>
+          window.__qq.snapshot().hops.length ? done(true) : performance.now() > until ? done(false) : requestAnimationFrame(look);
         look();
       })`);
-    await page.evaluate("window.__qq.cheat.near('rat', 1.6)");
-    await until(1);
-    await page.screenshot('29-hop-blink.png');
-    await until(2);
-    await page.screenshot('30-hop.png');
+    const hp = (await page.snapshot()).hen.hp;
+    expect(await ratHops(), 'the rat close by did not hop');
+    await page.screenshot('29-hop.png');
     await page.waitFor(`window.__qq.snapshot().hen.hp < ${hp}`, 2000);
-    // Another rat: as soon as it blinks she walks off, screen left, and it lands where she was
-    await sleep(600);
-    await page.evaluate("window.__qq.cheat.clear(), window.__qq.cheat.near('rat')");
-    await page.waitFor('window.__qq.snapshot().hops[0] === 1', 1000);
-    const before = (await page.snapshot()).hen.hp;
+    // Another rat hops as she walks away, screen left: it lands short of her
+    await page.evaluate('window.__qq.cheat.clear()');
     await page.keyDown('KeyA');
-    await sleep(800);
+    await sleep(300);
+    const before = (await page.snapshot()).hen.hp;
+    const hopped = await ratHops();
+    await sleep(300);
     await page.keyUp('KeyA');
     const after = (await page.snapshot()).hen.hp;
-    expect(after === before, `the hop bit her as she walked off: ${before} -> ${after}`);
+    expect(hopped, 'the second rat did not hop');
+    expect(after === before, `the hop bit her as she walked away: ${before} -> ${after}`);
   });
 }
 

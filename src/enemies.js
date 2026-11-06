@@ -1,6 +1,6 @@
 // Predators: they appear just outside the screen, chase the hen in a straight line, push each
 // other apart so a horde reads as a crowd instead of one blob, and bite on contact (from ROOSTER,
-// only by hopping at her: they blink first, so she can step out of the way). Hits flash
+// one close by now and then hops at her too). Hits flash
 // them, knock them back and float a damage number; a kill drops corn most of the time.
 // Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
 // stand still, never bite, are not kills, and break into a prize. Some kinds act on their own
@@ -107,16 +107,15 @@ const DASH_SPEED = 11;
 const DASH_REST = 1.5;
 
 /**
- * From ROOSTER (peril HOPS) predators bite only by hopping at her: one whose body comes within
- * HOP_FROM tiles of hers stops and blinks for HOP_WARN seconds, aiming where she is, then hops that
- * way at HOP_SPEED for HOP_TIME (an arc in the air, about 1.6 tiles) and bites if it lands on her,
- * then rests HOP_REST. Quick, but with time to react: walking off while it blinks makes it miss.
+ * From ROOSTER (peril HOPS) a predator whose body comes within HOP_FROM tiles of hers, without
+ * touching her, now and then hops at her on the spot, with no warning: at HOP_SPEED for HOP_TIME
+ * (an arc in the air, 1.2 tiles), toward where she is, biting if it lands on her. Then it waits
+ * HOP_EVERY to twice that before the next. Short, so walking away makes it miss.
  */
-const HOP_FROM = 0.9;
-export const HOP_WARN = 0.35;
-export const HOP_TIME = 0.18;
-export const HOP_SPEED = 9;
-const HOP_REST = 0.6;
+const HOP_FROM = 0.8;
+export const HOP_TIME = 0.15;
+export const HOP_SPEED = 8;
+export const HOP_EVERY = 2;
 
 /** A shooter comes closer from farther than this (tiles), backs off from nearer, and circles between. */
 const KEEP_FAR = 6;
@@ -487,7 +486,7 @@ function killEnemy(e) {
  * One step of what predator `e` does, the hen being `d` tiles away along (ux, uy): chase her;
  * (a shooter) hold its distance, circle her and throw a pebble now and then while on screen;
  * (a lunger) now and then stop, blink, and lunge at where she was; and from ROOSTER (a chaser or a
- * lunger right next to her) stop, blink, and hop at her.
+ * lunger close by) now and then hop at her.
  */
 function act(e, ux, uy, d, dt) {
   let mx = ux;
@@ -526,8 +525,8 @@ function act(e, ux, uy, d, dt) {
       speed = 0;
       if (e.timer <= 0) {
         e.state = 2;
-        e.timer = e.hop ? HOP_TIME : DASH_TIME;
-        if (!e.hop) sfxLunge();
+        e.timer = DASH_TIME;
+        sfxLunge();
       }
     } else if (e.state === 2) {
       mx = e.dirX;
@@ -535,16 +534,20 @@ function act(e, ux, uy, d, dt) {
       speed = e.hop ? HOP_SPEED : DASH_SPEED;
       if (e.timer <= 0) {
         e.state = 0;
-        e.timer = e.hop ? HOP_REST : DASH_REST;
+        e.timer = e.hop ? HOP_EVERY * (1 + gameRand()) : DASH_REST;
       }
     } else if (e.timer <= 0) {
-      // Right next to her (HOPS) a hop; a lunger from farther, its long lunge
-      e.hop = game.peril >= HOPS && d - e.r - HEN_RADIUS < HOP_FROM;
-      if (e.hop || (e.act === CHARGE && d < DASH_FROM && d > DASH_NEAR)) {
+      // Close by (HOPS): a hop, at once; a lunger from farther: blink, then its long lunge
+      const gap = d - e.r - HEN_RADIUS;
+      e.hop = game.peril >= HOPS && gap > 0 && gap < HOP_FROM;
+      e.dirX = ux;
+      e.dirY = uy;
+      if (e.hop) {
+        e.state = 2;
+        e.timer = HOP_TIME;
+      } else if (e.act === CHARGE && d < DASH_FROM && d > DASH_NEAR) {
         e.state = 1;
-        e.timer = e.hop ? HOP_WARN : DASH_WARN;
-        e.dirX = ux;
-        e.dirY = uy;
+        e.timer = DASH_WARN;
         e.warn = true;
         speed = 0;
       }
@@ -606,9 +609,7 @@ export function updateEnemies(dt) {
     const screenDx = e.act === RUN ? e.dirX - e.dirY : dx - dy;
     if (Math.abs(screenDx) > 0.05) e.facing = (screenDx > 0) === !game.over ? 1 : -1;
 
-    // From ROOSTER only a predator in the air bites (a stampede still runs her over)
-    const leaping = e.state === 2 || e.act === RUN || game.peril < HOPS;
-    if (!game.over && e.age > RISE_TIME && d < e.r + HEN_RADIUS && e.biteCooldown <= 0 && leaping) {
+    if (!game.over && e.age > RISE_TIME && d < e.r + HEN_RADIUS && e.biteCooldown <= 0) {
       e.biteCooldown = BITE_COOLDOWN;
       damageHen(e.dmg, e.x, e.y);
     }

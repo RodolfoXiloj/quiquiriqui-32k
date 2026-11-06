@@ -104,7 +104,7 @@ Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the pr
 
 ### Difficulty
 
-Quiquiriqui is **hard by default**: it starts at NO MERCY, the hardest peril, where the bot is first bitten at 1:20 and falls at about 5:08 with an empty shop (9:04 with the full shop). From ROOSTER up, predators bite only by hopping at her, so standing still is deadly and a quick step aside is the defense (the bot sees every hop coming; a person reacts a little later). Players who want it gentler step down; at EGG a new player usually falls between minutes 4 and 6, and the first dawn comes after a few runs, some shop upgrades and learning the dangers. What makes it hard:
+Quiquiriqui is **hard by default**: it starts at NO MERCY, the hardest peril, where the bot is first bitten at 0:36 and falls at about 2:11 with an empty shop (4:03 with the full shop). From ROOSTER up, predators close by also hop at her now and then, so standing still near them is deadly and walking away is the defense. Players who want it gentler step down; at EGG a new player usually falls between minutes 4 and 6, and the first dawn comes after a few runs, some shop upgrades and learning the dangers. What makes it hard:
 
 - **Pressure from the first minute.** Foxes from 0:20, weasels from 1:00, and a ring of rats at 0:35.
 - **A quota on the meadow.** Each minute sets the fewest predators that must be around the hen; below it, more are born at once. Clearing the screen fast only brings more.
@@ -130,7 +130,7 @@ Quiquiriqui is **hard by default**: it starts at NO MERCY, the hardest peril, wh
 | 0 | EGG | none: predators at their base health and bite |
 | 1 | CHICK | **MORE EVENTS**: an event every 30 to 50 s |
 | 2 | HEN | **ELITES X2**: an elite every 20 to 30 s; rainbow ones from 2:00 |
-| 3 | ROOSTER | **TWO BOSSES + HOPS**: every boss comes with another, and predators bite only by hopping at her: right next to her, each one crouches and blinks for 0.35 s, then leaps; she can walk out of the way (a stampede still runs her over) |
+| 3 | ROOSTER | **TWO BOSSES + HOPS**: every boss comes with another, and a predator close by now and then (every 2 to 4 s) hops at her on the spot, with no warning; a short hop, so walking away makes it miss |
 | 4 | HAWK | **TWO CARDS**: level-ups offer two cards, not three |
 | 5 | NO MERCY (the default) | **NO MERCY**: a fuller meadow and faster predators |
 

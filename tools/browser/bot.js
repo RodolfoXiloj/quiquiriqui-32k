@@ -6,8 +6,7 @@
 // key to tap. Strategy: try the 8 screen directions, score each by how close it would bring the
 // hen to predators (looking a little ahead) and how well it heads for the nearest prize or corn,
 // and keep the current direction unless another one is clearly better. Hazards (pebbles in flight,
-// stink clouds, the spot a hawk is about to dive on, the path of a hop about to come) count as
-// danger too. Cards: new weapons first,
+// stink clouds, the spot a hawk is about to dive on) count as danger too. Cards: new weapons first,
 // then weapon levels, then passives. It closes the chest screen, and after a game over (or the
 // dawn win) it waits a moment and starts again.
 
@@ -52,19 +51,14 @@ function dangerAt(px, py, enemies) {
 
 /**
  * The hazards to steer clear of, as { x, y, r, weight }: where each flying pebble will be in a
- * moment, each stink cloud, the hawk's target once it takes aim, and the path of each predator
- * blinking before a hop (from ROOSTER). `k` holds the game's sizes and timings: { cloudR, hawkR,
- * hawkHunt, hawkStrike, hopLen }.
+ * moment, each stink cloud, and the hawk's target once it takes aim. `k` holds the game's sizes
+ * and timings: { cloudR, hawkR, hawkHunt, hawkStrike }.
  */
-export function hazardsOf(shots, clouds, hawk, k, enemies = []) {
+export function hazardsOf(shots, clouds, hawk, k) {
   const list = [];
   for (const s of shots) if (s.alive) list.push({ x: s.x + s.vx * 0.25, y: s.y + s.vy * 0.25, r: 0.9, weight: 2 });
   for (const c of clouds) if (c.alive) list.push({ x: c.x, y: c.y, r: k.cloudR + 0.3, weight: 3 });
   if (hawk.dives && hawk.t > k.hawkHunt && hawk.t < k.hawkStrike) list.push({ x: hawk.x, y: hawk.y, r: k.hawkR + 0.6, weight: 6 });
-  const half = k.hopLen / 2;
-  for (const e of enemies) {
-    if (e.alive && e.hop && e.state === 1) list.push({ x: e.x + e.dirX * half, y: e.y + e.dirY * half, r: half + e.r + 0.6, weight: 4 });
-  }
   return list;
 }
 
