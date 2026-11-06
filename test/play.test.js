@@ -80,6 +80,9 @@ import {
   ELITE_EGGS,
   DASH_WARN,
   DASH_TIME,
+  HOP_WARN,
+  HOP_TIME,
+  RUN,
   ENEMY_TYPES,
   MAX_ENEMIES,
   shots,
@@ -145,7 +148,7 @@ import {
   weaponCooldown,
 } from '../src/items.js';
 import { projectiles, chicks, KERNEL } from '../src/weapons.js';
-import { HEN_SPEED, START_HP, damageHen, syncHenStats } from '../src/hen.js';
+import { HEN_SPEED, HEN_RADIUS, START_HP, damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts, POPUP_LIFE } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
 import { GLYPHS, GLYPH_W, GLYPH_H } from '../src/font.js';
@@ -158,6 +161,7 @@ import {
   MORE_EVENTS,
   ELITES_X2,
   TWO_BOSSES,
+  HOPS,
   TWO_CARDS,
   NO_MERCY,
   HENS,
@@ -1973,6 +1977,68 @@ describe('quiquiriqui at 5x: peril rules', () => {
     };
     assert.equal(bosses(TWO_BOSSES - 1), 1);
     assert.equal(bosses(TWO_BOSSES), 2);
+    resetRun();
+  });
+
+  /**
+   * A run at `peril` with no weapons and a hen too tough to fall, and a sturdy rat `gap` tiles from
+   * her body (to her side), ready to act; it only moves by hopping.
+   */
+  function ratBeside(peril, gap) {
+    resetRun({ peril });
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    buildOrder.length = 0;
+    const rat = sturdy(RAT, hen.x + ENEMY_TYPES[RAT].r + HEN_RADIUS + gap, hen.y);
+    rat.age = 1;
+    rat.timer = 0;
+    rat.speed = 0;
+    return rat;
+  }
+
+  it(`peril ${HOPS}, HOPS: right next to her a predator blinks, then hops and bites; walking off dodges it`, () => {
+    assert.ok(HOP_WARN >= 0.3, 'too quick to react to');
+    assert.ok(HOP_TIME <= 0.2, 'a slow hop');
+    // She stands still: it blinks without biting, then lands on her
+    const rat = ratBeside(HOPS, 0.6);
+    update(STEP);
+    assert.ok(rat.warn && rat.hop, 'no warning before the hop');
+    steps(HOP_WARN - 2 * STEP);
+    assert.equal(hen.hp, hen.maxHp, 'it bit while blinking');
+    assert.equal(rat.state, 1, 'it left the ground too early');
+    steps(2 * STEP + HOP_TIME);
+    assert.equal(hen.maxHp - hen.hp, rat.dmg, 'the hop did not bite her');
+    // She walks off (screen left, away from it) while it blinks: it lands where she was
+    const missed = ratBeside(HOPS, 0.6);
+    update(STEP);
+    assert.ok(missed.warn);
+    holdKey('KeyA', true);
+    steps(HOP_WARN + HOP_TIME + 0.1);
+    holdKey('KeyA', false);
+    assert.equal(hen.hp, hen.maxHp, 'walking off did not dodge the hop');
+    // Farther than a hop away it just comes closer
+    const far = ratBeside(HOPS, 2);
+    update(STEP);
+    assert.ok(!far.warn, 'it got ready to hop from too far');
+    resetRun();
+  });
+
+  it(`peril ${HOPS}: a touch no longer bites (a stampede still runs her over); below it, a touch bites at once`, () => {
+    // Pressed against her while it rests from a hop: no bite
+    let rat = ratBeside(HOPS, -0.2);
+    rat.timer = 10;
+    steps(1);
+    assert.equal(hen.hp, hen.maxHp, 'a touch bit her at HOPS');
+    // A stampede rat running through her
+    rat = ratBeside(HOPS, -0.2);
+    Object.assign(rat, { act: RUN, dirX: -1, dirY: 0, speed: ENEMY_TYPES[RAT].speed });
+    update(STEP);
+    assert.equal(hen.maxHp - hen.hp, rat.dmg, 'the stampede rat did not bite');
+    // One level easier, the same touch bites at once, with no warning
+    rat = ratBeside(HOPS - 1, -0.2);
+    update(STEP);
+    assert.ok(!rat.warn, 'it blinked below HOPS');
+    assert.equal(hen.maxHp - hen.hp, rat.dmg, 'a touch did not bite below HOPS');
     resetRun();
   });
 

@@ -1,5 +1,6 @@
 // Predators: they appear just outside the screen, chase the hen in a straight line, push each
-// other apart so a horde reads as a crowd instead of one blob, and bite on contact. Hits flash
+// other apart so a horde reads as a crowd instead of one blob, and bite on contact (from ROOSTER,
+// only by hopping at her: they blink first, so she can step out of the way). Hits flash
 // them, knock them back and float a damage number; a kill drops corn most of the time.
 // Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
 // stand still, never bite, are not kills, and break into a prize. Some kinds act on their own
@@ -18,7 +19,7 @@ import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
 import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge } from './sfx.js';
-import { PERIL, NO_MERCY } from './profile.js';
+import { PERIL, NO_MERCY, HOPS } from './profile.js';
 import { RUN_LENGTH } from './weather.js';
 
 export const RAT = 0;
@@ -105,6 +106,18 @@ export const DASH_TIME = 0.45;
 const DASH_SPEED = 11;
 const DASH_REST = 1.5;
 
+/**
+ * From ROOSTER (peril HOPS) predators bite only by hopping at her: one whose body comes within
+ * HOP_FROM tiles of hers stops and blinks for HOP_WARN seconds, aiming where she is, then hops that
+ * way at HOP_SPEED for HOP_TIME (an arc in the air, about 1.6 tiles) and bites if it lands on her,
+ * then rests HOP_REST. Quick, but with time to react: walking off while it blinks makes it miss.
+ */
+const HOP_FROM = 0.9;
+export const HOP_WARN = 0.35;
+export const HOP_TIME = 0.18;
+export const HOP_SPEED = 9;
+const HOP_REST = 0.6;
+
 /** A shooter comes closer from farther than this (tiles), backs off from nearer, and circles between. */
 const KEEP_FAR = 6;
 const KEEP_NEAR = 4.5;
@@ -182,8 +195,10 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   warn: false,
   /** Which way a shooter circles the hen: 1 or -1. */
   side: 1,
-  /** A lunger: 0 chasing, 1 winding up, 2 lunging along (dirX, dirY). */
+  /** A lunger or a hopper: 0 chasing, 1 winding up, 2 in the air along (dirX, dirY). */
   state: 0,
+  /** True when its leap is a short hop (HOPS), not a weasel's long lunge. */
+  hop: false,
   dirX: 0,
   dirY: 0,
   /** 0, or 1 for a golden elite and 2 for a rainbow one. */
@@ -330,6 +345,7 @@ export function spawnEnemy(kind, x, y) {
     warn: false,
     side: phase < 1 ? 1 : -1,
     state: 0,
+    hop: false,
     elite: 0,
   });
   return e;
@@ -469,8 +485,9 @@ function killEnemy(e) {
 
 /**
  * One step of what predator `e` does, the hen being `d` tiles away along (ux, uy): chase her;
- * (a shooter) hold its distance, circle her and throw a pebble now and then while on screen; or
- * (a lunger) now and then stop, blink, and lunge at where she was.
+ * (a shooter) hold its distance, circle her and throw a pebble now and then while on screen;
+ * (a lunger) now and then stop, blink, and lunge at where she was; and from ROOSTER (a chaser or a
+ * lunger right next to her) stop, blink, and hop at her.
  */
 function act(e, ux, uy, d, dt) {
   let mx = ux;
@@ -501,7 +518,7 @@ function act(e, ux, uy, d, dt) {
     speed *= 0.6;
     e.timer -= dt;
     if (e.timer <= 0 || c < 1) e.act = CHASE;
-  } else if (e.act === CHARGE) {
+  } else if (e.act === CHARGE || (e.act === CHASE && game.peril >= HOPS)) {
     e.timer -= dt;
     if (e.state === 1) {
       // Winding up: still, blinking, aimed
@@ -509,24 +526,28 @@ function act(e, ux, uy, d, dt) {
       speed = 0;
       if (e.timer <= 0) {
         e.state = 2;
-        e.timer = DASH_TIME;
-        sfxLunge();
+        e.timer = e.hop ? HOP_TIME : DASH_TIME;
+        if (!e.hop) sfxLunge();
       }
     } else if (e.state === 2) {
       mx = e.dirX;
       my = e.dirY;
-      speed = DASH_SPEED;
+      speed = e.hop ? HOP_SPEED : DASH_SPEED;
       if (e.timer <= 0) {
         e.state = 0;
-        e.timer = DASH_REST;
+        e.timer = e.hop ? HOP_REST : DASH_REST;
       }
-    } else if (e.timer <= 0 && d < DASH_FROM && d > DASH_NEAR) {
-      e.state = 1;
-      e.timer = DASH_WARN;
-      e.dirX = ux;
-      e.dirY = uy;
-      e.warn = true;
-      speed = 0;
+    } else if (e.timer <= 0) {
+      // Right next to her (HOPS) a hop; a lunger from farther, its long lunge
+      e.hop = game.peril >= HOPS && d - e.r - HEN_RADIUS < HOP_FROM;
+      if (e.hop || (e.act === CHARGE && d < DASH_FROM && d > DASH_NEAR)) {
+        e.state = 1;
+        e.timer = e.hop ? HOP_WARN : DASH_WARN;
+        e.dirX = ux;
+        e.dirY = uy;
+        e.warn = true;
+        speed = 0;
+      }
     }
   }
   if (game.frenzy > 0) speed *= FRENZY_SPEED;
@@ -585,7 +606,9 @@ export function updateEnemies(dt) {
     const screenDx = e.act === RUN ? e.dirX - e.dirY : dx - dy;
     if (Math.abs(screenDx) > 0.05) e.facing = (screenDx > 0) === !game.over ? 1 : -1;
 
-    if (!game.over && e.age > RISE_TIME && d < e.r + HEN_RADIUS && e.biteCooldown <= 0) {
+    // From ROOSTER only a predator in the air bites (a stampede still runs her over)
+    const leaping = e.state === 2 || e.act === RUN || game.peril < HOPS;
+    if (!game.over && e.age > RISE_TIME && d < e.r + HEN_RADIUS && e.biteCooldown <= 0 && leaping) {
       e.biteCooldown = BITE_COOLDOWN;
       damageHen(e.dmg, e.x, e.y);
     }

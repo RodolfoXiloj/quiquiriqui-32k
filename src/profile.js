@@ -9,16 +9,18 @@ export const MAX_PERIL = 5;
 export const PERIL = { hp: 0.15, bite: 0.15 };
 /**
  * Peril levels add a rule each, and keep those below:
- * events come more often; elites twice as often; two bosses each time;
- * two cards to choose from instead of three; and no mercy (a fuller meadow, faster predators).
- * The title shows the rule of the chosen level.
+ * events come more often; elites twice as often; two bosses each time, and
+ * predators bite only by hopping at her (they blink first: stepping away dodges); two cards to
+ * choose from instead of three; and no mercy (a fuller meadow, faster predators). The title shows
+ * the rule of the chosen level.
  */
 export const MORE_EVENTS = 1;
 export const ELITES_X2 = 2;
 export const TWO_BOSSES = 3;
+export const HOPS = 3;
 export const TWO_CARDS = 4;
 export const NO_MERCY = 5;
-export const PERIL_RULES = ['', 'MORE EVENTS', 'ELITES X2', 'TWO BOSSES', 'TWO CARDS', 'NO MERCY'];
+export const PERIL_RULES = ['', 'MORE EVENTS', 'ELITES X2', 'TWO BOSSES + HOPS', 'TWO CARDS', 'NO MERCY'];
 /** Each peril level's name on the title screen, easiest first (the hardest is named after its rule). */
 export const PERIL_NAMES = ['EGG', 'CHICK', 'HEN', 'ROOSTER', 'HAWK', 'NO MERCY'];
 

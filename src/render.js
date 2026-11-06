@@ -8,7 +8,7 @@ import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
 import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier, lockSprite } from './sprites.js';
 import { hen } from './hen.js';
-import { enemies, shots, clouds, bossName, RISE_TIME, CLOUD_R } from './enemies.js';
+import { enemies, shots, clouds, bossName, RISE_TIME, CLOUD_R, HOP_TIME } from './enemies.js';
 import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
@@ -368,6 +368,8 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     const rise = Math.min(1, e.age / RISE_TIME);
     let lift = e.flying ? (e.boss ? 20 : 12) + Math.round(Math.sin(e.walkPhase * Math.PI) * 2) + Math.round((1 - rise) * 24) : 0;
     if (!e.flying) lift -= Math.round((1 - rise) * 4);
+    // A hop at her: an arc through the air
+    if (e.hop && e.state === 2) lift += Math.round(Math.sin((1 - Math.max(0, e.timer) / HOP_TIME) * Math.PI) * (e.boss ? 10 : 5));
     ctx.globalAlpha = rise;
     // White: just hit, or blinking before it acts (a magpie about to throw)
     const white = e.flash > 0.1 || (e.warn && Math.floor(time * 16) % 2 === 0);

@@ -609,8 +609,42 @@ async function progressScenarios(page, base) {
   });
 }
 
+async function hopScenario(page, base) {
+  await check('25. at NO MERCY a rat beside her blinks and hops: standing still it bites, walking off dodges it', async () => {
+    // Real time (speed 1), so the real key comes while the rat blinks
+    await page.evaluate('localStorage.removeItem("qq_profile")');
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=1`, ready);
+    await page.tapKey('KeyD', 60);
+    await page.waitFor('window.__qq.snapshot().started', 2000);
+    await sleep(300);
+    const hp = (await page.snapshot()).hen.hp;
+    // A hop lasts a fifth of a second: wait for each moment inside the page, frame by frame
+    const until = (state) =>
+      page.evaluate(`new Promise((done) => {
+        const look = () => (window.__qq.snapshot().hops[0] === ${state} ? done(true) : requestAnimationFrame(look));
+        look();
+      })`);
+    await page.evaluate("window.__qq.cheat.near('rat', 1.6)");
+    await until(1);
+    await page.screenshot('29-hop-blink.png');
+    await until(2);
+    await page.screenshot('30-hop.png');
+    await page.waitFor(`window.__qq.snapshot().hen.hp < ${hp}`, 2000);
+    // Another rat: as soon as it blinks she walks off, screen left, and it lands where she was
+    await sleep(600);
+    await page.evaluate("window.__qq.cheat.clear(), window.__qq.cheat.near('rat')");
+    await page.waitFor('window.__qq.snapshot().hops[0] === 1', 1000);
+    const before = (await page.snapshot()).hen.hp;
+    await page.keyDown('KeyA');
+    await sleep(800);
+    await page.keyUp('KeyA');
+    const after = (await page.snapshot()).hen.hp;
+    expect(after === before, `the hop bit her as she walked off: ${before} -> ${after}`);
+  });
+}
+
 async function mobileScenario(page, client, base) {
-  await check('25. a phone held upright: the game fills it; a tap on the menu picks a peril, then taps start, steer and pick a card', async () => {
+  await check('26. a phone held upright: the game fills it; a tap on the menu picks a peril, then taps start, steer and pick a card', async () => {
     await client.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     try {
@@ -665,7 +699,7 @@ async function mobileScenario(page, client, base) {
 }
 
 async function distScenario(page) {
-  await check('26. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
+  await check('27. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
     await access(DIST).catch(() => {
       throw new Error('dist/index.html is missing: run npm run build first');
     });
@@ -713,10 +747,11 @@ async function main() {
     await musicScenario(page, base);
     await soundBoardScenario(page, base);
     await progressScenarios(page, base);
+    await hopScenario(page, base);
     await mobileScenario(page, client, base);
     await distScenario(page);
     results.push({
-      name: '27. no exceptions, console errors or failed loads',
+      name: '28. no exceptions, console errors or failed loads',
       ok: problems.length === 0,
       error: problems.slice(0, 5).join(' | '),
     });
