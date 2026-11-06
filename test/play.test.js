@@ -96,6 +96,7 @@ import {
   BOSS_SIZE,
   BOSS_BITE,
   SPAWN_MAX,
+  DAY_HP,
   bossName,
   spawnEnemy,
   spawnBoss,
@@ -204,6 +205,14 @@ function openFirstCards() {
 /** Steps `seconds` of game time one fixed step at a time. */
 function steps(seconds) {
   for (let i = 0; i < Math.round(seconds / STEP); i++) update(STEP);
+}
+
+/** Ends the run: she falls, and a key after the game-over wait goes back to the title. */
+function endRun() {
+  damageHen(1e9, hen.x + 1, hen.y);
+  steps(1.6);
+  tapKey('Space');
+  steps(0.7); // past the title lock
 }
 
 /** Kills every predator, kernel and prize (between checks in one test). */
@@ -1174,59 +1183,42 @@ describe('quiquiriqui: the day arc', () => {
     assert.equal(weatherAt(RUN_LENGTH).night, 0);
   });
 
-  it('surviving ten minutes wins at dawn: the predators run, the best time is kept, a key goes back', () => {
-    localStorage.removeItem('qq_best');
-    game.best = 0;
+  it('at ten minutes dawn breaks and the run goes on: the rooster crows and day 2 begins, with no stop', () => {
     start();
-    const rat = sturdy(RAT, hen.x + 3, hen.y);
+    hen.hp = hen.maxHp = 1e6;
     game.time = RUN_LENGTH - 0.05;
     steps(0.2);
-    assert.equal(game.won, true);
-    assert.equal(game.over, true);
-    assert.equal(game.time, RUN_LENGTH);
-    assert.equal(localStorage.getItem('qq_best'), String(RUN_LENGTH));
-    const away = () => Math.hypot(rat.x - hen.x, rat.y - hen.y);
-    const d0 = away();
-    steps(0.5);
-    assert.ok(away() > d0, 'the rat did not run away');
-    steps(1.5);
-    tapKey('Space');
-    assert.equal(game.started, false);
-    assert.equal(game.won, false);
+    assert.equal(game.over, false, 'the run stopped at dawn');
+    assert.equal(game.won, false, 'a dawn is not the win');
+    assert.equal(game.day, 2);
+    assert.ok(game.time > RUN_LENGTH, 'the clock stopped');
   });
 });
 
 describe('quiquiriqui at 5x: endless days', () => {
-  /** Plays up to the first dawn and waits until the dawn screen takes input. */
+  /** Plays past the first dawn, into day 2. */
   function reachDawn() {
     start();
     hen.hp = hen.maxHp = 1e6;
     game.time = RUN_LENGTH - 0.05;
-    for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
-    assert.equal(game.dawnChoice, true, 'no dawn screen');
-    steps(1.6);
+    steps(0.1);
+    assert.equal(game.day, 2, 'no dawn');
   }
 
-  it('at dawn, 1 keeps going into day 2, where predators are twice as tough', () => {
+  it('past the first dawn, day 2: predators keep growing from where day 1 ended, and the day adds half again', () => {
     resetRun();
     reachDawn();
-    tapKey('Digit1');
-    assert.equal(game.over, false);
-    assert.equal(game.won, true);
-    assert.equal(game.day, 2);
-    assert.equal(game.banner, 'DAY 2');
     steps(1);
-    assert.ok(game.time > RUN_LENGTH, 'the clock stopped');
     const rat = spawnEnemy(RAT, hen.x + 20, hen.y);
     const type = ENEMY_TYPES[RAT];
-    const minutes = (game.time % RUN_LENGTH) / 60;
-    assert.equal(rat.maxHp, Math.floor((type.hp + type.hpMin * minutes) * 2), 'day 2 should double their health');
+    const minutes = game.time / 60;
+    assert.ok(minutes > 10, 'the minutes started over');
+    assert.equal(rat.maxHp, Math.floor((type.hp + type.hpMin * minutes) * (1 + DAY_HP)), 'day 2 should add half their health');
   });
 
   it('a new day replays the timeline, bosses included, with more predators', () => {
     resetRun({ peaceful: false });
     reachDawn();
-    tapKey('Digit1');
     for (const e of enemies) e.alive = false;
     while (game.time < RUN_LENGTH + 62) {
       hen.hp = hen.maxHp = 1e6;
@@ -1237,20 +1229,9 @@ describe('quiquiriqui at 5x: endless days', () => {
     assert.ok(enemies.some((e) => e.alive && e.boss), 'no boss on minute 1 of day 2');
   });
 
-  it('2 ends the run at dawn with a best time of 10:00', () => {
-    localStorage.removeItem('qq_best');
-    game.best = 0;
-    resetRun();
-    reachDawn();
-    tapKey('Digit2');
-    assert.equal(game.started, false);
-    assert.equal(localStorage.getItem('qq_best'), String(RUN_LENGTH));
-  });
-
   it('every later dawn starts the next day without stopping the run', () => {
     resetRun();
     reachDawn();
-    tapKey('Digit1');
     game.time = RUN_LENGTH * 2 - 0.05;
     steps(0.2);
     assert.equal(game.day, 3);
@@ -1266,7 +1247,6 @@ describe('quiquiriqui at 5x: endless days', () => {
     game.best = 0;
     resetRun();
     reachDawn();
-    tapKey('Digit1');
     steps(2);
     damageHen(1e9, hen.x + 1, hen.y);
     assert.equal(game.over, true);
@@ -1328,12 +1308,11 @@ describe('quiquiriqui at 5x: peril levels', () => {
     start();
     hen.hp = hen.maxHp = 1e6;
     game.time = RUN_LENGTH - 0.05;
-    for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
-    assert.ok(!game.unlockNote.includes('PERIL'), game.unlockNote);
-    steps(1.6);
-    tapKey('Digit2');
+    steps(0.1);
+    assert.equal(game.day, 2);
+    assert.ok(!game.banner.includes('PERIL'), game.banner);
+    endRun();
     assert.equal(game.started, false);
-    steps(0.7); // past the title lock
     // A tap on the right half of the peril row also raises it, without starting
     tapAt(WIDTH * 0.75, titleRowY(1));
     update(STEP);
@@ -1433,12 +1412,11 @@ describe('quiquiriqui at 5x: peril levels', () => {
     assert.equal(game.started, true, 'the white hen did not start');
     hen.hp = hen.maxHp = 1e6;
     game.time = RUN_LENGTH - 0.05;
-    for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
-    assert.ok(game.unlockNote.includes('SPECKLED HEN!'), game.unlockNote);
-    assert.ok(!game.unlockNote.includes('BLACK HEN!'), 'a dawn at EGG brought the black hen');
-    steps(1.6);
-    tapKey('Digit2');
-    steps(0.7);
+    steps(0.1);
+    assert.equal(game.day, 2);
+    assert.ok(game.banner.includes('SPECKLED HEN!'), game.banner);
+    assert.ok(!game.banner.includes('BLACK HEN!'), 'a dawn at EGG brought the black hen');
+    endRun();
     tapKey('KeyE');
     assert.equal(profile.hen, 1);
     assert.deepEqual(buildOrder, ['peck'], 'the title did not switch to her weapon');
@@ -1483,22 +1461,23 @@ describe('quiquiriqui at 5x: golden eggs and the shop', () => {
     assert.equal(profile.eggs, 6, 'banked twice or not at all');
   });
 
-  it('dawn banks the eggs so far; a later fall banks only the rest', () => {
+  it('a run past dawn earns the dawn bonus, banked once when it ends', () => {
     profile.eggs = 0;
     resetRun();
     start();
     hen.hp = hen.maxHp = 1e6;
     game.time = RUN_LENGTH - 0.05;
-    for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
-    update(STEP);
-    const atDawn = eggsEarned(RUN_LENGTH, game.kills, true, 0);
-    assert.equal(profile.eggs, atDawn);
-    steps(1.6);
-    tapKey('Digit1');
+    steps(0.1);
+    assert.equal(game.day, 2);
+    assert.equal(profile.eggs, 0, 'eggs were banked before the run ended');
     game.time += 60;
     damageHen(1e9, hen.x + 1, hen.y);
     update(STEP);
-    assert.equal(profile.eggs, eggsEarned(game.time, game.kills, true, 0));
+    const earned = eggsEarned(game.time, game.kills, true, 0);
+    assert.equal(earned - eggsEarned(game.time, game.kills, false, 0), 10, 'no dawn bonus');
+    assert.equal(profile.eggs, earned);
+    steps(1);
+    assert.equal(profile.eggs, earned, 'banked twice');
   });
 
   it('buying costs eggs and raises the level; no eggs, no sale; five levels at most', () => {
@@ -2244,10 +2223,10 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
         hen.hp = hen.maxHp = 1e6; // a soak test: keep her standing to see the whole timeline
         peak = Math.max(peak, countEnemies());
         for (const e of enemies) if (e.alive && !(e.kind in firstSeen)) firstSeen[e.kind] = game.time;
-        return game.over;
+        return game.over || game.time >= RUN_LENGTH;
       },
     });
-    assert.equal(game.won, true, `stopped at ${game.time}`);
+    assert.ok(game.time >= RUN_LENGTH && !game.over, `stopped at ${game.time}`);
     assert.ok(peak >= 150, `the horde peaked at ${peak}`);
     assert.equal(Object.keys(firstSeen).length, ENEMY_TYPES.length, `seen: ${JSON.stringify(firstSeen)}`);
     for (const [kind, from] of [[WEASEL, 60], [SNAKE, 180], [MAGPIE, 240], [CROW, 300], [SKUNK, 360], [BADGER, 420]]) {
@@ -2393,14 +2372,14 @@ describe('quiquiriqui: music', () => {
       assert.equal(audio.music.gain.value, 0, 'M did not silence the music');
       tapKey('KeyM');
       assert.equal(music.on, true);
+      // Each dawn: the fanfare, then the day theme again
       game.time = RUN_LENGTH - 0.01;
       tick(0.1);
-      assert.equal(game.won, true);
-      tick(5);
-      assert.equal(music.mood, 'dawn');
-      const notes = ctx.started.length;
-      tick(3);
-      assert.equal(ctx.started.length, notes, 'the dawn fanfare kept playing');
+      assert.equal(game.day, 2, 'no dawn');
+      tick(2);
+      assert.equal(music.mood, 'dawn', 'no fanfare at dawn');
+      tick(6);
+      assert.equal(music.mood, 'day', 'the day theme did not come back');
     });
   });
 
@@ -2580,17 +2559,20 @@ describe('quiquiriqui: text and layout', () => {
     assert.equal(formatClock(600), '10:00');
   });
 
-  it('the XP curve: quick at first, each level dearer than the last', () => {
-    assert.equal(xpToNext(1), 6);
-    assert.equal(xpToNext(2), 10);
+  it('the XP curve: quick up to level 40 (about the first dawn), then steep up to 100 (about the third)', () => {
+    assert.equal(xpToNext(1), 4);
+    assert.equal(xpToNext(2), 6);
     let total = 0;
     const reach = {};
-    for (let l = 1; l < 60; l++) {
+    for (let l = 1; l < 100; l++) {
       assert.ok(xpToNext(l + 1) > xpToNext(l));
       total += xpToNext(l);
       reach[l + 1] = total;
     }
-    assert.ok(reach[10] > 180 && reach[10] < 260, `level 10 at ${reach[10]}`);
-    assert.ok(reach[30] > 3000 && reach[30] < 3600, `level 30 at ${reach[30]}`);
+    // Measured (--god, full shop, EGG): about 130 corn by 2:00, 2,000 by 10:00, 15,500 by 18:00, 86,000 by 30:00
+    assert.ok(reach[10] > 100 && reach[10] < 160, `level 10 at ${reach[10]}`);
+    assert.ok(reach[40] > 1800 && reach[40] < 2200, `level 40 at ${reach[40]}`);
+    assert.ok(reach[70] > 13000 && reach[70] < 17000, `level 70 at ${reach[70]}`);
+    assert.ok(reach[100] > 75000 && reach[100] < 90000, `level 100 at ${reach[100]}`);
   });
 });

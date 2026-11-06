@@ -18,7 +18,7 @@ import { resetWeapons, updateWeapons, updateProjectiles } from './weapons.js';
 import { juice, snapCamera, updateJuice, beginCameraStep } from './juice.js';
 import { clearPools, updatePools, spawnParticle, spawnPuff, spawnPopup } from './pool.js';
 import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow, sfxChest, sfxSplat } from './sfx.js';
-import { game, settings, resetGame, loadBest, saveBest, xpToNext, showBanner } from './state.js';
+import { game, settings, resetGame, loadBest, xpToNext, showBanner } from './state.js';
 import { RUN_LENGTH, weatherAt } from './weather.js';
 import { updateMusic, loadMusicSetting, toggleMusic } from './music.js';
 import { renderScene, cardAt, titleRowAt, shopRowAt } from './render.js';
@@ -63,10 +63,14 @@ export function boot(canvas) {
   resetRun();
 }
 
+/** Seconds of each new day the dawn fanfare has to play. */
+const DAWN_SONG = 6;
+
 /** Which part of the music fits the moment, or null for silence. */
 function musicMood() {
   if (!game.started) return null;
-  if (game.over) return game.dawnChoice ? 'dawn' : null;
+  if (game.over) return game.won ? 'dawn' : null;
+  if (game.day > 1 && game.time % RUN_LENGTH < DAWN_SONG) return 'dawn';
   if (enemies.some((e) => e.alive && e.boss)) return 'boss';
   return weatherAt(game.time).night > 0.5 ? 'night' : 'day';
 }
@@ -119,22 +123,6 @@ function startRun() {
   if (!settings.peaceful) scatterStartingCorn();
 }
 
-/** The first dawn: she made it. The rooster crows, the predators run, and she may keep going. */
-function winRun() {
-  game.time = RUN_LENGTH;
-  game.over = true;
-  game.won = true;
-  game.dawnChoice = true;
-  game.overTime = 0;
-  game.newBest = saveBest(RUN_LENGTH);
-  game.unlockNote = unlockAfterDawn(game.peril).join('  ');
-  sfxCrow();
-  for (let k = 0; k < 30; k++) {
-    const a = Math.random() * Math.PI * 2;
-    spawnParticle(hen.x, hen.y, 10, Math.cos(a) * 2.5, Math.sin(a) * 2.5, 40 + Math.random() * 40, k % 3 ? 10 : 13, 2, 1.2);
-  }
-}
-
 /**
  * The title screen's menu rows: Q / E choose the hen and Z / C the peril (or a tap on the left /
  * right half of a row; any tap on the menu goes to its nearest row). Returns true if the input was
@@ -181,23 +169,24 @@ function shopMenu() {
 
 /** Adds to the profile the golden eggs the run has earned and not banked yet. */
 function bankRunEggs() {
-  const earned = eggsEarned(game.time, game.kills, game.won, game.peril) + game.eggBonus;
+  const earned = eggsEarned(game.time, game.kills, game.day > 1, game.peril) + game.eggBonus;
   if (earned > game.eggs) bankEggs(earned - game.eggs);
   game.eggs = earned;
 }
 
-/** Endless play: the next day begins (after the dawn screen, or at each later dawn). */
+/**
+ * Dawn: the rooster crows and the next day begins, harder, with no stop (the run goes on until
+ * she falls). A dawn may bring a hen; the banner says so, or which day it is.
+ */
 function newDay() {
   game.day++;
-  showBanner(`DAY ${game.day}`);
+  const hens = unlockAfterDawn(game.peril);
+  showBanner(hens.length ? hens.join(' ') : `DAY ${game.day}`);
   sfxCrow();
-}
-
-/** On the dawn screen: 1 or a tap on the left half keeps going; any other key or tap ends the run. */
-function dawnPicked() {
-  const tap = input.tap;
-  if (input.pressed.has('Digit1') || input.pressed.has('Numpad1') || (tap && tap.x < WIDTH / 2)) return 'keep';
-  return input.pressed.size > 0 || tap ? 'end' : null;
+  for (let k = 0; k < 30; k++) {
+    const a = Math.random() * Math.PI * 2;
+    spawnParticle(hen.x, hen.y, 10, Math.cos(a) * 2.5, Math.sin(a) * 2.5, 40 + Math.random() * 40, k % 3 ? 10 : 13, 2, 1.2);
+  }
 }
 
 /** Opens the level-up cards (or heals when nothing is left to upgrade). */
@@ -352,18 +341,9 @@ export function update(dt) {
     updateJuice(dt, hen.x, hen.y);
     updateEnemies(dt);
     updatePools(dt);
-    if (game.overTime > GAME_OVER_WAIT) {
-      const pick = game.dawnChoice ? dawnPicked() : input.pressed.size > 0 || input.tap ? 'end' : null;
-      if (pick === 'keep') {
-        // Endless: the predators come back, harder, and the timeline starts over.
-        game.over = false;
-        game.dawnChoice = false;
-        releasePointer();
-        newDay();
-      } else if (pick === 'end') {
-        resetRun();
-        game.titleLock = 0.6;
-      }
+    if (game.overTime > GAME_OVER_WAIT && (input.pressed.size > 0 || input.tap)) {
+      resetRun();
+      game.titleLock = 0.6;
     }
     return;
   }
@@ -391,13 +371,7 @@ export function update(dt) {
   simMoved = true;
   game.time += simDt;
   game.bannerTime = Math.max(0, game.bannerTime - simDt);
-  if (game.time >= RUN_LENGTH * game.day) {
-    if (game.day === 1) {
-      winRun();
-      return;
-    }
-    newDay();
-  }
+  if (game.time >= RUN_LENGTH * game.day) newDay();
   updateWaves(simDt);
   updateEvents(simDt);
   updateHen(simDt);

@@ -64,7 +64,6 @@ window.__qq = {
     paused: game.paused,
     over: game.over,
     won: game.won,
-    dawnChoice: game.dawnChoice,
     day: game.day,
     peril: game.peril,
     henChoice: game.hen,

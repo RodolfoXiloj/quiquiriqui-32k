@@ -20,13 +20,11 @@ export const game = {
   /** What the last chest gave ([{ id, level }]); the run is frozen while it is shown. */
   reward: [],
   rewardLock: 0,
-  /** True once the run ends (the hen falls, or dawn comes); `overTime` counts the seconds since. */
+  /** True once the run ends (the hen falls, or she wins); `overTime` counts the seconds since. */
   over: false,
-  /** True once she has seen the first dawn: the run is won (it may go on, endless). */
+  /** True once she has won the run. */
   won: false,
-  /** True while the dawn screen asks whether to keep going. */
-  dawnChoice: false,
-  /** Which day of the run it is: 1, then 2, 3... after each dawn in endless play. */
+  /** Which day of the run it is: 1, then 2, 3... after each dawn (the run goes on). */
   day: 1,
   /** A short message across the screen ('DAY 2'), and the seconds it stays. */
   banner: '',
@@ -41,8 +39,6 @@ export const game = {
   /** The peril (difficulty tier) and the hen (profile.js HENS) of this run, chosen on the title screen. */
   peril: 0,
   hen: 0,
-  /** A line for the dawn screen when the dawn unlocked a hen ('SPECKLED HEN!'). */
-  unlockNote: '',
   /** Golden eggs this run has earned (already added to the profile). */
   eggs: 0,
   /** True while the shop is open on the title screen. */
@@ -86,14 +82,12 @@ export function resetGame() {
   game.rewardLock = 0;
   game.over = false;
   game.won = false;
-  game.dawnChoice = false;
   game.day = 1;
   game.banner = '';
   game.bannerTime = 0;
   game.overTime = 0;
   game.newBest = false;
   game.titleLock = 0;
-  game.unlockNote = '';
   game.eggs = 0;
   game.shopOpen = false;
   game.lockShake = 0;
@@ -124,13 +118,14 @@ export function saveBest(seconds) {
 }
 
 /**
- * Corn needed to go from `level` to the next one: 6, 10, 14, 19, 25... Each level costs more than
- * the last (about 235 corn in all to reach level 10, 1,210 to 20, 3,330 to 30), and levels never
- * run out. Predators drop corn 80% of the time, so each level-up is worth weighing.
+ * Corn needed to go from `level` to the next one: 4, 6, 9, 11, 14... Each level costs more than the
+ * last: quick up to level 40 (about 125 corn in all to level 10, 500 to 20, 2,000 to 40, about the
+ * first dawn), then steep, as the days bring ever bigger hordes (15,000 to 70, 83,000 to 100,
+ * around the third dawn). A boss comes every ten levels (waves.js), the last at 100.
  */
 export function xpToNext(level) {
   const n = level - 1;
-  return 6 + 4 * n + Math.floor((n * n) / 5);
+  return Math.floor(4 + 2.5 * n + (n > 39 ? (n - 39) ** 2 : 0));
 }
 
 /** Formats seconds as MM:SS. */

@@ -7,8 +7,8 @@
 // hen to predators (looking a little ahead) and how well it heads for the nearest prize or corn,
 // and keep the current direction unless another one is clearly better. Hazards (pebbles in flight,
 // stink clouds, the spot a hawk is about to dive on) count as danger too. Cards: new weapons first,
-// then weapon levels, then passives. It closes the chest screen, and after a game over (or the
-// dawn win) it waits a moment and starts again.
+// then weapon levels, then passives. It closes the chest screen, and after a game over it waits a
+// moment and starts again.
 
 /** The 8 screen directions as [screen x, screen y, keys to hold]. */
 const DIRECTIONS = [
@@ -108,8 +108,8 @@ export function createBot() {
      */
     decide(world) {
       const { hen, enemies, corn, pickups = [], hazards = [], game, cards } = world;
-      // After a fall, start over; at dawn, keep going (endless).
-      if (game.over) return { keys: [], tap: game.overTime > 2 ? (game.dawnChoice ? 'Digit1' : 'Space') : null };
+      // After a fall (or a win), start over.
+      if (game.over) return { keys: [], tap: game.overTime > 2 ? 'Space' : null };
       if (cards.length) return { keys: [], tap: game.cardLock <= 0 ? `Digit${pickCard(cards) + 1}` : null };
       if (game.reward && game.reward.length) return { keys: [], tap: game.rewardLock <= 0 ? 'Space' : null };
 

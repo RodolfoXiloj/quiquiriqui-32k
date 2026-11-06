@@ -458,15 +458,13 @@ async function dayScenarios(page, base) {
     expect(night.light < day.light * 0.75, `night is not darker: ${fmt(day.light)} -> ${fmt(night.light)}`);
   });
 
-  await check('16. ten minutes win at dawn; a key goes back to the title', async () => {
+  await check('16. at ten minutes dawn breaks and the run goes on into day 2', async () => {
     await page.evaluate('window.__qq.cheat.setTime(598)');
-    await page.waitFor('window.__qq.snapshot().won', 4000);
-    await sleep(500);
+    await page.waitFor('window.__qq.snapshot().day === 2', 4000);
+    await sleep(150);
     await page.screenshot('16-dawn.png');
     const s = await page.snapshot();
-    expect(s.over && s.time === 600, `time ${s.time}`);
-    await page.tapKey('Space', 50);
-    await page.waitFor('!window.__qq.snapshot().started', 3000);
+    expect(!s.over && !s.won && s.time > 600, `over ${s.over}, won ${s.won}, time ${s.time}`);
   });
 
   await check('17. a boss shows its bar; a chest opens the CHEST! screen', async () => {
@@ -555,18 +553,17 @@ async function progressScenarios(page, base) {
     await page.evaluate('localStorage.removeItem("qq_profile")');
   });
 
-  await check('22. at dawn, the real key 1 keeps going into day 2', async () => {
+  await check('22. the first dawn brings the speckled hen, says so, and the run goes on', async () => {
+    await page.evaluate('localStorage.removeItem("qq_profile")');
     await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
     await page.tapKey('KeyD', 100);
     await page.evaluate('window.__qq.cheat.setTime(598)');
-    await page.waitFor('window.__qq.snapshot().dawnChoice', 4000);
-    await sleep(500); // the choice waits ~1.5 s of game time
-    await page.tapKey('Digit1', 50);
-    await page.waitFor('window.__qq.snapshot().day === 2 && !window.__qq.snapshot().over', 3000);
-    await sleep(300);
+    await page.waitFor('window.__qq.snapshot().day === 2', 4000);
+    await sleep(150);
     await page.screenshot('23-day2.png');
     const s = await page.snapshot();
-    expect(s.time > 600, `the clock is at ${s.time}`);
+    expect(!s.over && s.time > 600, `over ${s.over}, the clock at ${s.time}`);
+    expect(s.banner.includes('SPECKLED HEN!') && s.profile.hens & 2, `banner "${s.banner}", hens ${s.profile.hens}`);
     await page.evaluate('localStorage.removeItem("qq_profile")');
   });
 

@@ -38,8 +38,6 @@ export const HUD_STRINGS = {
   dawn: 'DAWN!',
   crow: 'THE ROOSTER CROWS',
   nod: 'HOLDING OUT FOR A HEN',
-  keepGoing: '1: KEEP GOING',
-  endRun: '2: END RUN',
   newBest: 'NEW BEST!',
   tutorial: 'PICK UP CORN TO LEVEL UP',
 };
@@ -61,8 +59,6 @@ export const HUD_SCALES = {
   dawn: 3,
   crow: 1,
   nod: 1,
-  keepGoing: 1,
-  endRun: 1,
   newBest: 1,
   tutorial: 1,
 };
@@ -661,12 +657,7 @@ function drawGameOver(ctx, time) {
   const eggs = game.eggs ? `   +${game.eggs} GOLDEN EGGS` : '';
   if (game.newBest) drawText(ctx, S.newBest + eggs, WIDTH / 2, statsY + 14, Z.newBest, 10);
   else drawText(ctx, `BEST ${formatClock(game.best)}` + eggs, WIDTH / 2, statsY + 14, 1, 13);
-  if (game.unlockNote) drawText(ctx, game.unlockNote, WIDTH / 2, statsY + 25, 1, 10);
-  if (game.overTime > 1.5 && game.dawnChoice) {
-    // Keep going (left) or end the run (right)
-    drawText(ctx, S.keepGoing, WIDTH / 4, cy + 62, Z.keepGoing, Math.sin(time * 5) > -0.3 ? 10 : 13);
-    drawText(ctx, S.endRun, (WIDTH * 3) / 4, cy + 62, Z.endRun, 13);
-  } else if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, cy + 40, Z.resume, 13);
+  if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, cy + 40, Z.resume, 13);
 }
 
 function drawHud(ctx, time) {

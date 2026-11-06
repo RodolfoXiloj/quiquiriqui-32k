@@ -93,7 +93,7 @@ At 0:50 a ring of rats closes in around her (break out of it!); after that, ever
 | **SURROUNDED!** | A ring of predators appears around her and closes in: rats at first, then foxes, badgers late in the day. |
 | **FRENZY!** | For ten seconds the waves come three times as fast and every predator runs faster. A red frame pulses. |
 
-Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the predators flee. Then choose: end the run, or **keep going** into day 2, 3, 4... where the timeline starts over with tougher, faster and more numerous predators each day, until she falls.
+A day lasts **10 minutes**. At each dawn the rooster crows (_¡quiquiriquí!_) and the run **goes on** into day 2, 3, 4... where the timeline starts over with more numerous, faster predators, and they keep getting tougher minute by minute all the run long. She levels quickly up to about level 40 by the first dawn, then more slowly: level 100 comes around the third dawn (about 30 minutes).
 
 ### Playing again and again
 
@@ -146,7 +146,8 @@ flowchart LR
   E --> B
   B --> G["Random events and elites"]
   G --> B
-  B --> F["10:00, dawn: the rooster crows"]
+  B --> F["10:00, dawn: the rooster crows and day 2 begins"]
+  F --> B
 ```
 
 ### Controls
@@ -169,7 +170,7 @@ The game pauses when the window loses focus.
 1. **Nothing to learn.** Movement only: the hen fights on her own. Easy on mobile.
 2. **You can see your build.** Each upgrade is a visible item on the hen, and items change look as they level up.
 3. **A calm, readable meadow.** The ground is drawn in large quiet patches so the hen and the threats always stand out.
-4. **Hard, arcade.** A minute-by-minute timeline of denser waves and bosses. Ten minutes, no saves, one goal: dawn.
+4. **Hard, arcade.** A minute-by-minute timeline of denser waves and bosses, day after day, no saves, until she falls.
 
 ---
 

@@ -20,7 +20,6 @@ import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
 import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge } from './sfx.js';
 import { PERIL, NO_MERCY, HOPS } from './profile.js';
-import { RUN_LENGTH } from './weather.js';
 
 export const RAT = 0;
 export const FOX = 1;
@@ -151,6 +150,8 @@ const FAR_AWAY = SPAWN_MAX + 8;
 /** While she walks, this share of births happens in front of her, within ±60° of her heading. */
 const AHEAD_SHARE = 0.6;
 const AHEAD_SPREAD = Math.PI / 3;
+/** Each day gone by adds this share of a predator's health (it keeps growing by the minute too). */
+export const DAY_HP = 0.5;
 /** Seconds a newborn predator takes to rise out of the grass (it fades in and does not bite). */
 export const RISE_TIME = 0.25;
 /** Spawns happen this many pixels outside the visible screen. */
@@ -311,9 +312,10 @@ export function spawnEnemy(kind, x, y) {
   // again and 10% speed (crates stay as they are). Peril adds its shares of health, speed and bite.
   const days = game.day - 1;
   const peril = type.prop ? 0 : game.peril;
-  // Each kind grows by the minute at its own pace; days and peril multiply on top. Never her level.
-  const minutes = (game.time % RUN_LENGTH) / 60;
-  const hp = type.prop ? type.hp : Math.floor((type.hp + (type.hpMin || 0) * minutes) * (1 + days) * (1 + PERIL.hp * peril));
+  // Each kind grows by the minute at its own pace, all the run long (a new day does not start it
+  // over); each day gone by adds DAY_HP of its health and peril its share. Never her level.
+  const minutes = game.time / 60;
+  const hp = type.prop ? type.hp : Math.floor((type.hp + (type.hpMin || 0) * minutes) * (1 + DAY_HP * days) * (1 + PERIL.hp * peril));
   const phase = gameRand() * 2;
   Object.assign(e, {
     alive: true,
