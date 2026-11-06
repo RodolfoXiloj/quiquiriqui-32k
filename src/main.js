@@ -8,7 +8,7 @@ import { bakeHen, bakeWorldSprites, outfitOf, outfitKey, henLook } from './sprit
 import { initInput, updateInput, releaseAllInput, releasePointer, input } from './input.js';
 import { seedGame, gameRand } from './rng.js';
 import { hen, resetHen, updateHen, syncHenStats } from './hen.js';
-import { build, resetBuild, rollCards, applyCard, ITEM_BY_ID } from './items.js';
+import { build, resetBuild, rollCards, applyCard, hatchReady, ITEM_BY_ID } from './items.js';
 import { enemies, clearEnemies, updateEnemies } from './enemies.js';
 import { clearCorn, scatterStartingCorn, updateCorn } from './corn.js';
 import { clearPickups, updatePickups } from './pickups.js';
@@ -223,8 +223,7 @@ function openChest() {
     const cards = rollCards(false);
     if (!cards.length) break;
     const card = cards.find((c) => build[c.id]) || cards[0];
-    applyCard(card);
-    celebrateHatch(card);
+    takeCard(card);
     reward.push(card);
   }
   syncHenStats();
@@ -239,10 +238,17 @@ function openChest() {
   game.rewardLock = REWARD_LOCK;
 }
 
-/** Card `i` was picked with a key, a click or a tap. */
-/** A weapon hatched: its new name across the screen, a chime and a burst of gold. */
-function celebrateHatch(card) {
-  if (!card.hatch) return;
+/**
+ * Applies a picked or chest card. A hatch puts its new name across the screen with a chime and a
+ * burst of gold; a card that completes a weapon's pair says so (it hatches at the next level-up).
+ */
+function takeCard(card) {
+  const ready = hatchReady().length;
+  applyCard(card);
+  if (!card.hatch) {
+    if (hatchReady().length > ready) showBanner('READY TO HATCH!');
+    return;
+  }
   showBanner(`${ITEM_BY_ID[card.id].hatch.name}!`);
   sfxChest();
   for (let k = 0; k < 24; k++) {
@@ -251,10 +257,10 @@ function celebrateHatch(card) {
   }
 }
 
+/** Card `i` was picked with a key, a click or a tap. */
 function pickCard(i) {
   const card = game.cards[i];
-  applyCard(card);
-  celebrateHatch(card);
+  takeCard(card);
   syncHenStats();
   if (card.id === 'meal') {
     hen.hp = Math.min(hen.maxHp, hen.hp + MEAL_HEAL);

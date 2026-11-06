@@ -12,7 +12,7 @@ import { enemies, shots, clouds, bossName, RISE_TIME, CLOUD_R } from './enemies.
 import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
-import { ITEM_BY_ID, build, buildOrder, cardText } from './items.js';
+import { ITEM_BY_ID, build, buildOrder, cardText, cardHint } from './items.js';
 import { juice } from './juice.js';
 import { particles, popups, rings, bolts, RING_LIFE, BOLT_LIFE } from './pool.js';
 import { input, STICK_RADIUS } from './input.js';
@@ -610,6 +610,9 @@ function drawCards(ctx, time, cards, title, note, lock, numbered) {
     drawText(ctx, a, cx, y + 76, CARD_TEXT_SCALE, 7);
     // A cost (Running Boots, Pot Helmet) reads in red
     if (b) drawText(ctx, b, cx, y + 85, CARD_TEXT_SCALE, item.cost ? 9 : 7);
+    // How it hatches, in gold
+    const hint = cardHint(card);
+    if (hint) drawText(ctx, hint, cx, y + 94, CARD_TEXT_SCALE, 10);
   });
 }
 

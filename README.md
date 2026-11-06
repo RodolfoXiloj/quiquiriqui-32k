@@ -72,7 +72,7 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 
 Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden). Two passives come with a cost (in red on the card), so a choice is a style: light boots or a heavy pot.
 
-**Hatching.** A weapon at level 5 whose partner passive she wears **hatches** into something new: the next level-up offers a gold **HATCH!** card, and the next chest hatches it at once.
+**Hatching.** A weapon at level 5 whose partner passive she wears **hatches** into something new: the next level-up offers a gold **HATCH!** card, and the next chest hatches it at once. Every weapon card names its partner in gold (`HATCH + SUNGLASSES`), a passive's card names the weapon she owns that it would hatch, and **READY TO HATCH!** shows the moment a pair is complete.
 
 | Weapon | + Passive | Hatches into | What changes |
 |--------|-----------|--------------|--------------|

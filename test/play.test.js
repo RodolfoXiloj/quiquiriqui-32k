@@ -129,6 +129,7 @@ import {
   applyCard,
   rollCards,
   cardText,
+  cardHint,
   stats,
   weaponDamage,
   weaponCooldown,
@@ -1827,6 +1828,41 @@ describe('quiquiriqui at 5x: hatching', () => {
     resetRun();
   });
 
+  it('every weapon card names its partner passive; a passive card names the weapon it would hatch', () => {
+    resetRun({ hen: 0 });
+    buildOrder.length = 0;
+    for (const key of Object.keys(build)) delete build[key];
+    for (const item of ITEMS.filter((it) => it.weapon)) {
+      assert.equal(cardHint({ id: item.id, level: 1 }), `HATCH + ${ITEM_BY_ID[item.hatch.with].name}`);
+    }
+    assert.equal(cardHint({ id: 'shades', level: 1 }), '', 'a hint with no egg');
+    armed('egg');
+    assert.equal(cardHint({ id: 'shades', level: 1 }), 'HATCHES EGG TOSS');
+    assert.equal(cardHint({ id: 'cape', level: 1 }), '', 'the cape does not hatch the egg');
+    assert.equal(cardHint({ id: 'egg', level: HATCH_LEVEL, hatch: true }), '', 'a HATCH! card has no hint');
+    assert.equal(cardHint({ id: 'meal', level: 0, boon: true }), '', 'a boon has no hint');
+    applyCard({ id: 'shades' });
+    hatch('egg');
+    assert.equal(cardHint({ id: 'shades', level: 2 }), '', 'the egg has hatched already');
+    // The pot serves two weapons: it names the first one she took
+    armed('thunder');
+    applyCard({ id: 'peck' });
+    assert.equal(cardHint({ id: 'helmet', level: 1 }), 'HATCHES THUNDER COMB');
+    resetRun();
+  });
+
+  it('taking the partner of a weapon at 5 says READY TO HATCH!; any other passive does not', () => {
+    for (const [partner, expected] of [['shades', true], ['cape', false]]) {
+      armed('egg');
+      game.cards = [{ id: partner, level: 1 }];
+      game.cardLock = 0;
+      tapKey('Digit1');
+      assert.equal(game.cards.length, 0, 'the card was not picked');
+      assert.equal(game.banner === 'READY TO HATCH!', expected, `${partner}: "${game.banner}"`);
+    }
+    resetRun();
+  });
+
   it('GOLDEN OMELETTE: an egg bursts wide, so a predator next to its target is hit too', () => {
     for (const [hatchIt, expectHit] of [[false, false], [true, true]]) {
       armed('egg', 'shades');
@@ -2149,6 +2185,10 @@ describe('quiquiriqui: text and layout', () => {
         assert.ok(textWidth(line, CARD_TEXT_SCALE) <= CARD_W - 6, `${item.hatch.name}: "${line}"`);
       }
       assert.ok(ITEM_BY_ID[item.hatch.with] && !ITEM_BY_ID[item.hatch.with].weapon, `${item.id} hatches with a passive`);
+      // Its gold hints: on its own card, and on its partner's while she owns it
+      for (const hint of [`HATCH + ${ITEM_BY_ID[item.hatch.with].name}`, `HATCHES ${item.name}`]) {
+        assert.ok(textWidth(hint, CARD_TEXT_SCALE) <= CARD_W - 6, `"${hint}"`);
+      }
     }
     assert.equal(new Set(ITEMS.filter((item) => item.weapon).map((item) => item.hatch.name)).size, 7, 'hatch names repeat');
   });
@@ -2202,6 +2242,7 @@ describe('quiquiriqui: text and layout', () => {
     const texts = [...Object.values(HUD_STRINGS)];
     for (const item of [...ITEMS, ...BOONS]) texts.push(item.name, ...(item.text || []), ...(item.up || []), item.cost || '');
     for (const item of ITEMS) if (item.hatch) texts.push(item.hatch.name, `${item.hatch.name}!`, ...item.hatch.text, 'HATCH!');
+    for (const item of ITEMS) if (item.hatch) texts.push(`HATCH + ${ITEM_BY_ID[item.hatch.with].name}`, `HATCHES ${item.name}`, 'READY TO HATCH!');
     for (const upgrade of SHOP) texts.push(upgrade.name, upgrade.text);
     for (const hen of HENS) texts.push(hen.name, `${hen.name}!`, hen.hint || '');
     for (game.hen = 0; game.hen < HENS.length; game.hen++) texts.push(henLine());

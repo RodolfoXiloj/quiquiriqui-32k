@@ -281,3 +281,15 @@ export function cardText(card) {
   const gain = card.boon || card.level === 1 ? item.text : [item.up[Math.min(card.level - 2, item.up.length - 1)], ''];
   return item.cost ? [gain[0], item.cost] : gain;
 }
+
+/**
+ * The gold third line of a card, so hatching is never a secret: a weapon names the passive it
+ * hatches with; a passive names the weapon she owns that it would hatch (the first not yet hatched).
+ */
+export function cardHint(card) {
+  const item = ITEM_BY_ID[card.id];
+  if (card.hatch || card.boon) return '';
+  if (item.hatch) return `HATCH + ${ITEM_BY_ID[item.hatch.with].name}`;
+  const id = buildOrder.find((w) => ITEM_BY_ID[w].hatch && ITEM_BY_ID[w].hatch.with === card.id && !hatched(w));
+  return id ? `HATCHES ${ITEM_BY_ID[id].name}` : '';
+}
