@@ -29,7 +29,7 @@ export const EVENTS = ['HAWK!', 'STAMPEDE!', 'SURROUNDED!', 'FRENZY!'];
  * The first event (always SURROUNDED!) comes at EVENT_FROM seconds; then one every EVENT_GAP to
  * EVENT_GAP + 30 (at peril MORE EVENTS, every MORE_GAP to MORE_GAP + 20).
  */
-export const EVENT_FROM = 50;
+export const EVENT_FROM = 35;
 export const EVENT_GAP = 45;
 export const MORE_GAP = 30;
 /** Each day gone by adds this share to an event's predators (as MORE_PER_DAY does to waves). */

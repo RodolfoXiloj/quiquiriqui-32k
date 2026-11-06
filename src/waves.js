@@ -33,7 +33,7 @@ export const FRENZY_RATE = 3;
  * latest common wave. A hen that clears the screen fast faces more; a struggling one, only the
  * timeline. Each day gone by raises it as it raises the waves.
  */
-export const QUOTA = [14, 22, 30, 38, 46, 54, 62, 70, 78, 90];
+export const QUOTA = [18, 26, 32, 38, 46, 54, 62, 70, 78, 90];
 export const QUOTA_RATE = 4;
 /** At peril NO MERCY the quota is this much higher. */
 export const NO_MERCY_QUOTA = 1.5;
@@ -42,7 +42,7 @@ export const TIMELINE = [
   { at: 0, kinds: [RAT], count: 4, over: 2 },
   { at: 0, kinds: [RAT], count: 60, over: 60 },
   { at: 30, kinds: [RAT], count: 30, over: 30 },
-  { at: 30, kinds: [FOX], count: 10, over: 30 },
+  { at: 20, kinds: [FOX], count: 12, over: 40 },
   { at: 60, kinds: [WEASEL], count: 8, over: 60 },
   { at: 60, boss: FOX },
   { at: 60, kinds: [RAT, RAT, FOX], count: 80, over: 60 },

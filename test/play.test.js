@@ -471,7 +471,7 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
       hitEnemy(rat, 5, hen.x, hen.y);
       if (alive(corn).length > before) drops++;
     }
-    assert.ok(drops >= 80 && drops < 100, `${drops} drops in 100 kills`);
+    assert.ok(drops >= 68 && drops <= 92, `${drops} drops in 100 kills (80% expected)`);
   });
 
   it('a kernel at the edge of her reach is eaten within 0.35 s', () => {
@@ -2114,8 +2114,8 @@ describe('quiquiriqui: text and layout', () => {
   });
 
   it('the XP curve: quick at first, each level dearer than the last', () => {
-    assert.equal(xpToNext(1), 5);
-    assert.equal(xpToNext(2), 9);
+    assert.equal(xpToNext(1), 6);
+    assert.equal(xpToNext(2), 10);
     let total = 0;
     const reach = {};
     for (let l = 1; l < 60; l++) {
@@ -2124,6 +2124,6 @@ describe('quiquiriqui: text and layout', () => {
       reach[l + 1] = total;
     }
     assert.ok(reach[10] > 180 && reach[10] < 260, `level 10 at ${reach[10]}`);
-    assert.ok(reach[30] > 2400 && reach[30] < 3000, `level 30 at ${reach[30]}`);
+    assert.ok(reach[30] > 3000 && reach[30] < 3600, `level 30 at ${reach[30]}`);
   });
 });

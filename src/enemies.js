@@ -137,7 +137,7 @@ export const RISE_TIME = 0.25;
 const SPAWN_MARGIN = 14;
 /** Chance that a hit that does not kill also knocks the predator back. */
 const KNOCKBACK_CHANCE = 0.5;
-const DROP_CHANCE = 0.9;
+const DROP_CHANCE = 0.8;
 
 export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   alive: false,

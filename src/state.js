@@ -124,13 +124,13 @@ export function saveBest(seconds) {
 }
 
 /**
- * Corn needed to go from `level` to the next one: 5, 9, 13, 18, 23... Each level costs more than
- * the last (about 214 corn in all to reach level 10, 1,040 to 20, 2,730 to 30), so a run that
- * gathers everything ends near level 30, and levels never run out.
+ * Corn needed to go from `level` to the next one: 6, 10, 14, 19, 25... Each level costs more than
+ * the last (about 235 corn in all to reach level 10, 1,210 to 20, 3,330 to 30), and levels never
+ * run out. Predators drop corn 80% of the time, so each level-up is worth weighing.
  */
 export function xpToNext(level) {
   const n = level - 1;
-  return 5 + 4 * n + Math.floor((n * n) / 8);
+  return 6 + 4 * n + Math.floor((n * n) / 5);
 }
 
 /** Formats seconds as MM:SS. */
