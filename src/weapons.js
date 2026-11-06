@@ -166,7 +166,7 @@ function gust(id) {
     const healed = Math.min(hen.maxHp - hen.hp, WHIRL_HEAL * Math.min(hits, WHIRL_HEAL_MAX));
     if (healed > 0) {
       hen.hp += healed;
-      spawnPopup(hen.x, hen.y, `+${healed}`, 10, 0.5);
+      spawnPopup(hen.x, hen.y, `+${healed}`, 10);
     }
   }
   if (any) {

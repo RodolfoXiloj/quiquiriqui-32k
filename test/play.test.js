@@ -85,6 +85,7 @@ import {
   NO_MERCY_SPEED,
   BOSS_ARMOR,
   MIN_HIT,
+  BIG_HIT,
   BOSS_HP,
   BOSS_SIZE,
   BOSS_BITE,
@@ -141,7 +142,7 @@ import {
 } from '../src/items.js';
 import { projectiles, chicks, KERNEL } from '../src/weapons.js';
 import { HEN_SPEED, START_HP, damageHen, syncHenStats } from '../src/hen.js';
-import { particles, popups, bolts } from '../src/pool.js';
+import { particles, popups, bolts, POPUP_LIFE } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
 import { GLYPHS, GLYPH_W, GLYPH_H } from '../src/font.js';
 import {
@@ -682,6 +683,23 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.deepEqual([rat.maxHp, rat.dmg], [80, 60]);
     assert.equal(weaponDamage('egg'), 100);
     assert.deepEqual([hen.hp, hen.maxHp], [1000, 1000]);
+  });
+
+  it('every hit shows its number for POPUP_LIFE, each at its own spot, and a strong hit twice as big', () => {
+    start();
+    buildOrder.length = 0;
+    const rat = sturdy(RAT, hen.x + 5, hen.y);
+    hitEnemy(rat, 100, hen.x, hen.y);
+    hitEnemy(rat, 100, hen.x, hen.y);
+    hitEnemy(rat, BIG_HIT, hen.x, hen.y);
+    const [a, b, big] = alive(popups);
+    assert.ok(a.x !== b.x || a.y !== b.y, 'two hits in one step cover each other');
+    assert.deepEqual([a.text, a.scale, big.text, big.scale], ['100', 1, String(BIG_HIT), 2]);
+    steps(POPUP_LIFE - 0.05);
+    assert.equal(alive(popups).length, 3, 'the numbers left too soon');
+    steps(0.1);
+    assert.equal(alive(popups).length, 0, 'the numbers stayed too long');
+    resetRun();
   });
 
   it('the fast kinds nearly keep up with her: the snake runs at 80% of her speed', () => {

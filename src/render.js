@@ -14,7 +14,7 @@ import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
 import { ITEM_BY_ID, build, buildOrder, cardText, cardHint } from './items.js';
 import { juice } from './juice.js';
-import { particles, popups, rings, bolts, RING_LIFE, BOLT_LIFE } from './pool.js';
+import { particles, popups, rings, bolts, RING_LIFE, BOLT_LIFE, POP_TIME } from './pool.js';
 import { input, STICK_RADIUS } from './input.js';
 import { game, formatClock, xpToNext } from './state.js';
 import { weatherAt, DAWN_START, RUN_LENGTH } from './weather.js';
@@ -524,7 +524,9 @@ function drawEffects(ctx, camX, camY) {
   for (const p of popups) {
     if (!p.alive) continue;
     ctx.globalAlpha = Math.min(1, (p.life / p.maxLife) * 2);
-    drawText(ctx, p.text, Math.round(toIsoX(p.x, p.y) - camX), Math.round(toIsoY(p.x, p.y, p.z) - camY), 1, p.color);
+    // It pops in one size larger, then settles
+    const scale = p.scale + (p.maxLife - p.life < POP_TIME ? 1 : 0);
+    drawText(ctx, p.text, Math.round(toIsoX(p.x, p.y) - camX), Math.round(toIsoY(p.x, p.y, p.z) - camY), scale, p.color);
   }
   ctx.globalAlpha = 1;
 }

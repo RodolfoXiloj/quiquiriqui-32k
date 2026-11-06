@@ -7,6 +7,11 @@ export const MAX_PARTICLES = 240;
 export const MAX_POPUPS = 64;
 const MAX_RINGS = 8;
 const MAX_BOLTS = 8;
+/** Seconds a floating number stays up, and the first moment of it, drawn one size larger (a pop). */
+export const POPUP_LIFE = 0.8;
+export const POP_TIME = 0.1;
+/** Numbers from one spot land up to this far apart (tiles), so hits in the same step never cover each other. */
+const POPUP_SPREAD = 0.6;
 /** Seconds a gust ring grows and a bolt stays on screen. */
 export const RING_LIFE = 0.25;
 export const BOLT_LIFE = 0.14;
@@ -34,9 +39,9 @@ export const popups = Array.from({ length: MAX_POPUPS }, () => ({
   z: 0,
   text: '',
   color: 13,
-  size: 7,
+  scale: 1,
   life: 0,
-  maxLife: 0.7,
+  maxLife: 0,
 }));
 
 /** Expanding rings on the ground: (x, y) center, `r` final radius in tiles. */
@@ -66,11 +71,15 @@ export function spawnPuff(x, y, count, color, speed = 1, rise = 18) {
   }
 }
 
-/** Floating text that rises and fades above world point (x, y). `size` is the font size in px. */
-export function spawnPopup(x, y, text, color = 13, life = 0.7, size = 7) {
+/**
+ * Floating text that rises and fades near world point (x, y), at font `scale` (1 or 2). Each lands
+ * at a random spot around it (visual only, so Math.random), and its height varies too.
+ */
+export function spawnPopup(x, y, text, color = 13, scale = 1, life = POPUP_LIFE) {
   const p = claim(popups);
   if (!p) return;
-  Object.assign(p, { alive: true, x, y, z: 16, text, color, size, life, maxLife: life });
+  const r = () => (Math.random() - 0.5) * POPUP_SPREAD;
+  Object.assign(p, { alive: true, x: x + r(), y: y + r(), z: 14 + Math.random() * 8, text, color, scale, life, maxLife: life });
 }
 
 export function spawnRing(x, y, r) {

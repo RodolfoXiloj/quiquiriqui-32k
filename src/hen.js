@@ -93,7 +93,7 @@ export function syncHenStats() {
 export function damageHen(amount, fromX, fromY) {
   if (game.over) return;
   if (stats.dodge > 0 && gameRand() < stats.dodge) {
-    spawnPopup(hen.x, hen.y, 'MISS', 12, 0.5, 6);
+    spawnPopup(hen.x, hen.y, 'MISS', 12);
     return;
   }
   const taken = Math.max(1, Math.round(amount * (1 - stats.guard)));

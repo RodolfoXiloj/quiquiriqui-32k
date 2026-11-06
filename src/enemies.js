@@ -73,6 +73,8 @@ export const ENEMY_TYPES = [
 
 /** The least a hit deals through armor. */
 export const MIN_HIT = 10;
+/** A hit this strong shows its number twice as big. */
+export const BIG_HIT = 250;
 
 /** An elite's health, size and speed against its kind's; a rainbow one is tougher still. */
 export const ELITE_HP = 6;
@@ -401,7 +403,7 @@ export function hitEnemy(e, dmg, fromX, fromY, knock = 6, alwaysKnock = false, i
   dmg = Math.max(MIN_HIT, dmg - armor);
   e.hp -= dmg;
   e.flash = HIT_FLASH;
-  spawnPopup(e.x, e.y, String(dmg), armor ? 16 : dmg >= 150 ? 10 : 13, 0.5, 6);
+  spawnPopup(e.x, e.y, String(dmg), armor ? 16 : 13, dmg >= BIG_HIT ? 2 : 1);
   const type = ENEMY_TYPES[e.kind];
   for (let i = 0; i < 3; i++) {
     spawnParticle(e.x, e.y, 6, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 15 + Math.random() * 20, i ? 13 : type.colors[0]);
@@ -448,7 +450,7 @@ function killEnemy(e) {
     const eggs = ELITE_EGGS[e.elite - 1];
     spawnPickup(CHEST, e.x, e.y, e.elite > 1);
     game.eggBonus += eggs;
-    spawnPopup(e.x, e.y, `+${eggs} EGGS`, 10, 1.2);
+    spawnPopup(e.x, e.y, `+${eggs} EGGS`, 10, 1, 1.2);
     sfxBoom();
   }
   if (type.stink) {
