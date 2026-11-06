@@ -51,7 +51,9 @@ import {
   shopRowAt,
   shopRowY,
   SHOP_ROW,
+  viewOrigin,
 } from '../src/render.js';
+import { frameAlpha } from '../src/main.js';
 import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, fitScreen, screenScale } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
 import {
@@ -228,6 +230,55 @@ describe('quiquiriqui at 5x: moving around', () => {
     play(1);
     assert.equal(game.started, false);
     assert.equal(game.time, 0);
+  });
+
+  it('walking, she holds her pixel on screen and the meadow never steps back, at 60 or 144 Hz', () => {
+    for (const hz of [60, 144]) {
+      for (const keys of [['KeyD'], ['KeyD', 'KeyW'], ['KeyS']]) {
+        resetRun();
+        start();
+        for (const k of keys) holdKey(k, true);
+        let acc = 0;
+        let last = null;
+        const spots = new Set();
+        const moves = new Set();
+        // Frames as a display at `hz` shows them: whole steps, then a blend of the last two
+        for (let f = 0; f < hz * 2; f++) {
+          acc += 1 / hz;
+          while (acc >= STEP) {
+            update(STEP);
+            acc -= STEP;
+          }
+          const { camX, camY, ix, iy } = viewOrigin(frameAlpha(acc / STEP));
+          // After a second the camera has settled behind her
+          if (f >= hz) {
+            spots.add(`${Math.round(ix - camX)},${Math.round(iy - camY)}`);
+            moves.add(`${Math.sign(camX - last.camX)},${Math.sign(camY - last.camY)}`);
+            assert.ok(Math.abs(camX - last.camX) <= 2 && Math.abs(camY - last.camY) <= 2, `a jump at ${hz} Hz`);
+          }
+          last = { camX, camY };
+        }
+        for (const k of keys) holdKey(k, false);
+        assert.equal(spots.size, 1, `${keys} at ${hz} Hz: she wobbles between ${[...spots].join(' ')}`);
+        const back = [...moves].map((m) => m.split(',').map(Number));
+        for (const axis of [0, 1]) {
+          assert.ok(!(back.some((m) => m[axis] > 0) && back.some((m) => m[axis] < 0)), `${keys} at ${hz} Hz: the meadow stepped back`);
+        }
+      }
+    }
+  });
+
+  it('a frozen step (cards open) draws the latest state, not a blend of two', () => {
+    holdKey('KeyD', true);
+    play(1);
+    assert.equal(frameAlpha(0.3), 0.3, 'a moving step blends');
+    game.cards = [{ id: 'egg', level: 2 }];
+    update(STEP);
+    assert.equal(frameAlpha(0.3), 1, 'a frozen step blends');
+    const a = viewOrigin(frameAlpha(0.1));
+    const b = viewOrigin(frameAlpha(0.9));
+    assert.deepEqual([a.camX, a.camY], [b.camX, b.camY], 'the view moves while frozen');
+    holdKey('KeyD', false);
   });
 
   it('the first move starts the run and the clock', () => {

@@ -15,7 +15,7 @@ import { clearPickups, updatePickups } from './pickups.js';
 import { resetWaves, updateWaves } from './waves.js';
 import { resetEvents, updateEvents } from './events.js';
 import { resetWeapons, updateWeapons, updateProjectiles } from './weapons.js';
-import { juice, snapCamera, updateJuice } from './juice.js';
+import { juice, snapCamera, updateJuice, beginCameraStep } from './juice.js';
 import { clearPools, updatePools, spawnParticle, spawnPuff, spawnPopup } from './pool.js';
 import { sfxCluck, sfxLevelUp, sfxPickup, sfxCrow, sfxChest, sfxSplat } from './sfx.js';
 import { game, settings, resetGame, loadBest, saveBest, xpToNext, showBanner } from './state.js';
@@ -292,8 +292,19 @@ function cardPicked() {
   return input.tap ? cardAt(input.tap.x, input.tap.y, n) : -1;
 }
 
+/** Whether the last step moved the simulation; see frameAlpha. */
+let simMoved = false;
+
+/**
+ * The blend the renderer uses between the last two steps. A frozen step (cards, chest, pause,
+ * hitstop, title, game over) shows the latest state as it is, so nothing wobbles between two poses.
+ */
+export const frameAlpha = (alpha) => (simMoved ? alpha : 1);
+
 export function update(dt) {
   time += dt;
+  simMoved = false;
+  beginCameraStep();
   updateInput();
   if (input.pressed.has('KeyM')) toggleMusic();
   // Menus and the pause keep the music, quieter.
@@ -376,6 +387,7 @@ export function update(dt) {
 
   const simDt = updateJuice(dt, hen.x, hen.y);
   if (simDt <= 0) return;
+  simMoved = true;
   game.time += simDt;
   game.bannerTime = Math.max(0, game.bannerTime - simDt);
   if (game.time >= RUN_LENGTH * game.day) {
@@ -413,5 +425,5 @@ export function update(dt) {
 const pageCanvas = document.getElementById('c');
 if (pageCanvas) {
   boot(pageCanvas);
-  startLoop(update, (alpha) => renderScene(ctx, alpha, time));
+  startLoop(update, (alpha) => renderScene(ctx, frameAlpha(alpha), time));
 }

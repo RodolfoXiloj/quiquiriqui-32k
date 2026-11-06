@@ -16,10 +16,18 @@ export const juice = {
   /** Seconds left of a full-screen white flash (the bomb), and its length. */
   flash: 0,
   flashDur: 0.25,
-  /** Top-left of the view in isometric pixels (before rounding). */
+  /** Top-left of the view in isometric pixels (before rounding), and where it was a step ago. */
   camX: 0,
   camY: 0,
+  prevCamX: 0,
+  prevCamY: 0,
 };
+
+/** Called first in every step: the camera's motion in this step starts here (render blends it). */
+export function beginCameraStep() {
+  juice.prevCamX = juice.camX;
+  juice.prevCamY = juice.camY;
+}
 
 /** Freezes the simulation for `seconds`. Never shortens a running hitstop. */
 export function triggerHitstop(seconds = 0.05) {
@@ -46,8 +54,8 @@ function cameraTarget(wx, wy) {
 /** Puts the camera on (wx, wy) at once, with no easing. Used when a run starts. */
 export function snapCamera(wx, wy) {
   const t = cameraTarget(wx, wy);
-  juice.camX = t.x;
-  juice.camY = t.y;
+  juice.camX = juice.prevCamX = t.x;
+  juice.camY = juice.prevCamY = t.y;
 }
 
 /**

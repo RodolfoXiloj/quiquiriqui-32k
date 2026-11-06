@@ -772,9 +772,24 @@ function drawWeather(ctx, time, hx, hy) {
   ctx.globalAlpha = 1;
 }
 
+/**
+ * The view's whole-pixel top-left for this frame, and the hen's isometric position (ix, iy). The
+ * camera is blended between steps like everything else, and its pixel is the hen's rounded position
+ * plus its rounded lag behind her: rounding the two apart made her wobble a pixel against the meadow
+ * on most frames while walking, and a camera that moved only on steps made the meadow judder.
+ */
+export function viewOrigin(alpha) {
+  const x = hen.prevX + (hen.x - hen.prevX) * alpha;
+  const y = hen.prevY + (hen.y - hen.prevY) * alpha;
+  const ix = toIsoX(x, y);
+  const iy = toIsoY(x, y);
+  const cx = juice.prevCamX + (juice.camX - juice.prevCamX) * alpha + juice.shakeX;
+  const cy = juice.prevCamY + (juice.camY - juice.prevCamY) * alpha + juice.shakeY;
+  return { camX: Math.round(ix) + Math.round(cx - ix), camY: Math.round(iy) + Math.round(cy - iy), ix, iy };
+}
+
 export function renderScene(ctx, alpha, time) {
-  const camX = Math.round(juice.camX + juice.shakeX);
-  const camY = Math.round(juice.camY + juice.shakeY);
+  const { camX, camY, ix, iy } = viewOrigin(alpha);
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = PALETTE[2];
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -782,11 +797,7 @@ export function renderScene(ctx, alpha, time) {
   drawWorld(ctx, camX, camY, alpha, time);
   drawEffects(ctx, camX, camY);
   drawHawk(ctx, camX, camY, time);
-  if (game.started) {
-    const x = hen.prevX + (hen.x - hen.prevX) * alpha;
-    const y = hen.prevY + (hen.y - hen.prevY) * alpha;
-    drawWeather(ctx, time, Math.round(toIsoX(x, y) - camX), Math.round(toIsoY(x, y) - camY));
-  }
+  if (game.started) drawWeather(ctx, time, Math.round(ix - camX), Math.round(iy - camY));
   tint(ctx, 13, (juice.flash / juice.flashDur) * 0.7);
   if (game.frenzy > 0 && !game.over) {
     // FRENZY!: a red frame pulses around the screen

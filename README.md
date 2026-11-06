@@ -182,7 +182,7 @@ The engine is reused from our own earlier prototype (see [Archive](#archive)), a
 - **Endless meadow**: five flat tile types baked once, pixel by pixel so diamonds tile without seams; each cell picks its tile from a stateless hash, and only visible cells are drawn.
 - **Procedural pixel sprites**: shape functions rasterized at boot with an automatic 1 px outline and a hit-flash copy. The hen is a stack of layers (items in front, her body, the cape behind) re-baked whenever her outfit changes, so one outline wraps everything she wears.
 - **Our own 3×5 pixel font**, written as data in the code (five octal digits per glyph) and drawn pixel-exact with an ink outline, so text stays as crisp as the art at any scale. No font files, no system fonts.
-- **Fixed 60 Hz timestep**, object pools (300 predators, 300 kernels, 96 projectiles), hitstop, screen shake and a smoothed camera.
+- **Fixed 60 Hz timestep**, object pools (300 predators, 300 kernels, 96 projectiles), hitstop, screen shake and a smoothed camera. Every frame blends the last two steps, the camera too, and the view's pixel is taken from the hen's, so she holds still on screen while the meadow scrolls evenly on 60, 120 or 144 Hz displays.
 - **Seeded gameplay randomness**: a run replays exactly from its seed, which keeps tests and the bot reproducible.
 - **Data tables** for predators, the wave timeline and the upgrades, so new content is mostly data. A predator's `act` gives it a behavior (chase, keep away and shoot, lunge); events reuse the same pool with two more (run straight across, close in on a point).
 - **Own parametric WebAudio synth** (tone + noise + pitch slide + ring modulation), with every effect pitched slightly differently each time and a voice per predator.
