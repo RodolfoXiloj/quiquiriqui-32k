@@ -391,12 +391,18 @@ async function playScenarios(page, client, base) {
   });
 
   await check('12. ?autoplay alone: the bot plays a minute at 5x', async () => {
-    await page.open(`${base}/?autoplay&speed=${SPEED}`, ready);
-    await page.waitFor('window.__qq.record.maxTime >= 60', 20000);
-    await page.screenshot('10-watch.png');
-    const r = await page.evaluate('window.__qq.record');
-    expect(r.maxLevel >= 3, `the bot only reached level ${r.maxLevel}`);
-    expect(r.maxKills >= 20, `the bot only made ${r.maxKills} kills`);
+    // At EGG, so the kills measure the bot rather than the luck of a NO MERCY run (the default peril)
+    await page.evaluate(`localStorage.setItem('qq_profile', '{"peril":0}')`);
+    try {
+      await page.open(`${base}/?autoplay&speed=${SPEED}`, ready);
+      await page.waitFor('window.__qq.record.maxTime >= 60', 20000);
+      await page.screenshot('10-watch.png');
+      const r = await page.evaluate('window.__qq.record');
+      expect(r.maxLevel >= 3, `the bot only reached level ${r.maxLevel}`);
+      expect(r.maxKills >= 20, `the bot only made ${r.maxKills} kills`);
+    } finally {
+      await page.evaluate('localStorage.removeItem("qq_profile")');
+    }
   });
 }
 
