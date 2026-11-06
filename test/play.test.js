@@ -82,6 +82,7 @@ import {
   SHOT_LIFE,
   NO_MERCY_SPEED,
   BOSS_ARMOR,
+  MIN_HIT,
   BOSS_HP,
   BOSS_SIZE,
   BOSS_BITE,
@@ -137,7 +138,7 @@ import {
   weaponCooldown,
 } from '../src/items.js';
 import { projectiles, chicks, KERNEL } from '../src/weapons.js';
-import { HEN_SPEED, damageHen, syncHenStats } from '../src/hen.js';
+import { HEN_SPEED, START_HP, damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
 import { GLYPHS, GLYPH_W, GLYPH_H } from '../src/font.js';
@@ -413,13 +414,13 @@ describe('quiquiriqui at 5x: predators', () => {
     buildOrder.length = 0; // no weapons: nothing knocks the rat away
     const rat = sturdy(RAT, hen.x + 0.2, hen.y);
     play(0.2); // 1 s of contact
-    const bites = (100 - hen.hp) / rat.dmg;
+    const bites = (START_HP - hen.hp) / rat.dmg;
     assert.ok(Number.isInteger(bites) && bites >= 2 && bites <= 3, `${bites} bites in 1 s`);
     applyCard({ id: 'helmet' });
     applyCard({ id: 'helmet' });
     const before = hen.hp;
-    damageHen(10, rat.x, rat.y);
-    assert.equal(before - hen.hp, 8, 'two pots should take 20% off a bite');
+    damageHen(100, rat.x, rat.y);
+    assert.equal(before - hen.hp, 80, 'two pots should take 20% off a bite');
   });
 
   it('the predator pool never overflows', () => {
@@ -653,24 +654,32 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.ok(late.maxHp - early.maxHp > (rat5.maxHp - rat0.maxHp) * 5, 'the tank should grow much faster than the swarm');
   });
 
-  it('armor takes off every hit (at least 1 gets through); heavy kinds shrug off knockback', () => {
+  it('armor takes off every hit (at least MIN_HIT gets through); heavy kinds shrug off knockback', () => {
     start();
     buildOrder.length = 0;
     const badger = spawnEnemy(BADGER, hen.x + 5, hen.y);
     const rat = spawnEnemy(RAT, hen.x + 5, hen.y + 2);
-    badger.hp = badger.maxHp = rat.hp = rat.maxHp = 1000;
-    hitEnemy(badger, 2, hen.x, hen.y);
-    assert.equal(badger.hp, 999, 'at least 1 should get through');
-    hitEnemy(badger, 10, hen.x, hen.y, 6, true);
-    assert.equal(badger.hp, 999 - (10 - ENEMY_TYPES[BADGER].armor));
-    hitEnemy(rat, 10, hen.x, hen.y, 6, true);
-    assert.equal(rat.hp, 990, 'a rat has no armor');
+    badger.hp = badger.maxHp = rat.hp = rat.maxHp = 10000;
+    hitEnemy(badger, 20, hen.x, hen.y);
+    assert.equal(badger.hp, 10000 - MIN_HIT, 'at least MIN_HIT should get through');
+    hitEnemy(badger, 100, hen.x, hen.y, 6, true);
+    assert.equal(badger.hp, 10000 - MIN_HIT - (100 - ENEMY_TYPES[BADGER].armor));
+    hitEnemy(rat, 100, hen.x, hen.y, 6, true);
+    assert.equal(rat.hp, 9900, 'a rat has no armor');
     const push = (e) => Math.hypot(e.knockX, e.knockY);
     assert.ok(Math.abs(push(badger) / push(rat) - (1 - ENEMY_TYPES[BADGER].kr)) < 1e-9, 'knockback resistance');
-    hitEnemy(badger, 10, hen.x, hen.y, 6, true, true);
-    assert.equal(badger.hp, 999 - 7 - 10, 'ignoring armor should deal it all');
+    hitEnemy(badger, 100, hen.x, hen.y, 6, true, true);
+    assert.equal(badger.hp, 10000 - MIN_HIT - 70 - 100, 'ignoring armor should deal it all');
     const boss = spawnBoss(FOX);
     assert.equal(boss.armor, BOSS_ARMOR);
+  });
+
+  it('numbers run in the tens and hundreds: a rat has 80 health and bites 60, an egg hits 100, she has 1000', () => {
+    start();
+    const rat = spawnEnemy(RAT, hen.x + 8, hen.y);
+    assert.deepEqual([rat.maxHp, rat.dmg], [80, 60]);
+    assert.equal(weaponDamage('egg'), 100);
+    assert.deepEqual([hen.hp, hen.maxHp], [1000, 1000]);
   });
 
   it('the fast kinds nearly keep up with her: the snake runs at 80% of her speed', () => {
@@ -688,19 +697,19 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
 
   it('Sunglasses scale every weapon hit', () => {
     start();
-    assert.equal(weaponDamage('egg'), 10);
+    assert.equal(weaponDamage('egg'), 100);
     applyCard({ id: 'shades' });
     applyCard({ id: 'shades' });
-    assert.equal(weaponDamage('egg'), 13);
+    assert.equal(weaponDamage('egg'), 130);
   });
 
   it('Hero Cape raises max health and heals what it adds', () => {
     start();
-    hen.hp = 50;
+    hen.hp = 500;
     applyCard({ id: 'cape' });
     syncHenStats();
-    assert.equal(hen.maxHp, 125);
-    assert.equal(hen.hp, 75);
+    assert.equal(hen.maxHp, 1250);
+    assert.equal(hen.hp, 750);
   });
 
   it('Lucky Bandana dodges about 7% of bites per level', () => {
@@ -772,14 +781,14 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     applyCard({ id: 'boots' });
     applyCard({ id: 'boots' });
     assert.ok(Math.abs(stats.speed - (speed + 0.2)) < 1e-9, 'boots: +10% speed a level');
-    assert.equal(stats.maxHp, maxHp - 10, 'boots: -5 max health a level');
+    assert.equal(stats.maxHp, maxHp - 100, 'boots: -50 max health a level');
     applyCard({ id: 'helmet' });
     assert.ok(Math.abs(stats.guard - (guard + 0.1)) < 1e-9, 'pot: 10% less damage');
     assert.ok(Math.abs(stats.speed - (speed + 0.2 - 0.04)) < 1e-9, 'pot: -4% speed');
     applyCard({ id: 'basket' });
     assert.ok(stats.magnet > 3);
     assert.ok(Math.abs(stats.xp - (xp + 0.08)) < 1e-9, 'basket: +8% XP');
-    assert.deepEqual(cardText({ id: 'boots', level: 1 }), ['RUN 10% FASTER', '-5 MAX HEALTH'], 'the cost is on the card');
+    assert.deepEqual(cardText({ id: 'boots', level: 1 }), ['RUN 10% FASTER', '-50 MAX HEALTH'], 'the cost is on the card');
   });
 
   it('Feather Darts fly behind the hen', () => {
@@ -1036,10 +1045,10 @@ describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
 
   it('food heals', () => {
     start();
-    hen.hp = 50;
+    hen.hp = 500;
     spawnPickup(FOOD, hen.x, hen.y);
     steps(0.1);
-    assert.equal(hen.hp, 80);
+    assert.equal(hen.hp, 800);
   });
 });
 
@@ -1341,7 +1350,7 @@ describe('quiquiriqui at 5x: golden eggs and the shop', () => {
   it('upgrades apply to every run: health, speed, damage, reach and XP', () => {
     resetRun({ shop: [2, 1, 1, 1, 1] });
     const per = Object.fromEntries(SHOP.map((upgrade) => [upgrade.stat, upgrade.per]));
-    assert.equal(hen.maxHp, 100 + 2 * per.maxHp);
+    assert.equal(hen.maxHp, START_HP + 2 * per.maxHp);
     assert.equal(hen.hp, hen.maxHp);
     assert.ok(Math.abs(stats.speed - (1 + per.speed)) < 1e-9);
     assert.ok(Math.abs(stats.damage - (1 + per.damage)) < 1e-9);
@@ -1954,10 +1963,10 @@ describe('quiquiriqui at 5x: hatching', () => {
   it('WHIRLWIND: the gust heals her for what it hits', () => {
     armed('gust', 'cape');
     hatch('gust');
-    hen.hp = 50;
+    hen.hp = 500;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1]]) dummy(RAT, dx, dy).dmg = 0;
     steps(1.2);
-    assert.ok(hen.hp > 50, `still ${hen.hp}`);
+    assert.ok(hen.hp > 500, `still ${hen.hp}`);
     resetRun();
   });
 

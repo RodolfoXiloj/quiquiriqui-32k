@@ -16,7 +16,7 @@ import { sfxHurt, sfxDeath } from './sfx.js';
 export const HEN_SPEED = 6;
 /** Body radius in tiles, for bites and pickups. */
 export const HEN_RADIUS = 0.45;
-export const START_HP = 100;
+export const START_HP = 1000;
 /** Seconds the hen flashes white after a bite. */
 const HURT_FLASH = 0.25;
 /** A bite freezes the action briefly, but at most once per this many seconds, so a swarm does not stutter. */

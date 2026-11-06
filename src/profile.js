@@ -33,7 +33,7 @@ export const HENS = [
 
 /** Permanent upgrades: each level adds `per` to a stat of every run (items.js sums them in). */
 export const SHOP = [
-  { id: 'hide', name: 'TOUGH HIDE', text: '+25 HEALTH', stat: 'maxHp', per: 25 },
+  { id: 'hide', name: 'TOUGH HIDE', text: '+250 HEALTH', stat: 'maxHp', per: 250 },
   { id: 'legs', name: 'STRONG LEGS', text: '+4% SPEED', stat: 'speed', per: 0.04 },
   { id: 'eye', name: 'SHARP EYE', text: '+12% DAMAGE', stat: 'damage', per: 0.12 },
   { id: 'crop', name: 'BIG CROP', text: '+0.25 REACH', stat: 'magnet', per: 0.25 },

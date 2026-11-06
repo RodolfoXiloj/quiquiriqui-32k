@@ -63,11 +63,11 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 | **Wing Gust** | Wind that hurts and shoves back everything close | A bigger wing with blue flight feathers |
 | **Chick Orbit** | Chicks circle her and nip | The chicks themselves |
 | **Thunder Comb** | Lightning on predators on screen | A zigzag lightning comb |
-| **Running Boots** | +10% speed a level, but -5 max health | Red boots |
+| **Running Boots** | +10% speed a level, but -50 max health | Red boots |
 | **Feed Basket** | Pulls corn from farther away, +8% XP | A basket of corn on her back |
 | **Pot Helmet** | Takes 10% less damage a level, but runs 4% slower | A pot on her head |
 | **Sunglasses** | +15% damage a level | Dark shades |
-| **Hero Cape** | +25 max health a level | A red cape |
+| **Hero Cape** | +250 max health a level | A red cape |
 | **Lucky Bandana** | Dodges 7% of bites a level | A dotted neckerchief |
 
 Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden). Two passives come with a cost (in red on the card), so a choice is a style: light boots or a heavy pot.
@@ -100,7 +100,7 @@ Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the pr
 - **Levels never end.** Each level costs more corn than the last. Once every item is maxed, level-ups offer **boons** (more damage, speed, reach, health or fire rate, or a warm meal) with no limit.
 - **Peril 0 to 5.** A dawn unlocks the next peril. Each level adds 10% predator health and bite, and **a rule of its own**, keeping the ones below it (see [Difficulty](#difficulty)). Each peril keeps its own best time.
 - **Three hens.** The white hen starts with Egg Toss; the speckled hen (unlocked by your first dawn) with Peck; the black hen (a dawn at peril 2) with Feather Darts. Locked hens can be browsed on the title screen: they show with a padlock and how to unlock them, but cannot start a run.
-- **Golden eggs and the shop.** Every run earns golden eggs (time, kills, dawn, peril, and elites). Spend them on five permanent upgrades, each with its own icon and five levels: Tough Hide (+20 health a level), Strong Legs (+4% speed), Sharp Eye (+8% damage), Big Crop (+0.25 reach) and Quick Learner (+8% XP). The shop is how a hen earns her first dawn.
+- **Golden eggs and the shop.** Every run earns golden eggs (time, kills, dawn, peril, and elites). Spend them on five permanent upgrades, each with its own icon and five levels: Tough Hide (+250 health a level), Strong Legs (+4% speed), Sharp Eye (+12% damage), Big Crop (+0.25 reach) and Quick Learner (+8% XP). The shop is how a hen earns her first dawn.
 
 ### Difficulty
 
@@ -112,16 +112,16 @@ Quiquiriqui is **hard by default**: a new player usually falls between minutes 4
 
 | Predator | Role | Health (+ per minute) | Bite (+ per minute) | Speed | Knockback resist | Armor |
 |----------|------|-----------------------|---------------------|-------|------------------|-------|
-| Rat | the swarm | 8 (+5) | 6 (+1.2) | 2.8 | | |
-| Fox | the brawler | 30 (+20) | 9 (+1.5) | 3.3 | 30% | |
-| Snake | the fast one | 6 (+4) | 7 (+1.2) | 4.8 | | |
-| Crow | flies | 10 (+6) | 6 (+1) | 4.0 | | |
-| Badger | the tank | 70 (+45) | 14 (+2) | 2.2 | 80% | 3 |
-| Magpie | keeps away, throws | 14 (+6) | 7 (+1.2) | 2.8 | | |
-| Weasel | lunges | 16 (+8) | 9 (+1.5) | 2.8 | 50% | |
-| Skunk | stink cloud | 35 (+15) | 9 (+1.5) | 1.9 | 50% | 1 |
+| Rat | the swarm | 80 (+50) | 60 (+12) | 2.8 | | |
+| Fox | the brawler | 300 (+200) | 90 (+15) | 3.3 | 30% | |
+| Snake | the fast one | 60 (+40) | 70 (+12) | 4.8 | | |
+| Crow | flies | 100 (+60) | 60 (+10) | 4.0 | | |
+| Badger | the tank | 700 (+450) | 140 (+20) | 2.2 | 80% | 30 |
+| Magpie | keeps away, throws | 140 (+60) | 70 (+12) | 2.8 | | |
+| Weasel | lunges | 160 (+80) | 90 (+15) | 2.8 | 50% | |
+| Skunk | stink cloud | 350 (+150) | 90 (+15) | 1.9 | 50% | 10 |
 
-  The hen runs 6 tiles a second. Armor comes off every hit (at least 1 gets through, shown in grey), so small, fast hits barely scratch a badger; elites (+2) and bosses (+3) are armored and hard to push too.
+  The hen runs 6 tiles a second and starts with 1000 health; numbers run in the tens and hundreds (an egg hits for 100). Armor comes off every hit (at least 10 gets through, shown in grey), so small, fast hits barely scratch a badger; elites (+20) and bosses (+30) are armored and hard to push too.
 - **Levels are earned.** Predators drop corn 80% of the time and each level costs more (6, 10, 14, 19, 25...), so every card counts.
 - **Peril adds rules**, one per level and cumulative:
 

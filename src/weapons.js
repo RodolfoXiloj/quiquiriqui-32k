@@ -35,7 +35,7 @@ const OMELETTE_SPLASH = 1.9; // a hatched egg's splash
 const POPCORN_SPLASH = 0.8; // a hatched kernel's burst
 const STORM_JUMP = 3; // tiles a hatched bolt jumps
 /** Health a hatched gust gives back per predator it hits, and at most per gust. */
-const WHIRL_HEAL = 1;
+const WHIRL_HEAL = 10;
 const WHIRL_HEAL_MAX = 5;
 const EGG_GAP = 0.22; // seconds between eggs of one volley
 const PECK_RANGE = 2.1;

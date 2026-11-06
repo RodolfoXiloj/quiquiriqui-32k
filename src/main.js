@@ -29,8 +29,8 @@ const CARD_LOCK = 0.35;
 /** Seconds after the fall before a key or tap leaves the game-over screen. */
 const GAME_OVER_WAIT = 1.5;
 /** Health restored when nothing at all can be offered (a safety net), and by the Warm Meal boon. */
-const MAXED_HEAL = 25;
-const MEAL_HEAL = 30;
+const MAXED_HEAL = 250;
+const MEAL_HEAL = 300;
 /** Real seconds the chest screen ignores input. */
 const REWARD_LOCK = 0.6;
 /** Chance that a chest holds three upgrades instead of one. */

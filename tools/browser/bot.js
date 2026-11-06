@@ -44,7 +44,7 @@ function dangerAt(px, py, enemies) {
     if (!e.alive) continue;
     const d2 = (e.x - px) ** 2 + (e.y - py) ** 2;
     if (d2 > DANGER_RANGE * DANGER_RANGE) continue;
-    danger += (e.dmg / 5) / Math.max(0.12, d2);
+    danger += (e.dmg / 50) / Math.max(0.12, d2);
   }
   return danger;
 }

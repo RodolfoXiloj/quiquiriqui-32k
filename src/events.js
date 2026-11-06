@@ -46,10 +46,10 @@ export const HAWK_STRIKE = 1.5;
 export const HAWK_CYCLE = 2;
 export const HAWK_R = 1.2;
 /** A dive's damage at 0:00, and what each minute of the day adds. */
-export const HAWK_DMG = 12;
-const HAWK_DMG_MIN = 2;
+export const HAWK_DMG = 120;
+const HAWK_DMG_MIN = 20;
 /** What a dive does to a predator it lands on. */
-const HAWK_HIT = 60;
+const HAWK_HIT = 600;
 
 /** A stampede: this many rats, in a band this wide (tiles), starting this far behind her. */
 const STAMPEDE_RATS = 30;

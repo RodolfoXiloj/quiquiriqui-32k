@@ -14,9 +14,9 @@ export const MAGNET = 1;
 export const BOMB = 2;
 export const FOOD = 3;
 export const MAX_PICKUPS = 24;
-const FOOD_HEAL = 30;
+const FOOD_HEAL = 300;
 /** A bomb kills every regular predator on screen and takes this much from a boss. */
-const BOMB_BOSS_DAMAGE = 60;
+const BOMB_BOSS_DAMAGE = 600;
 /** Extra reach (tiles) beyond her body at which the hen grabs a prize. */
 const GRAB_PAD = 0.35;
 

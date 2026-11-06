@@ -31,8 +31,8 @@ export const ITEMS = [
     weapon: true,
     name: 'EGG TOSS',
     text: ['LOBS AN EGG AT', 'THE NEAREST FOE'],
-    up: ['+1 EGG', 'THROWS FASTER', '+1 EGG', '+8 DAMAGE'],
-    lv: { cd: [1.3, 1.3, 1, 1, 1, 0.9], n: [1, 2, 2, 3, 3, 3], dmg: [10, 10, 10, 10, 18, 27] },
+    up: ['+1 EGG', 'THROWS FASTER', '+1 EGG', '+80 DAMAGE'],
+    lv: { cd: [1.3, 1.3, 1, 1, 1, 0.9], n: [1, 2, 2, 3, 3, 3], dmg: [100, 100, 100, 100, 180, 270] },
     hatch: { with: 'shades', name: 'GOLDEN OMELETTE', text: ['EGGS BURST IN A', 'GOLDEN SPLASH'] },
   },
   {
@@ -40,8 +40,8 @@ export const ITEMS = [
     weapon: true,
     name: 'PECK',
     text: ['JABS THE CLOSEST', 'FOE UP CLOSE'],
-    up: ['PECKS FASTER', '+5 DAMAGE', 'PECKS FASTER', 'HITS 2 FOES'],
-    lv: { cd: [0.9, 0.7, 0.7, 0.55, 0.55, 0.4], n: [1, 1, 1, 1, 2, 4], dmg: [14, 14, 19, 19, 19, 24] },
+    up: ['PECKS FASTER', '+50 DAMAGE', 'PECKS FASTER', 'HITS 2 FOES'],
+    lv: { cd: [0.9, 0.7, 0.7, 0.55, 0.55, 0.4], n: [1, 1, 1, 1, 2, 4], dmg: [140, 140, 190, 190, 190, 240] },
     hatch: { with: 'helmet', name: 'IRON BEAK', text: ['JABS 4 FOES AND', 'PIERCES ARMOR'] },
   },
   {
@@ -49,8 +49,8 @@ export const ITEMS = [
     weapon: true,
     name: 'FEATHER DARTS',
     text: ['TAIL FEATHERS FLY', 'BEHIND HER'],
-    up: ['+1 DART', '+3 DAMAGE', '+1 DART', 'FIRES FASTER'],
-    lv: { cd: [1.4, 1.4, 1.4, 1.4, 1, 1], n: [3, 4, 4, 5, 5, 12], dmg: [6, 6, 9, 9, 9, 12] },
+    up: ['+1 DART', '+30 DAMAGE', '+1 DART', 'FIRES FASTER'],
+    lv: { cd: [1.4, 1.4, 1.4, 1.4, 1, 1], n: [3, 4, 4, 5, 5, 12], dmg: [60, 60, 90, 90, 90, 120] },
     hatch: { with: 'boots', name: 'QUILL STORM', text: ['DARTS FLY ALL', 'AROUND HER'] },
   },
   {
@@ -58,8 +58,8 @@ export const ITEMS = [
     weapon: true,
     name: 'CORN SPRAY',
     text: ['A SPRAY OF KERNELS', 'AT A RANDOM FOE'],
-    up: ['+1 KERNEL', '+3 DAMAGE', 'SPRAYS FASTER', '+2 KERNELS'],
-    lv: { cd: [1.5, 1.5, 1.5, 1.2, 1.2, 1], n: [3, 4, 4, 4, 6, 8], dmg: [5, 5, 8, 8, 8, 10] },
+    up: ['+1 KERNEL', '+30 DAMAGE', 'SPRAYS FASTER', '+2 KERNELS'],
+    lv: { cd: [1.5, 1.5, 1.5, 1.2, 1.2, 1], n: [3, 4, 4, 4, 6, 8], dmg: [50, 50, 80, 80, 80, 100] },
     hatch: { with: 'basket', name: 'POPCORN', text: ['KERNELS BURST', 'WHERE THEY HIT'] },
   },
   {
@@ -67,8 +67,8 @@ export const ITEMS = [
     weapon: true,
     name: 'WING GUST',
     text: ['A GUST OF WIND', 'PUSHES FOES AWAY'],
-    up: ['WIDER GUST', 'GUSTS MORE OFTEN', '+4 DAMAGE', 'BIGGER AND FASTER'],
-    lv: { cd: [2.2, 2.2, 1.8, 1.8, 1.5, 1], r: [1.6, 1.9, 1.9, 1.9, 2.4, 3.2], dmg: [6, 6, 6, 10, 12, 14] },
+    up: ['WIDER GUST', 'GUSTS MORE OFTEN', '+40 DAMAGE', 'BIGGER AND FASTER'],
+    lv: { cd: [2.2, 2.2, 1.8, 1.8, 1.5, 1], r: [1.6, 1.9, 1.9, 1.9, 2.4, 3.2], dmg: [60, 60, 60, 100, 120, 140] },
     hatch: { with: 'cape', name: 'WHIRLWIND', text: ['A HUGE GUST THAT', 'HEALS AS IT HITS'] },
   },
   {
@@ -76,8 +76,8 @@ export const ITEMS = [
     weapon: true,
     name: 'CHICK ORBIT',
     text: ['CHICKS CIRCLE HER', 'AND NIP FOES'],
-    up: ['+1 CHICK', '+4 DAMAGE', 'ONE MORE, FASTER', '+1 CHICK'],
-    lv: { n: [1, 2, 2, 3, 4, 6], dmg: [8, 8, 12, 12, 14, 21], spin: [2.6, 2.6, 2.6, 3.2, 3.2, 3.8] },
+    up: ['+1 CHICK', '+40 DAMAGE', 'ONE MORE, FASTER', '+1 CHICK'],
+    lv: { n: [1, 2, 2, 3, 4, 6], dmg: [80, 80, 120, 120, 140, 210], spin: [2.6, 2.6, 2.6, 3.2, 3.2, 3.8] },
     hatch: { with: 'bandana', name: 'BROOD', text: ['SIX FIERCE CHICKS', 'GUARD HER'] },
   },
   {
@@ -85,8 +85,8 @@ export const ITEMS = [
     weapon: true,
     name: 'THUNDER COMB',
     text: ['LIGHTNING STRIKES', 'FOES ON SCREEN'],
-    up: ['+8 DAMAGE', '+1 BOLT, FASTER', '+8 DAMAGE', '+1 BOLT, FASTER'],
-    lv: { cd: [2.6, 2.6, 2.2, 2.2, 1.8, 1.2], n: [1, 1, 2, 2, 3, 5], dmg: [22, 30, 30, 38, 46, 46] },
+    up: ['+80 DAMAGE', '+1 BOLT, FASTER', '+80 DAMAGE', '+1 BOLT, FASTER'],
+    lv: { cd: [2.6, 2.6, 2.2, 2.2, 1.8, 1.2], n: [1, 1, 2, 2, 3, 5], dmg: [220, 300, 300, 380, 460, 460] },
     hatch: { with: 'helmet', name: 'STORM POT', text: ['FIVE BOLTS, EACH', 'JUMPS TO ANOTHER'] },
   },
   {
@@ -95,11 +95,11 @@ export const ITEMS = [
     name: 'RUNNING BOOTS',
     text: ['RUN 10% FASTER'],
     up: ['+10% SPEED'],
-    cost: '-5 MAX HEALTH',
+    cost: '-50 MAX HEALTH',
     stat: 'speed',
     per: 0.1,
     stat2: 'maxHp',
-    per2: -5,
+    per2: -50,
   },
   {
     id: 'basket',
@@ -134,10 +134,10 @@ export const ITEMS = [
   {
     id: 'cape',
     name: 'HERO CAPE',
-    text: ['+25 MAX HEALTH', 'AND A QUICK HEAL'],
-    up: ['+25 MAX HEALTH'],
+    text: ['+250 MAX HEALTH', 'AND A QUICK HEAL'],
+    up: ['+250 MAX HEALTH'],
     stat: 'maxHp',
-    per: 25,
+    per: 250,
   },
   {
     id: 'bandana',
@@ -157,9 +157,9 @@ export const BOONS = [
   { id: 'grit', name: 'GRIT', text: ['+6% DAMAGE', 'NO LIMIT'], stat: 'damage', per: 0.06 },
   { id: 'spring', name: 'SPRING STEP', text: ['+4% SPEED', 'NO LIMIT'], stat: 'speed', per: 0.04 },
   { id: 'appetite', name: 'BIG APPETITE', text: ['+0.3 CORN REACH', 'NO LIMIT'], stat: 'magnet', per: 0.3 },
-  { id: 'feathers', name: 'THICK FEATHERS', text: ['+10 MAX HEALTH', 'AND A HEAL'], stat: 'maxHp', per: 10 },
+  { id: 'feathers', name: 'THICK FEATHERS', text: ['+100 MAX HEALTH', 'AND A HEAL'], stat: 'maxHp', per: 100 },
   { id: 'wings', name: 'QUICK WINGS', text: ['WEAPONS 5% FASTER', 'NO LIMIT'], stat: 'haste', per: 0.05 },
-  { id: 'meal', name: 'WARM MEAL', text: ['HEALS 30 HEALTH', 'RIGHT NOW'] },
+  { id: 'meal', name: 'WARM MEAL', text: ['HEALS 300 HEALTH', 'RIGHT NOW'] },
 ];
 
 export const ITEM_BY_ID = Object.fromEntries([...ITEMS, ...BOONS].map((item) => [item.id, item]));

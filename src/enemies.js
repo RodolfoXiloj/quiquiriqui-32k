@@ -48,7 +48,7 @@ export const NO_MERCY_SPEED = 1.1;
  * Enemy kinds, each with a role and its own growth: hp and dmg are the health and
  * bite (and pebble) of one born at 0:00, and hpMin / dmgMin what each minute of the day adds ·
  * speed: tiles per second, its own and steady (the hen runs 6) · kr: knockback resistance, 0-1 ·
- * armor: taken off every hit (at least 1 gets through) · r: body radius (tiles) · colors: palette
+ * armor: taken off every hit (at least MIN_HIT gets through) · r: body radius (tiles) · colors: palette
  * indices for the hit puff · flying:
  * drawn in the air and only pushed apart from other flyers · act: CHASE (default), SHOOT or CHARGE ·
  * max: how many may be alive at once (waves.js sends another kind instead) · stink: leaves a
@@ -57,25 +57,28 @@ export const NO_MERCY_SPEED = 1.1;
  */
 export const ENEMY_TYPES = [
   // The swarm: weak alone, many
-  { name: 'rat', hp: 8, hpMin: 5, dmg: 6, dmgMin: 1.2, speed: 2.8, r: 0.32, colors: [16, 17] },
+  { name: 'rat', hp: 80, hpMin: 50, dmg: 60, dmgMin: 12, speed: 2.8, r: 0.32, colors: [16, 17] },
   // The brawler: sturdy, hits harder, shrugs off some knockback
-  { name: 'fox', hp: 30, hpMin: 20, dmg: 9, dmgMin: 1.5, speed: 3.3, kr: 0.3, r: 0.45, colors: [18, 13] },
+  { name: 'fox', hp: 300, hpMin: 200, dmg: 90, dmgMin: 15, speed: 3.3, kr: 0.3, r: 0.45, colors: [18, 13] },
   // The fast one: frail, nearly as quick as the hen
-  { name: 'snake', hp: 6, hpMin: 4, dmg: 7, dmgMin: 1.2, speed: 4.8, r: 0.3, colors: [12, 15] },
-  { name: 'crow', hp: 10, hpMin: 6, dmg: 6, dmgMin: 1, speed: 4, r: 0.3, colors: [15, 0], flying: true },
+  { name: 'snake', hp: 60, hpMin: 40, dmg: 70, dmgMin: 12, speed: 4.8, r: 0.3, colors: [12, 15] },
+  { name: 'crow', hp: 100, hpMin: 60, dmg: 60, dmgMin: 10, speed: 4, r: 0.3, colors: [15, 0], flying: true },
   // The tank: slow, armored (small hits barely scratch it), hardly pushed
-  { name: 'badger', hp: 70, hpMin: 45, dmg: 14, dmgMin: 2, speed: 2.2, kr: 0.8, armor: 3, r: 0.55, colors: [17, 13] },
-  { name: 'crate', hp: 5, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
-  { name: 'magpie', hp: 14, hpMin: 6, dmg: 7, dmgMin: 1.2, speed: 2.8, r: 0.3, colors: [15, 13], flying: true, act: SHOOT, max: 6, rare: true },
-  { name: 'weasel', hp: 16, hpMin: 8, dmg: 9, dmgMin: 1.5, speed: 2.8, kr: 0.5, r: 0.34, colors: [19, 13], act: CHARGE, rare: true },
-  { name: 'skunk', hp: 35, hpMin: 15, dmg: 9, dmgMin: 1.5, speed: 1.9, kr: 0.5, armor: 1, r: 0.45, colors: [15, 13], stink: true, rare: true },
+  { name: 'badger', hp: 700, hpMin: 450, dmg: 140, dmgMin: 20, speed: 2.2, kr: 0.8, armor: 30, r: 0.55, colors: [17, 13] },
+  { name: 'crate', hp: 50, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
+  { name: 'magpie', hp: 140, hpMin: 60, dmg: 70, dmgMin: 12, speed: 2.8, r: 0.3, colors: [15, 13], flying: true, act: SHOOT, max: 6, rare: true },
+  { name: 'weasel', hp: 160, hpMin: 80, dmg: 90, dmgMin: 15, speed: 2.8, kr: 0.5, r: 0.34, colors: [19, 13], act: CHARGE, rare: true },
+  { name: 'skunk', hp: 350, hpMin: 150, dmg: 90, dmgMin: 15, speed: 1.9, kr: 0.5, armor: 10, r: 0.45, colors: [15, 13], stink: true, rare: true },
 ];
+
+/** The least a hit deals through armor. */
+export const MIN_HIT = 10;
 
 /** An elite's health, size and speed against its kind's; a rainbow one is tougher still. */
 export const ELITE_HP = 6;
 export const RAINBOW_HP = 10;
 const ELITE_SIZE = 1.4;
-export const ELITE_ARMOR = 2;
+export const ELITE_ARMOR = 20;
 export const ELITE_SPEED = 1.15;
 /** Golden eggs for a golden elite and for a rainbow one. */
 export const ELITE_EGGS = [2, 8];
@@ -112,7 +115,7 @@ const SHOT_R = 0.2;
 export const BOSS_HP = 10;
 export const BOSS_SIZE = 2;
 export const BOSS_BITE = 3;
-export const BOSS_ARMOR = 3;
+export const BOSS_ARMOR = 30;
 /** Bosses and elites take at most this much knockback resistance less than a full wall (1). */
 export const HEAVY_KR = 0.8;
 
@@ -388,17 +391,17 @@ export function nearestEnemy(x, y, range = Infinity, skip = null) {
 
 /**
  * Deals `dmg` to predator `e`, hit from world point (fromX, fromY): its armor comes off first (at
- * least 1 gets through, and an armored hit shows grey) unless `ignoreArmor`. `knock` is the
+ * least MIN_HIT gets through, and an armored hit shows grey) unless `ignoreArmor`. `knock` is the
  * knockback speed in tiles per second, cut by its resistance, applied on a kill and on half of the
  * other hits (on every hit when `alwaysKnock` is set, as Wing Gust does).
  */
 export function hitEnemy(e, dmg, fromX, fromY, knock = 6, alwaysKnock = false, ignoreArmor = false) {
   if (!e.alive) return;
   const armor = ignoreArmor ? 0 : e.armor;
-  dmg = Math.max(1, dmg - armor);
+  dmg = Math.max(MIN_HIT, dmg - armor);
   e.hp -= dmg;
   e.flash = HIT_FLASH;
-  spawnPopup(e.x, e.y, String(dmg), armor ? 16 : dmg >= 15 ? 10 : 13, 0.5, 6);
+  spawnPopup(e.x, e.y, String(dmg), armor ? 16 : dmg >= 150 ? 10 : 13, 0.5, 6);
   const type = ENEMY_TYPES[e.kind];
   for (let i = 0; i < 3; i++) {
     spawnParticle(e.x, e.y, 6, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 15 + Math.random() * 20, i ? 13 : type.colors[0]);
