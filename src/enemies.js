@@ -18,6 +18,7 @@ import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
 import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge } from './sfx.js';
 import { PERIL, NO_MERCY } from './profile.js';
+import { RUN_LENGTH } from './weather.js';
 
 export const RAT = 0;
 export const FOX = 1;
@@ -44,29 +45,37 @@ export const FRENZY_SPEED = 1.2;
 export const NO_MERCY_SPEED = 1.1;
 
 /**
- * Enemy kinds. hp: health at player level 1 · speed: tiles per second · r: body radius (tiles)
- * · dmg: bite damage (and pebble damage) · colors: palette indices for the hit puff · flying:
+ * Enemy kinds, each with a role and its own growth: hp and dmg are the health and
+ * bite (and pebble) of one born at 0:00, and hpMin / dmgMin what each minute of the day adds ·
+ * speed: tiles per second, its own and steady (the hen runs 6) · kr: knockback resistance, 0-1 ·
+ * armor: taken off every hit (at least 1 gets through) · r: body radius (tiles) · colors: palette
+ * indices for the hit puff · flying:
  * drawn in the air and only pushed apart from other flyers · act: CHASE (default), SHOOT or CHARGE ·
  * max: how many may be alive at once (waves.js sends another kind instead) · stink: leaves a
  * stink cloud where it falls · rare: when the pool is full, it takes the place of the farthest
  * common predator (as a boss does), so it never misses its minute.
  */
 export const ENEMY_TYPES = [
-  { name: 'rat', hp: 6, speed: 2.5, r: 0.32, dmg: 5, colors: [16, 17] },
-  { name: 'fox', hp: 26, speed: 3.05, r: 0.45, dmg: 8, colors: [18, 13] },
-  { name: 'snake', hp: 5, speed: 4.1, r: 0.3, dmg: 6, colors: [12, 15] },
-  { name: 'crow', hp: 9, speed: 3.6, r: 0.3, dmg: 5, colors: [15, 0], flying: true },
-  { name: 'badger', hp: 60, speed: 2, r: 0.55, dmg: 10, colors: [17, 13] },
+  // The swarm: weak alone, many
+  { name: 'rat', hp: 8, hpMin: 5, dmg: 6, dmgMin: 1.2, speed: 2.8, r: 0.32, colors: [16, 17] },
+  // The brawler: sturdy, hits harder, shrugs off some knockback
+  { name: 'fox', hp: 30, hpMin: 20, dmg: 9, dmgMin: 1.5, speed: 3.3, kr: 0.3, r: 0.45, colors: [18, 13] },
+  // The fast one: frail, nearly as quick as the hen
+  { name: 'snake', hp: 6, hpMin: 4, dmg: 7, dmgMin: 1.2, speed: 4.8, r: 0.3, colors: [12, 15] },
+  { name: 'crow', hp: 10, hpMin: 6, dmg: 6, dmgMin: 1, speed: 4, r: 0.3, colors: [15, 0], flying: true },
+  // The tank: slow, armored (small hits barely scratch it), hardly pushed
+  { name: 'badger', hp: 70, hpMin: 45, dmg: 14, dmgMin: 2, speed: 2.2, kr: 0.8, armor: 3, r: 0.55, colors: [17, 13] },
   { name: 'crate', hp: 5, speed: 0, r: 0.4, dmg: 0, colors: [19, 8], prop: true },
-  { name: 'magpie', hp: 12, speed: 2.6, r: 0.3, dmg: 6, colors: [15, 13], flying: true, act: SHOOT, max: 6, rare: true },
-  { name: 'weasel', hp: 14, speed: 2.4, r: 0.34, dmg: 7, colors: [19, 13], act: CHARGE, rare: true },
-  { name: 'skunk', hp: 30, speed: 1.7, r: 0.45, dmg: 8, colors: [15, 13], stink: true, rare: true },
+  { name: 'magpie', hp: 14, hpMin: 6, dmg: 7, dmgMin: 1.2, speed: 2.8, r: 0.3, colors: [15, 13], flying: true, act: SHOOT, max: 6, rare: true },
+  { name: 'weasel', hp: 16, hpMin: 8, dmg: 9, dmgMin: 1.5, speed: 2.8, kr: 0.5, r: 0.34, colors: [19, 13], act: CHARGE, rare: true },
+  { name: 'skunk', hp: 35, hpMin: 15, dmg: 9, dmgMin: 1.5, speed: 1.9, kr: 0.5, armor: 1, r: 0.45, colors: [15, 13], stink: true, rare: true },
 ];
 
 /** An elite's health, size and speed against its kind's; a rainbow one is tougher still. */
 export const ELITE_HP = 6;
 export const RAINBOW_HP = 10;
 const ELITE_SIZE = 1.4;
+export const ELITE_ARMOR = 2;
 export const ELITE_SPEED = 1.15;
 /** Golden eggs for a golden elite and for a rainbow one. */
 export const ELITE_EGGS = [2, 8];
@@ -99,20 +108,13 @@ const SHOT_SPEED = 5;
 export const SHOT_LIFE = 3;
 const SHOT_R = 0.2;
 
-/**
- * Predators grow tougher with the clock, not with the hen's level (so leveling up is pure gain):
- * one born HP_TIME seconds into the run has twice its base health, and SPEED_TIME seconds in, twice
- * its base speed.
- */
-export const HP_TIME = 70;
-const SPEED_TIME = 3000;
-
-/** Bosses: this many times the health, radius and bite of their kind. */
+/** Bosses: this many times the health, radius and bite of their kind, and armor on top. */
 export const BOSS_HP = 10;
 export const BOSS_SIZE = 2;
 export const BOSS_BITE = 3;
-/** Knockback a boss still takes, as a share of a regular predator's. */
-const BOSS_KNOCK = 0.25;
+export const BOSS_ARMOR = 3;
+/** Bosses and elites take at most this much knockback resistance less than a full wall (1). */
+export const HEAVY_KR = 0.8;
 
 export const MAX_ENEMIES = 300;
 /** Seconds between two bites of the same predator. */
@@ -178,6 +180,9 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   dirY: 0,
   /** 0, or 1 for a golden elite and 2 for a rainbow one. */
   elite: 0,
+  /** Knockback resistance (0-1) and armor (taken off every hit). */
+  kr: 0,
+  armor: 0,
 }));
 
 /** Stink clouds left by skunks. */
@@ -284,7 +289,9 @@ export function spawnEnemy(kind, x, y) {
   // again and 10% speed (crates stay as they are). Peril adds its shares of health, speed and bite.
   const days = game.day - 1;
   const peril = type.prop ? 0 : game.peril;
-  const hp = type.prop ? type.hp : Math.floor(type.hp * (1 + game.time / HP_TIME) * (1 + days) * (1 + PERIL.hp * peril));
+  // Each kind grows by the minute at its own pace; days and peril multiply on top. Never her level.
+  const minutes = (game.time % RUN_LENGTH) / 60;
+  const hp = type.prop ? type.hp : Math.floor((type.hp + (type.hpMin || 0) * minutes) * (1 + days) * (1 + PERIL.hp * peril));
   const phase = gameRand() * 2;
   Object.assign(e, {
     alive: true,
@@ -295,9 +302,11 @@ export function spawnEnemy(kind, x, y) {
     prevY: y,
     hp,
     maxHp: hp,
-    speed: type.speed * (1 + game.time / SPEED_TIME) * (1 + 0.1 * days) * (peril >= NO_MERCY ? NO_MERCY_SPEED : 1),
+    speed: type.speed * (1 + 0.1 * days) * (peril >= NO_MERCY ? NO_MERCY_SPEED : 1),
     r: type.r,
-    dmg: Math.round(type.dmg * (1 + PERIL.bite * peril)),
+    dmg: Math.round((type.dmg + (type.dmgMin || 0) * minutes) * (1 + PERIL.bite * peril)),
+    kr: type.kr || 0,
+    armor: type.armor || 0,
     flying: !!type.flying,
     boss: false,
     prop: !!type.prop,
@@ -324,6 +333,8 @@ export function makeElite(e, rainbow) {
   e.hp = e.maxHp = e.hp * (rainbow ? RAINBOW_HP : ELITE_HP);
   e.r *= ELITE_SIZE;
   e.speed *= ELITE_SPEED;
+  e.armor += ELITE_ARMOR;
+  e.kr = Math.max(e.kr, HEAVY_KR);
 }
 
 /**
@@ -338,6 +349,8 @@ export function spawnBoss(kind) {
   e.hp = e.maxHp = e.hp * BOSS_HP;
   e.r *= BOSS_SIZE;
   e.dmg *= BOSS_BITE;
+  e.armor += BOSS_ARMOR;
+  e.kr = Math.max(e.kr, HEAVY_KR);
   return e;
 }
 
@@ -374,15 +387,18 @@ export function nearestEnemy(x, y, range = Infinity, skip = null) {
 }
 
 /**
- * Deals `dmg` to predator `e`, hit from world point (fromX, fromY). `knock` is the knockback
- * speed in tiles per second, applied on a kill and on half of the other hits (on every hit when
- * `alwaysKnock` is set, as Wing Gust does).
+ * Deals `dmg` to predator `e`, hit from world point (fromX, fromY): its armor comes off first (at
+ * least 1 gets through, and an armored hit shows grey) unless `ignoreArmor`. `knock` is the
+ * knockback speed in tiles per second, cut by its resistance, applied on a kill and on half of the
+ * other hits (on every hit when `alwaysKnock` is set, as Wing Gust does).
  */
-export function hitEnemy(e, dmg, fromX, fromY, knock = 6, alwaysKnock = false) {
+export function hitEnemy(e, dmg, fromX, fromY, knock = 6, alwaysKnock = false, ignoreArmor = false) {
   if (!e.alive) return;
+  const armor = ignoreArmor ? 0 : e.armor;
+  dmg = Math.max(1, dmg - armor);
   e.hp -= dmg;
   e.flash = HIT_FLASH;
-  spawnPopup(e.x, e.y, String(dmg), dmg >= 15 ? 10 : 13, 0.5, 6);
+  spawnPopup(e.x, e.y, String(dmg), armor ? 16 : dmg >= 15 ? 10 : 13, 0.5, 6);
   const type = ENEMY_TYPES[e.kind];
   for (let i = 0; i < 3; i++) {
     spawnParticle(e.x, e.y, 6, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 15 + Math.random() * 20, i ? 13 : type.colors[0]);
@@ -393,7 +409,7 @@ export function hitEnemy(e, dmg, fromX, fromY, knock = 6, alwaysKnock = false) {
     const dx = e.x - fromX;
     const dy = e.y - fromY;
     const len = Math.hypot(dx, dy) || 1;
-    const k = knock * (e.boss ? BOSS_KNOCK : 1);
+    const k = knock * (1 - e.kr);
     e.knockX = (dx / len) * k;
     e.knockY = (dy / len) * k;
     e.knockTime = 0.15;

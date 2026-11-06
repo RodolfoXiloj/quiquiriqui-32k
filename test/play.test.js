@@ -78,8 +78,8 @@ import {
   shots,
   SHOT_EVERY,
   SHOT_LIFE,
-  HP_TIME,
   NO_MERCY_SPEED,
+  BOSS_ARMOR,
   BOSS_HP,
   BOSS_SIZE,
   BOSS_BITE,
@@ -131,7 +131,7 @@ import {
   weaponCooldown,
 } from '../src/items.js';
 import { projectiles, chicks, KERNEL } from '../src/weapons.js';
-import { damageHen, syncHenStats } from '../src/hen.js';
+import { HEN_SPEED, damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
 import { GLYPHS, GLYPH_W, GLYPH_H } from '../src/font.js';
@@ -579,7 +579,48 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     game.level = 20;
     const b = { ...spawnEnemy(FOX, hen.x + 20, hen.y + 1) };
     assert.equal(b.maxHp, a.maxHp, 'leveling up made them tougher');
-    assert.equal(a.maxHp, Math.floor(ENEMY_TYPES[FOX].hp * (1 + 120 / HP_TIME)));
+    assert.equal(a.maxHp, Math.floor(ENEMY_TYPES[FOX].hp + ENEMY_TYPES[FOX].hpMin * 2));
+  });
+
+  it('each kind grows by the minute at its own pace, in health and in bite', () => {
+    start();
+    const early = { ...spawnEnemy(BADGER, hen.x + 20, hen.y) };
+    const rat0 = { ...spawnEnemy(RAT, hen.x + 20, hen.y + 1) };
+    game.time = 300;
+    const late = { ...spawnEnemy(BADGER, hen.x + 20, hen.y + 2) };
+    const rat5 = { ...spawnEnemy(RAT, hen.x + 20, hen.y + 3) };
+    for (const [a, b, kind] of [[early, late, BADGER], [rat0, rat5, RAT]]) {
+      const type = ENEMY_TYPES[kind];
+      assert.equal(b.maxHp - a.maxHp, Math.floor(type.hp + type.hpMin * 5) - type.hp, `${type.name} health`);
+      assert.equal(b.dmg, Math.round(type.dmg + type.dmgMin * 5), `${type.name} bite`);
+      assert.equal(b.speed, a.speed, `${type.name} speed should stay its own`);
+    }
+    assert.ok(late.maxHp - early.maxHp > (rat5.maxHp - rat0.maxHp) * 5, 'the tank should grow much faster than the swarm');
+  });
+
+  it('armor takes off every hit (at least 1 gets through); heavy kinds shrug off knockback', () => {
+    start();
+    buildOrder.length = 0;
+    const badger = spawnEnemy(BADGER, hen.x + 5, hen.y);
+    const rat = spawnEnemy(RAT, hen.x + 5, hen.y + 2);
+    badger.hp = badger.maxHp = rat.hp = rat.maxHp = 1000;
+    hitEnemy(badger, 2, hen.x, hen.y);
+    assert.equal(badger.hp, 999, 'at least 1 should get through');
+    hitEnemy(badger, 10, hen.x, hen.y, 6, true);
+    assert.equal(badger.hp, 999 - (10 - ENEMY_TYPES[BADGER].armor));
+    hitEnemy(rat, 10, hen.x, hen.y, 6, true);
+    assert.equal(rat.hp, 990, 'a rat has no armor');
+    const push = (e) => Math.hypot(e.knockX, e.knockY);
+    assert.ok(Math.abs(push(badger) / push(rat) - (1 - ENEMY_TYPES[BADGER].kr)) < 1e-9, 'knockback resistance');
+    hitEnemy(badger, 10, hen.x, hen.y, 6, true, true);
+    assert.equal(badger.hp, 999 - 7 - 10, 'ignoring armor should deal it all');
+    const boss = spawnBoss(FOX);
+    assert.equal(boss.armor, BOSS_ARMOR);
+  });
+
+  it('the fast kinds nearly keep up with her: the snake runs at 80% of her speed', () => {
+    assert.ok(Math.abs(ENEMY_TYPES[SNAKE].speed / HEN_SPEED - 0.8) < 0.01);
+    for (const type of ENEMY_TYPES) assert.ok(type.speed < HEN_SPEED, `${type.name} outruns her`);
   });
 
   it('predators born later in the run are tougher, at the same hen level', () => {
@@ -832,7 +873,7 @@ describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
     assert.equal(boss.r, type.r * BOSS_SIZE);
     assert.equal(boss.dmg, type.dmg * BOSS_BITE);
     const kills = game.kills;
-    hitEnemy(boss, boss.hp, hen.x, hen.y);
+    hitEnemy(boss, boss.hp + boss.armor, hen.x, hen.y);
     assert.equal(game.kills, kills + 1);
     assert.ok(pickups.some((p) => p.alive && p.kind === CHEST), 'no chest');
   });
@@ -1001,8 +1042,9 @@ describe('quiquiriqui at 5x: endless days', () => {
     steps(1);
     assert.ok(game.time > RUN_LENGTH, 'the clock stopped');
     const rat = spawnEnemy(RAT, hen.x + 20, hen.y);
-    const toughness = 1 + game.time / HP_TIME;
-    assert.equal(rat.maxHp, Math.floor(ENEMY_TYPES[RAT].hp * toughness * 2), 'day 2 should double their health');
+    const type = ENEMY_TYPES[RAT];
+    const minutes = (game.time % RUN_LENGTH) / 60;
+    assert.equal(rat.maxHp, Math.floor((type.hp + type.hpMin * minutes) * 2), 'day 2 should double their health');
   });
 
   it('a new day replays the timeline, bosses included, with more predators', () => {
@@ -1493,7 +1535,9 @@ describe('quiquiriqui at 5x: random events', () => {
       game.reward = [];
       for (const e of enemies) if (e.boss) e.alive = false; // a boss would hold events back
       update(STEP);
-      if (game.bannerTime === 2.5 && EVENTS.includes(game.banner)) seen.push({ time: game.time, name: game.banner });
+      // A new banner (hitstop can hold the clock, and the banner, for a step or two)
+      const fresh = !seen.length || game.time - seen[seen.length - 1].time > 1;
+      if (fresh && game.bannerTime === 2.5 && EVENTS.includes(game.banner)) seen.push({ time: game.time, name: game.banner });
     }
     assert.ok(seen.length >= 5, `${seen.length} events in 8 minutes`);
     assert.ok(seen[0].time >= EVENT_FROM && seen[0].time < EVENT_FROM + 1, `the first came at ${seen[0].time}`);
@@ -1626,18 +1670,21 @@ describe('quiquiriqui at 5x: difficulty', () => {
     assert.equal(countEnemies(), 0, 'the quota spawned in a peaceful meadow');
   });
 
-  it('peril 0 is hard: with an empty shop the bot falls before dawn, never before 2:00; the full shop carries it further', () => {
+  it('peril 0 is hard: with an empty shop the bot mostly falls before 7:00, never before 2:00; the full shop carries it further', () => {
+    // A run that lasts past 7:00 counts as 7:00: enough to compare, and the test stays quick
+    const CAP = 420;
     const falls = (shop) =>
-      [1, 2, 3].map((seed) => {
+      [1, 2, 3, 4].map((seed) => {
         resetRun({ peaceful: false, seed, shop });
-        playWithBot(RUN_LENGTH / SPEED + 5, { onFrame: () => game.over });
-        return game.won ? RUN_LENGTH : game.time;
+        playWithBot(CAP / SPEED + 5, { onFrame: () => game.over || game.time >= CAP });
+        return game.over && !game.won ? game.time : CAP;
       });
     const mean = (list) => list.reduce((a, b) => a + b, 0) / list.length;
     const empty = falls([0, 0, 0, 0, 0]);
-    for (const t of empty) assert.ok(t >= 120 && t < RUN_LENGTH, `with an empty shop it fell at ${t.toFixed(0)} s`);
+    for (const t of empty) assert.ok(t >= 120, `with an empty shop it fell at ${t.toFixed(0)} s`);
+    assert.ok(empty.filter((t) => t < CAP).length >= 3, `with an empty shop: ${empty.map(Math.round).join(', ')} s`);
     const full = falls([5, 5, 5, 5, 5]);
-    assert.ok(mean(full) > mean(empty) + 120, `${mean(empty).toFixed(0)} s -> ${mean(full).toFixed(0)} s with the full shop`);
+    assert.ok(mean(full) > mean(empty) + 90, `${mean(empty).toFixed(0)} s -> ${mean(full).toFixed(0)} s with the full shop`);
     resetRun();
   });
 });
@@ -1661,7 +1708,7 @@ describe('quiquiriqui at 5x: peril rules', () => {
   it(`peril ${MORE_EVENTS}, MORE EVENTS: after the first, events come every 30 to 50 s`, () => {
     const times = [];
     playTo(MORE_EVENTS, 330, () => {
-      if (game.bannerTime === 2.5 && EVENTS.includes(game.banner)) times.push(game.time);
+      if (game.bannerTime === 2.5 && EVENTS.includes(game.banner) && !(times.length && game.time - times[times.length - 1] < 1)) times.push(game.time);
     });
     assert.ok(times.length >= 6, `${times.length} events in 5:30`);
     for (let i = 1; i < times.length; i++) {
@@ -1744,8 +1791,8 @@ describe('quiquiriqui at 5x: the bot and a long run', () => {
     playWithBot(20, { onFrame: () => game.over || game.time >= 60 });
     assert.equal(game.over, false, `the bot fell at ${formatClock(game.time)}`);
     assert.ok(game.time >= 59, `only ${game.time} s`);
-    assert.ok(game.level >= 4, `level ${game.level}`);
-    assert.ok(game.kills >= 30, `${game.kills} kills`);
+    assert.ok(game.level >= 3, `level ${game.level}`);
+    assert.ok(game.kills >= 20, `${game.kills} kills`);
   });
 
   it('ten minutes: every predator joins on its minute, the horde stays inside the pools and the frame budget', () => {

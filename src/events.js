@@ -45,7 +45,9 @@ export const HAWK_HUNT = 0.9;
 export const HAWK_STRIKE = 1.5;
 export const HAWK_CYCLE = 2;
 export const HAWK_R = 1.2;
+/** A dive's damage at 0:00, and what each minute of the day adds. */
 export const HAWK_DMG = 12;
+const HAWK_DMG_MIN = 2;
 /** What a dive does to a predator it lands on. */
 const HAWK_HIT = 60;
 
@@ -121,7 +123,8 @@ function strike() {
     spawnParticle(hawk.x, hawk.y, 1, Math.cos(a) * 2.5, Math.sin(a) * 2.5, 10, i % 2 ? 6 : 19, 1, 0.4);
   }
   if (Math.hypot(hen.x - hawk.x, hen.y - hawk.y) < HAWK_R + HEN_RADIUS) {
-    damageHen(Math.round(HAWK_DMG * (1 + PERIL.bite * game.peril)), hawk.x, hawk.y);
+    const minutes = (game.time % RUN_LENGTH) / 60;
+    damageHen(Math.round((HAWK_DMG + HAWK_DMG_MIN * minutes) * (1 + PERIL.bite * game.peril)), hawk.x, hawk.y);
   }
   for (const e of enemies) {
     if (e.alive && !e.prop && Math.hypot(e.x - hawk.x, e.y - hawk.y) < HAWK_R + e.r) hitEnemy(e, HAWK_HIT, hawk.x, hawk.y, 10, true);
