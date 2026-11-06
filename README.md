@@ -63,14 +63,26 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 | **Wing Gust** | Wind that hurts and shoves back everything close | A bigger wing with blue flight feathers |
 | **Chick Orbit** | Chicks circle her and nip | The chicks themselves |
 | **Thunder Comb** | Lightning on predators on screen | A zigzag lightning comb |
-| **Running Boots** | Runs faster | Red boots |
-| **Feed Basket** | Pulls corn from farther away | A basket of corn on her back |
-| **Pot Helmet** | Takes less damage per bite | A pot on her head |
-| **Sunglasses** | More damage | Dark shades |
-| **Hero Cape** | More health | A red cape |
-| **Lucky Bandana** | Dodges some bites | A dotted neckerchief |
+| **Running Boots** | +10% speed a level, but -5 max health | Red boots |
+| **Feed Basket** | Pulls corn from farther away, +8% XP | A basket of corn on her back |
+| **Pot Helmet** | Takes 10% less damage a level, but runs 4% slower | A pot on her head |
+| **Sunglasses** | +15% damage a level | Dark shades |
+| **Hero Cape** | +25 max health a level | A red cape |
+| **Lucky Bandana** | Dodges 7% of bites a level | A dotted neckerchief |
 
-Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden).
+Each item has three looks: levels 1–2, levels 3–4 (bigger or more detailed) and level 5 (golden). Two passives come with a cost (in red on the card), so a choice is a style: light boots or a heavy pot.
+
+**Hatching.** A weapon at level 5 whose partner passive she wears **hatches** into something new: the next level-up offers a gold **HATCH!** card, and the next chest hatches it at once.
+
+| Weapon | + Passive | Hatches into | What changes |
+|--------|-----------|--------------|--------------|
+| Egg Toss | Sunglasses | **Golden Omelette** | Eggs burst in a wide splash, even on a hit |
+| Peck | Pot Helmet | **Iron Beak** | Jabs four foes at once and pierces armor |
+| Feather Darts | Running Boots | **Quill Storm** | Twelve darts fly all around her |
+| Corn Spray | Feed Basket | **Popcorn** | Kernels burst where they hit |
+| Wing Gust | Hero Cape | **Whirlwind** | A huge gust every second that heals her for what it hits |
+| Chick Orbit | Lucky Bandana | **Brood** | Six fierce chicks |
+| Thunder Comb | Pot Helmet | **Storm Pot** | Five bolts, each jumping on to another foe |
 
 At 0:50 a ring of rats closes in around her (break out of it!); after that, every 45 to 75 seconds, a **random event** turns the heat up for a few seconds:
 
@@ -94,9 +106,23 @@ Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the pr
 
 Quiquiriqui is **hard by default**: a new player usually falls between minutes 4 and 6 at peril 0, and the first dawn comes after a few runs, some shop upgrades and learning the dangers. What makes it hard:
 
-- **Pressure from the first minute.** Foxes from 0:30, weasels from 1:00, and a ring of rats at 0:50.
+- **Pressure from the first minute.** Foxes from 0:20, weasels from 1:00, and a ring of rats at 0:35.
 - **A quota on the meadow.** Each minute sets the fewest predators that must be around the hen; below it, more are born at once. Clearing the screen fast only brings more.
-- **Toughness follows the clock, not her level**, so every level-up is pure gain. Predators are born more often ahead of where she runs.
+- **Each predator grows at its own pace**, by the clock and never by her level, so every level-up is pure gain. Predators are born more often ahead of where she runs.
+
+| Predator | Role | Health (+ per minute) | Bite (+ per minute) | Speed | Knockback resist | Armor |
+|----------|------|-----------------------|---------------------|-------|------------------|-------|
+| Rat | the swarm | 8 (+5) | 6 (+1.2) | 2.8 | | |
+| Fox | the brawler | 30 (+20) | 9 (+1.5) | 3.3 | 30% | |
+| Snake | the fast one | 6 (+4) | 7 (+1.2) | 4.8 | | |
+| Crow | flies | 10 (+6) | 6 (+1) | 4.0 | | |
+| Badger | the tank | 70 (+45) | 14 (+2) | 2.2 | 80% | 3 |
+| Magpie | keeps away, throws | 14 (+6) | 7 (+1.2) | 2.8 | | |
+| Weasel | lunges | 16 (+8) | 9 (+1.5) | 2.8 | 50% | |
+| Skunk | stink cloud | 35 (+15) | 9 (+1.5) | 1.9 | 50% | 1 |
+
+  The hen runs 6 tiles a second. Armor comes off every hit (at least 1 gets through, shown in grey), so small, fast hits barely scratch a badger; elites (+2) and bosses (+3) are armored and hard to push too.
+- **Levels are earned.** Predators drop corn 80% of the time and each level costs more (6, 10, 14, 19, 25...), so every card counts.
 - **Peril adds rules**, one per level and cumulative:
 
 | Peril | Rule |
@@ -107,7 +133,7 @@ Quiquiriqui is **hard by default**: a new player usually falls between minutes 4
 | 4 | **TWO CARDS**: level-ups offer two cards, not three |
 | 5 | **NO MERCY**: a fuller meadow and faster predators |
 
-`npm run balance` measures it: the bot plays many seeds and reports when it fell, when it was first hurt, how calm the run was and the eggs it earned. With an empty shop at peril 0 the bot falls at about 4:40 (median of 16 seeds); with the full shop it lasts about 9:00 and sometimes sees the dawn. A person dodges better than the bot.
+`npm run balance` measures it: the bot plays many seeds and reports when it fell, when it was first hurt, its level at 3:00, how calm the run was and the eggs it earned; `--items` compares every item as the bot's favorite. With an empty shop at peril 0 the bot is first bitten at 0:37 and falls at about 4:00 (median of 16 seeds); with the full shop it lasts about 8:25. A hatched weapon kills 2 to 6.6 times as much as the same weapon at level 5. A person dodges better than the bot.
 
 ```mermaid
 flowchart LR
@@ -179,6 +205,7 @@ Only the shipped file is gated: `dist/index.html` after Terser **and** Roadrolle
 | Pixel font (measured Nov 5, 2026) | 56,085 B | 23,791 B (72.6%) |
 | Shop icons, locked hens, special predators, elites, events (measured Nov 5, 2026) | 66,116 B | 26,954 B (82.3%) |
 | Hard by default: quota, peril rules (measured Nov 5, 2026) | 66,650 B | 27,198 B (83.0%) |
+| Predators by kind, passives with costs, hatching (measured Nov 5, 2026) | 68,719 B | 28,033 B (85.5%) |
 | **Final target** | n/a | **≤ 32,768 bytes** |
 
 ---
