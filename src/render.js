@@ -67,6 +67,11 @@ export const HUD_SCALES = {
   tutorial: 1,
 };
 
+/** Her health bar in the top bar, right of the level: left edge and width, px. */
+export const HEALTH_BAR = { x: 32, w: 80 };
+/** Her health as the bar reads it, 850/1000. */
+export const healthText = () => `${Math.ceil(hen.hp)}/${hen.maxHp}`;
+
 /** Title screen rows that react to taps, as offsets (px) from the middle of the screen. */
 const TITLE_ROWS = { hen: 34, peril: 45, shop: 56 };
 
@@ -540,7 +545,7 @@ function drawStick(ctx) {
   ctx.globalAlpha = 1;
 }
 
-/** XP bar, level, clock, kills and the row of owned upgrades. */
+/** XP bar, level, health, clock, kills and the row of owned upgrades. */
 function drawTopBar(ctx, time) {
   const need = xpToNext(game.level);
   const full = game.cards.length > 0;
@@ -549,6 +554,13 @@ function drawTopBar(ctx, time) {
   ctx.fillStyle = PALETTE[full && Math.sin(time * 12) > 0 ? 13 : 10];
   ctx.fillRect(3, 3, full ? WIDTH - 6 : Math.floor(((WIDTH - 6) * Math.min(game.xp, need)) / need), 4);
   drawText(ctx, `LV ${game.level}`, 4, 14, 1, 13, 'left');
+  // Her health with its number, beside the level; it flashes white while a bite lands
+  const { x, w } = HEALTH_BAR;
+  ctx.fillStyle = PALETTE[0];
+  ctx.fillRect(x, 10, w, 9);
+  ctx.fillStyle = PALETTE[hen.hurtTime > 0 ? 13 : 9];
+  ctx.fillRect(x + 1, 11, Math.ceil(((w - 2) * hen.hp) / hen.maxHp), 7);
+  drawText(ctx, healthText(), x + w / 2, 14, 1, 13);
   drawText(ctx, (game.peril ? `P${game.peril} ` : '') + (game.day > 1 ? `DAY ${game.day}  ` : '') + formatClock(game.time), WIDTH / 2, 14, 1, 13);
   if (game.bannerTime > 0 && !game.over) drawText(ctx, game.banner, WIDTH / 2, HEIGHT / 2 - 40, 3, 10);
   drawText(ctx, `KILLS ${game.kills}`, WIDTH - 4, 14, 1, 13, 'right');

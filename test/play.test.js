@@ -52,6 +52,8 @@ import {
   shopRowY,
   SHOP_ROW,
   viewOrigin,
+  HEALTH_BAR,
+  healthText,
 } from '../src/render.js';
 import { frameAlpha } from '../src/main.js';
 import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, fitScreen, screenScale } from '../src/screen.js';
@@ -2313,7 +2315,7 @@ describe('quiquiriqui: text and layout', () => {
     }
     Object.assign(profile, saved);
     texts.push(gameOverLine(3599.9, 98765, 123), 'BEST 12:34   +99 GOLDEN EGGS', 'PERIL 5 UNLOCKED!', 'P5 DAY 12  59:59');
-    texts.push('+25 HP', '+30', '-12', 'MISS', '0123456789', 'BOON', 'NEW!', 'LV 99', 'KILLS 9999', 'SHOP', 'B: BACK');
+    texts.push('+250 HP', '+300', '-120', 'MISS', '850/1000', '0123456789', 'BOON', 'NEW!', 'LV 99', 'KILLS 9999', 'SHOP', 'B: BACK');
     for (let kind = 0; kind < ENEMY_TYPES.length; kind++) texts.push(bossName({ kind }));
     // Banners: the events and the rainbow elites, drawn at scale 3
     const banners = [...EVENTS, ...ENEMY_TYPES.map((type) => `RAINBOW ${type.name.toUpperCase()}!`)];
@@ -2322,6 +2324,20 @@ describe('quiquiriqui: text and layout', () => {
     for (const text of texts) {
       for (const ch of text) assert.ok(GLYPHS[ch], `no glyph for "${ch}" in "${text}"`);
     }
+  });
+
+  it('her health reads as a number on a bar in the top bar, between the level and the clock', () => {
+    start();
+    assert.equal(healthText(), '1000/1000');
+    hen.hp = 849.5;
+    assert.equal(healthText(), '850/1000');
+    // The widest it can get: a long run of THICK FEATHERS boons
+    hen.hp = hen.maxHp = 99999;
+    const { x, w } = HEALTH_BAR;
+    assert.ok(textWidth(healthText(), 1) <= w - 6, `${healthText()} overflows the bar`);
+    assert.ok(4 + textWidth('LV 999', 1) < x, 'the level runs into the bar');
+    assert.ok(x + w < WIDTH / 2 - textWidth('P5 DAY 12  59:59', 1) / 2, 'the bar runs into the clock');
+    resetRun();
   });
 
   it('three cards fit side by side on screen', () => {

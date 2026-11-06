@@ -121,7 +121,7 @@ Quiquiriqui is **hard by default**: a new player usually falls between minutes 4
 | Weasel | lunges | 160 (+80) | 90 (+15) | 2.8 | 50% | |
 | Skunk | stink cloud | 350 (+150) | 90 (+15) | 1.9 | 50% | 10 |
 
-  The hen runs 6 tiles a second and starts with 1000 health; numbers run in the tens and hundreds (an egg hits for 100). Armor comes off every hit (at least 10 gets through, shown in grey), so small, fast hits barely scratch a badger; elites (+20) and bosses (+30) are armored and hard to push too.
+  The hen runs 6 tiles a second and starts with 1000 health, shown as a number on a bar beside her level; numbers run in the tens and hundreds (an egg hits for 100). Armor comes off every hit (at least 10 gets through, shown in grey), so small, fast hits barely scratch a badger; elites (+20) and bosses (+30) are armored and hard to push too.
 - **Levels are earned.** Predators drop corn 80% of the time and each level costs more (6, 10, 14, 19, 25...), so every card counts.
 - **Peril adds rules**, one per level and cumulative:
 
