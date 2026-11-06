@@ -3,7 +3,10 @@
 // DAWN), her level at 3:00 and at the end, when she was first hurt, how much of the run was calm
 // (fewer than 4 predators on screen), the golden eggs it earned, and the predators on screen / her
 // health each minute. A summary follows: the median, fastest and slowest fall, and how many runs
-// reached dawn.
+// reached dawn. Then, minute by minute (medians of the runs still standing): her level, the hits
+// a typical predator on screen takes ("hits per foe": their average health over her average hit,
+// read from the damage numbers) and her health. Hits per foe that stay flat while she levels mean
+// the predators fall behind her.
 //
 // --favor <id> makes the bot take that item whenever a card offers it; --items runs every item as
 // the favorite in turn and prints how long the bot lasts with each (does the choice matter?).
@@ -16,6 +19,7 @@
 import { resetRun, playWithBot, game, hen, enemies } from '../test/harness.js';
 import { createBot } from './browser/bot.js';
 import { onScreen } from '../src/enemies.js';
+import { popups } from '../src/pool.js';
 import { eggsEarned, SHOP } from '../src/profile.js';
 import { ITEMS, build } from '../src/items.js';
 import { formatClock } from '../src/state.js';
@@ -40,6 +44,8 @@ const median = (list) => {
   return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
 };
 const mean = (list) => list.reduce((a, b) => a + b, 0) / list.length;
+/** A damage number on a predator (not her bites, heals or MISS). */
+const isHit = (p) => p.alive && /^\d+$/.test(p.text);
 
 /** The bot, taking item `favor` whenever a card offers it (and any card of it, hatch included). */
 function botFavoring(favor) {
@@ -65,11 +71,30 @@ function runOnce(seed, peril, favor) {
   let lastHp = hen.hp;
   let levelAt3 = null;
   const minutes = [];
+  // Per minute: her level and health as it starts, damage numbers seen, foe health on screen
+  const byMinute = [];
+  // Each popup's spot when last seen: a number at a new spot is a new hit
+  const seen = new Map();
   playWithBot(RUN_LENGTH / 5 + 5, {
     bot: botFavoring(favor),
     onFrame() {
       if (game.started && !game.over) {
         frames++;
+        const m = Math.floor(game.time / 60);
+        const b = (byMinute[m] ||= { level: game.level, health: hen.hp / hen.maxHp, hit: 0, hits: 0, foe: 0, foes: 0 });
+        for (const p of popups) {
+          const spot = p.alive ? `${p.x},${p.y}` : '';
+          if (isHit(p) && seen.get(p) !== spot) {
+            b.hit += Number(p.text);
+            b.hits++;
+          }
+          seen.set(p, spot);
+        }
+        for (const e of enemies) {
+          if (!e.alive || e.prop || e.boss || e.elite || !onScreen(e.x, e.y)) continue;
+          b.foe += e.maxHp;
+          b.foes++;
+        }
         const near = enemies.filter((e) => e.alive && !e.prop && onScreen(e.x, e.y)).length;
         if (near < CALM) calm++;
         if (firstHurt === null && hen.hp < lastHp) firstHurt = game.time;
@@ -91,6 +116,7 @@ function runOnce(seed, peril, favor) {
     calm: Math.round((100 * calm) / Math.max(1, frames)),
     eggs: eggsEarned(game.time, game.kills, won, peril) + game.eggBonus,
     minutes,
+    byMinute: byMinute.map((b) => b && { level: b.level, health: b.health, perFoe: b.hits && b.foes ? b.foe / b.foes / (b.hit / b.hits) : null }),
     favorLevel: favor ? build[favor] || 0 : 0,
   };
 }
@@ -133,5 +159,17 @@ if (process.argv.includes('--items')) {
         ` · first hurt: median ${formatClock(median(runs.map((r) => r.firstHurt ?? RUN_LENGTH)))}` +
         ` · level at 3:00: median ${median(runs.map((r) => r.levelAt3 ?? r.level))} · eggs: median ${median(runs.map((r) => r.eggs))}`
     );
+    // Minute by minute, over the runs still standing
+    const rows = [];
+    for (let m = 0; m < RUN_LENGTH / 60; m++) {
+      const here = runs.map((r) => r.byMinute[m]).filter(Boolean);
+      if (!here.length) break;
+      const perFoe = here.map((b) => b.perFoe).filter((v) => v !== null);
+      rows.push(
+        `${m}:00 lv ${median(here.map((b) => b.level))} · ${perFoe.length ? median(perFoe).toFixed(1) : '-'} hits/foe · ` +
+          `${Math.round(100 * median(here.map((b) => b.health)))}% (${here.length})`
+      );
+    }
+    console.log('  → by minute: level · hits per foe · health (runs standing)\n    ' + rows.join('\n    '));
   }
 }
