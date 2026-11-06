@@ -125,7 +125,7 @@ import {
   hawk,
   startEvent,
 } from '../src/events.js';
-import { spawnCorn } from '../src/corn.js';
+import { spawnCorn, MAX_CORN } from '../src/corn.js';
 import {
   HATCH_LEVEL,
   hatchReady,
@@ -556,6 +556,20 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     spawnCorn(hen.x + stats.magnet - 0.05, hen.y, 1, 0);
     steps(0.35);
     assert.equal(game.xp, 1);
+  });
+
+  it('a full corn pool: a new kernel takes the place of the one farthest from her, with its value, so none is lost', () => {
+    start();
+    for (let i = 0; i < MAX_CORN; i++) spawnCorn(hen.x + 50 + i * 0.01, hen.y, 1, 0);
+    const total = () => corn.reduce((sum, c) => sum + (c.alive ? c.value : 0), 0);
+    assert.equal(total(), MAX_CORN);
+    spawnCorn(hen.x + 1, hen.y, 1, 0);
+    assert.equal(total(), MAX_CORN + 1, 'the new kernel was lost');
+    const near = corn.filter((c) => c.alive && Math.abs(c.x - hen.x - 1) < 0.01);
+    assert.equal(near.length, 1, 'no kernel where it fell');
+    assert.equal(near[0].value, 2, 'the farthest kernel did not roll into it');
+    assert.ok(!corn.some((c) => c.alive && c.x > hen.x + 50 + (MAX_CORN - 1.5) * 0.01), 'the farthest kernel is still there');
+    resetRun();
   });
 
   it('the magnet pulls nearby corn in and fills the XP bar', () => {

@@ -43,15 +43,19 @@ export function cornTier(value) {
   return value >= 5 ? 2 : value >= 2 ? 1 : 0;
 }
 
+/** Squared distance from the hen. */
+const away = (c) => (c.x - hen.x) ** 2 + (c.y - hen.y) ** 2;
+
 /**
  * Drops a kernel worth `value` at (x, y), popping up at `bounce` px/s. When the pool is full, the
- * value joins an existing kernel instead.
+ * kernel farthest from her rolls into the new one with its value, so corn left far behind in a
+ * long run is never lost and new kernels keep coming.
  */
 export function spawnCorn(x, y, value = 1, bounce = 30) {
-  const c = corn.find((item) => !item.alive);
+  let c = corn.find((item) => !item.alive);
   if (!c) {
-    corn[Math.floor(gameRand() * MAX_CORN)].value += value;
-    return;
+    c = corn.reduce((far, item) => (away(item) > away(far) ? item : far));
+    value += c.value;
   }
   Object.assign(c, { alive: true, x, y, prevX: x, prevY: y, z: 0, vz: bounce, vx: 0, vy: 0, value, state: IDLE, timer: 0 });
 }
