@@ -658,8 +658,14 @@ async function distScenario(page) {
     expect(a.colors >= 8, `only ${a.colors} colors on screen`);
     expect(a.henPixels >= 20, `hen not visible at the center (${a.henPixels} px)`);
     await page.keyDown('KeyD');
+    // Walk at least a second; right after the phone scenario this tab can take ~2 s to answer the
+    // first key (a fresh browser answers in ~0.15 s), so wait up to 3 s for the canvas to change.
     await sleep(1000);
-    const b = await page.stats();
+    let b = await page.stats();
+    for (let k = 0; k < 20 && b.hash === a.hash; k++) {
+      await sleep(100);
+      b = await page.stats();
+    }
     await page.screenshot('06-dist-walk.png');
     await page.keyUp('KeyD');
     expect(b.hash !== a.hash, 'the canvas did not change while walking');
