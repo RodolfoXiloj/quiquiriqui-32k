@@ -1,7 +1,8 @@
-// Progress kept between runs, in localStorage: the peril levels (difficulty tiers) and the hens
-// unlocked, and the ones chosen on the title screen. A dawn at the highest unlocked peril unlocks
-// the next one; the first dawn brings the speckled hen, a dawn at peril 2 or more the black hen.
-// Every run also earns golden eggs, spent in the shop on upgrades that last from run to run.
+// Progress kept between runs, in localStorage: the peril level (difficulty tier) and the hen
+// chosen on the title screen, and the hens unlocked. Every peril is open from the start and the
+// hardest comes first (players step down to an easier one if they like); the first dawn brings the
+// speckled hen, a dawn at HEN or harder the black hen. Every run also earns golden eggs, spent in
+// the shop on upgrades that last from run to run.
 
 export const MAX_PERIL = 5;
 /** Each peril level adds these shares to every predator: health and bite. The rules do the rest. */
@@ -18,6 +19,8 @@ export const TWO_BOSSES = 3;
 export const TWO_CARDS = 4;
 export const NO_MERCY = 5;
 export const PERIL_RULES = ['', 'MORE EVENTS', 'ELITES X2', 'TWO BOSSES', 'TWO CARDS', 'NO MERCY'];
+/** Each peril level's name on the title screen, easiest first (the hardest is named after its rule). */
+export const PERIL_NAMES = ['EGG', 'CHICK', 'HEN', 'ROOSTER', 'HAWK', 'NO MERCY'];
 
 /** Peril at which a dawn brings the black hen. */
 const BLACK_HEN_PERIL = 2;
@@ -28,7 +31,7 @@ const BLACK_HEN_PERIL = 2;
 export const HENS = [
   { name: 'WHITE HEN', start: 'egg' },
   { name: 'SPECKLED HEN', start: 'peck', hint: 'WIN A DAWN TO UNLOCK' },
-  { name: 'BLACK HEN', start: 'darts', hint: `WIN A DAWN AT PERIL ${BLACK_HEN_PERIL}` },
+  { name: 'BLACK HEN', start: 'darts', hint: `WIN A DAWN ON ${PERIL_NAMES[BLACK_HEN_PERIL]} OR HARDER` },
 ];
 
 /** Permanent upgrades: each level adds `per` to a stat of every run (items.js sums them in). */
@@ -43,7 +46,7 @@ export const SHOP = [
 export const SHOP_COSTS = [10, 20, 40, 80, 160];
 
 /** `hens` is a bit mask of unlocked hens (bit i = HENS[i]); `shop` holds each upgrade's level. */
-export const profile = { peril: 0, perilUnlocked: 0, hen: 0, hens: 1, eggs: 0, shop: [0, 0, 0, 0, 0] };
+export const profile = { peril: MAX_PERIL, hen: 0, hens: 1, eggs: 0, shop: [0, 0, 0, 0, 0] };
 const KEY = 'qq_profile';
 const DEFAULTS = JSON.stringify(profile);
 
@@ -53,12 +56,14 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 export function loadProfile() {
   Object.assign(profile, JSON.parse(DEFAULTS));
   try {
-    Object.assign(profile, JSON.parse(localStorage.getItem(KEY)) || {});
+    const saved = JSON.parse(localStorage.getItem(KEY)) || {};
+    // A save from when perils opened one by one starts again at the hardest (it keeps hens and eggs)
+    if (saved.perilUnlocked != null) delete saved.peril, delete saved.perilUnlocked;
+    Object.assign(profile, saved);
   } catch {
     // Storage blocked or unreadable: play with a fresh profile.
   }
-  profile.perilUnlocked = clamp(profile.perilUnlocked | 0, 0, MAX_PERIL);
-  profile.peril = clamp(profile.peril | 0, 0, profile.perilUnlocked);
+  profile.peril = clamp(profile.peril | 0, 0, MAX_PERIL);
   profile.hens = (profile.hens | 1) & ((1 << HENS.length) - 1);
   if (!(profile.hens & (1 << profile.hen))) profile.hen = 0;
   profile.eggs = Math.max(0, profile.eggs | 0);
@@ -109,19 +114,15 @@ export function saveProfile() {
   }
 }
 
-/** Chooses peril `p`, kept within what is unlocked. */
+/** Chooses peril `p` (every one is open). */
 export function choosePeril(p) {
-  profile.peril = clamp(p, 0, profile.perilUnlocked);
+  profile.peril = clamp(p, 0, MAX_PERIL);
   saveProfile();
 }
 
-/** A dawn at peril `p`: unlocks what it earns. Returns what was unlocked, as screen lines. */
+/** A dawn at peril `p`: unlocks the hens it earns. Returns what was unlocked, as screen lines. */
 export function unlockAfterDawn(p) {
   const notes = [];
-  if (p === profile.perilUnlocked && p < MAX_PERIL) {
-    profile.perilUnlocked++;
-    notes.push(`PERIL ${p + 1} UNLOCKED!`);
-  }
   for (const [i, needs] of [[1, 0], [2, BLACK_HEN_PERIL]]) {
     if (p >= needs && !henUnlocked(i)) {
       profile.hens |= 1 << i;

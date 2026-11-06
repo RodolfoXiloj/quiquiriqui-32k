@@ -151,6 +151,7 @@ import {
   PERIL,
   MAX_PERIL,
   PERIL_RULES,
+  PERIL_NAMES,
   MORE_EVENTS,
   ELITES_X2,
   TWO_BOSSES,
@@ -160,6 +161,8 @@ import {
   SHOP,
   SHOP_COSTS,
   unlockAfterDawn,
+  loadProfile,
+  choosePeril,
   eggsEarned,
   buyUpgrade,
 } from '../src/profile.js';
@@ -1219,10 +1222,10 @@ describe('quiquiriqui at 5x: endless days', () => {
 });
 
 describe('quiquiriqui at 5x: peril levels', () => {
-  /** A fresh profile: only peril 0 and the white hen unlocked. */
+  /** A fresh profile: the hardest peril and only the white hen unlocked. */
   function freshProfile() {
     localStorage.removeItem('qq_profile');
-    Object.assign(profile, { peril: 0, perilUnlocked: 0, hen: 0, hens: 1 });
+    loadProfile();
   }
 
   it('peril adds 10% health and bite per level, and leaves numbers and speed to its rules', () => {
@@ -1249,35 +1252,52 @@ describe('quiquiriqui at 5x: peril levels', () => {
     assert.equal(b.dmg, Math.round(ENEMY_TYPES[RAT].dmg * (1 + 2 * PERIL.bite)));
   });
 
-  it('a dawn at the highest peril unlocks the next; Z and C stay within it and never start a run', () => {
+  it('every peril is open from the start and the hardest comes first; Z and C step through them and never start a run', () => {
     freshProfile();
-    resetRun();
+    assert.equal(profile.peril, MAX_PERIL, 'a fresh profile is not at the hardest');
+    assert.equal(PERIL_NAMES[MAX_PERIL], 'NO MERCY');
+    resetRun({ peril: profile.peril });
+    assert.equal(game.peril, MAX_PERIL);
+    assert.ok(perilLine().includes('NO MERCY'), perilLine());
     tapKey('KeyC');
-    assert.equal(profile.peril, 0, 'chose a locked peril');
+    assert.equal(profile.peril, MAX_PERIL, 'went past the hardest');
+    for (let p = MAX_PERIL - 1; p >= 0; p--) {
+      tapKey('KeyZ');
+      assert.equal(profile.peril, p, 'a peril is locked');
+      assert.equal(game.peril, p);
+      assert.ok(perilLine().includes(PERIL_NAMES[p]), perilLine());
+    }
+    tapKey('KeyZ');
+    assert.equal(profile.peril, 0, 'went below the easiest');
+    assert.equal(JSON.parse(localStorage.getItem('qq_profile')).peril, 0, 'the choice was not saved');
+    assert.equal(game.started, false, 'a menu key started the run');
+    // A dawn opens no peril any more
     start();
     hen.hp = hen.maxHp = 1e6;
     game.time = RUN_LENGTH - 0.05;
     for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
-    assert.equal(profile.perilUnlocked, 1);
-    assert.ok(game.unlockNote.startsWith('PERIL 1 UNLOCKED!'), game.unlockNote);
-    assert.equal(JSON.parse(localStorage.getItem('qq_profile')).perilUnlocked, 1);
+    assert.ok(!game.unlockNote.includes('PERIL'), game.unlockNote);
     steps(1.6);
     tapKey('Digit2');
     assert.equal(game.started, false);
     steps(0.7); // past the title lock
-    tapKey('KeyC');
-    assert.equal(profile.peril, 1);
-    assert.equal(game.peril, 1);
-    tapKey('KeyC');
-    assert.equal(profile.peril, 1, 'went past the highest unlocked');
-    tapKey('KeyZ');
-    assert.equal(profile.peril, 0);
-    assert.equal(game.started, false, 'a menu key started the run');
     // A tap on the right half of the peril row also raises it, without starting
     tapAt(WIDTH * 0.75, HEIGHT / 2 + 45);
     update(STEP);
     assert.equal(profile.peril, 1);
     assert.equal(game.started, false, 'a tap on the menu started the run');
+    freshProfile();
+  });
+
+  it('an old save, from when perils opened one by one, starts at the hardest and keeps its hens and eggs', () => {
+    localStorage.setItem('qq_profile', JSON.stringify({ peril: 0, perilUnlocked: 0, hen: 1, hens: 3, eggs: 40 }));
+    loadProfile();
+    assert.deepEqual([profile.peril, profile.hen, profile.hens, profile.eggs], [MAX_PERIL, 1, 3, 40]);
+    assert.ok(!('perilUnlocked' in profile), 'the old field stayed');
+    // A peril chosen since then is kept
+    choosePeril(2);
+    loadProfile();
+    assert.equal(profile.peril, 2);
     freshProfile();
   });
 
@@ -1292,7 +1312,7 @@ describe('quiquiriqui at 5x: peril levels', () => {
     resetRun();
   });
 
-  it('locked hens are on show but cannot start a run; the first dawn brings the speckled hen, peril 2 the black hen', () => {
+  it('locked hens are on show but cannot start a run; the first dawn brings the speckled hen, HEN or harder the black hen', () => {
     freshProfile();
     resetRun();
     tapKey('KeyE');
@@ -1318,6 +1338,7 @@ describe('quiquiriqui at 5x: peril levels', () => {
     game.time = RUN_LENGTH - 0.05;
     for (let i = 0; i < 30 && !game.dawnChoice; i++) update(STEP);
     assert.ok(game.unlockNote.includes('SPECKLED HEN!'), game.unlockNote);
+    assert.ok(!game.unlockNote.includes('BLACK HEN!'), 'a dawn at EGG brought the black hen');
     steps(1.6);
     tapKey('Digit2');
     steps(0.7);
@@ -1330,8 +1351,8 @@ describe('quiquiriqui at 5x: peril levels', () => {
     assert.equal(game.started, false);
     resetRun({ hen: profile.hen });
     assert.equal(game.hen, 1, 'back on the title, the last unlocked hen she chose is not on show');
-    // A dawn at peril 2 or more brings the black hen
-    profile.perilUnlocked = MAX_PERIL;
+    // A dawn at HEN (peril 2) or harder brings the black hen
+    assert.deepEqual(unlockAfterDawn(1), []);
     assert.deepEqual(unlockAfterDawn(2), ['BLACK HEN!']);
     freshProfile();
   });
@@ -2244,13 +2265,13 @@ describe('quiquiriqui: text and layout', () => {
     }
     assert.ok(textWidth(gameOverLine(599, 9999, 99), 1) <= WIDTH - 16, 'game over line');
     const saved = { ...profile };
-    Object.assign(profile, { perilUnlocked: 0, hens: 1, hen: 0 });
+    Object.assign(profile, { hens: 1, hen: 0 });
     for (let p = 0; p <= MAX_PERIL; p++) {
-      Object.assign(profile, { perilUnlocked: p, peril: p });
+      profile.peril = p;
       assert.ok(textWidth(perilLine(), 1) <= WIDTH - 16, `peril line: ${perilLine()}`);
       if (p) assert.ok(perilLine().includes(PERIL_RULES[p]), 'the rule is not on the title');
     }
-    Object.assign(profile, { perilUnlocked: 0, peril: 0 });
+    profile.peril = 0;
     for (let i = 0; i < HENS.length; i++) {
       game.hen = i;
       assert.ok(textWidth(henLine(), 1) <= WIDTH - 16, 'hen line');
@@ -2358,11 +2379,11 @@ describe('quiquiriqui: text and layout', () => {
     for (game.hen = 0; game.hen < HENS.length; game.hen++) texts.push(henLine());
     game.hen = 0;
     for (const [level, eggs, hens, peril] of [[0, 0, 1, 0], [5, 99999, 7, 5]]) {
-      Object.assign(profile, { eggs, hens, perilUnlocked: peril, peril, shop: SHOP.map(() => level) });
+      Object.assign(profile, { eggs, hens, peril, shop: SHOP.map(() => level) });
       texts.push(shopLine(), perilLine(), henLine(), ...SHOP.map((_, i) => shopCost(i)));
     }
     Object.assign(profile, saved);
-    texts.push(gameOverLine(3599.9, 98765, 123), 'BEST 12:34   +99 GOLDEN EGGS', 'PERIL 5 UNLOCKED!', 'P5 DAY 12  59:59');
+    texts.push(gameOverLine(3599.9, 98765, 123), 'BEST 12:34   +99 GOLDEN EGGS', ...PERIL_NAMES.map((name) => `${name} DAY 12  59:59`));
     texts.push('+250 HP', '+300', '-120', 'MISS', '850/1000', '0123456789', 'BOON', 'NEW!', 'LV 99', 'KILLS 9999', 'SHOP', 'B: BACK');
     for (let kind = 0; kind < ENEMY_TYPES.length; kind++) texts.push(bossName({ kind }));
     // Banners: the events and the rainbow elites, drawn at scale 3
@@ -2384,7 +2405,7 @@ describe('quiquiriqui: text and layout', () => {
     const { x, w } = HEALTH_BAR;
     assert.ok(textWidth(healthText(), 1) <= w - 6, `${healthText()} overflows the bar`);
     assert.ok(4 + textWidth('LV 999', 1) < x, 'the level runs into the bar');
-    assert.ok(x + w < WIDTH / 2 - textWidth('P5 DAY 12  59:59', 1) / 2, 'the bar runs into the clock');
+    assert.ok(x + w < WIDTH / 2 - textWidth('NO MERCY DAY 12  59:59', 1) / 2, 'the bar runs into the clock');
     resetRun();
   });
 

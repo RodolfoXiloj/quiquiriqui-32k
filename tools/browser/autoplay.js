@@ -168,9 +168,8 @@ window.__qq = {
       profile.eggs += n;
       saveProfile();
     },
-    /** Unlocks every peril level (for testing the menus). */
+    /** Unlocks every hen (for testing the menus; every peril is open anyway). */
     unlockAll() {
-      profile.perilUnlocked = 5;
       profile.hens = 7;
       saveProfile();
     },

@@ -41,7 +41,7 @@ export const game = {
   /** The peril (difficulty tier) and the hen (profile.js HENS) of this run, chosen on the title screen. */
   peril: 0,
   hen: 0,
-  /** A line for the dawn screen when the dawn unlocked something ('PERIL 1 UNLOCKED!'). */
+  /** A line for the dawn screen when the dawn unlocked a hen ('SPECKLED HEN!'). */
   unlockNote: '',
   /** Golden eggs this run has earned (already added to the profile). */
   eggs: 0,

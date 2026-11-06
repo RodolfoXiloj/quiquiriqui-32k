@@ -19,7 +19,7 @@ import { input, STICK_RADIUS } from './input.js';
 import { game, formatClock, xpToNext } from './state.js';
 import { weatherAt, DAWN_START, RUN_LENGTH } from './weather.js';
 import { hawk, HAWK_HUNT, HAWK_STRIKE, HAWK_R } from './events.js';
-import { profile, MAX_PERIL, HENS, henUnlocked, SHOP, SHOP_COSTS, PERIL_RULES } from './profile.js';
+import { profile, MAX_PERIL, HENS, henUnlocked, SHOP, SHOP_COSTS, PERIL_RULES, PERIL_NAMES } from './profile.js';
 
 /** Every fixed on-screen string. A test checks that each fits the 320 px canvas. */
 export const HUD_STRINGS = {
@@ -152,11 +152,10 @@ export function henLine() {
   return `Q < ${HENS[game.hen].name} > E` + (henUnlocked(game.hen) ? '' : '  LOCKED');
 }
 
-/** The peril row of the title screen, with the rule the chosen level adds. */
+/** The peril row of the title screen: the chosen level's name and the rule it adds (NO MERCY is its own rule). */
 export function perilLine() {
-  const locked = MAX_PERIL - profile.perilUnlocked;
-  const rule = PERIL_RULES[profile.peril];
-  return `Z < PERIL ${profile.peril}${rule ? ': ' + rule : ''} > C` + (locked ? `  ${locked} LOCKED` : '');
+  const p = profile.peril;
+  return `Z < ${PERIL_NAMES[p]}${p && p < MAX_PERIL ? ': ' + PERIL_RULES[p] : ''} > C`;
 }
 
 /** Upgrade card layout, shared with main.js (taps) and the tests (text fit). */
@@ -563,7 +562,7 @@ function drawTopBar(ctx, time) {
   ctx.fillStyle = PALETTE[hen.hurtTime > 0 ? 13 : 9];
   ctx.fillRect(x + 1, 11, Math.ceil(((w - 2) * hen.hp) / hen.maxHp), 7);
   drawText(ctx, healthText(), x + w / 2, 14, 1, 13);
-  drawText(ctx, (game.peril ? `P${game.peril} ` : '') + (game.day > 1 ? `DAY ${game.day}  ` : '') + formatClock(game.time), WIDTH / 2, 14, 1, 13);
+  drawText(ctx, (game.peril ? `${PERIL_NAMES[game.peril]} ` : '') + (game.day > 1 ? `DAY ${game.day}  ` : '') + formatClock(game.time), WIDTH / 2, 14, 1, 13);
   if (game.bannerTime > 0 && !game.over) drawText(ctx, game.banner, WIDTH / 2, HEIGHT / 2 - 40, 3, 10);
   drawText(ctx, `KILLS ${game.kills}`, WIDTH - 4, 14, 1, 13, 'right');
   // The strongest boss on the field: its name and health under the top bar.

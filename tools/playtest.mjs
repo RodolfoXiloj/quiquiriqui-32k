@@ -524,14 +524,15 @@ async function musicScenario(page, base) {
 }
 
 async function progressScenarios(page, base) {
-  await check('21. the title menu: E picks a hen, C a peril, B opens the shop and 1 buys', async () => {
+  await check('21. the title menu: E picks a hen, Z an easier peril, B opens the shop and 1 buys', async () => {
     await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
     await page.evaluate('localStorage.removeItem("qq_profile"), window.__qq.cheat.unlockAll(), window.__qq.cheat.eggs(50)');
     await page.tapKey('KeyE', 50);
-    await page.tapKey('KeyC', 50);
+    // A fresh profile starts at the hardest, NO MERCY (5)
+    await page.tapKey('KeyZ', 50);
     await sleep(150);
     let s = await page.snapshot();
-    expect(s.henChoice === 1 && s.peril === 1, `hen ${s.henChoice}, peril ${s.peril}`);
+    expect(s.henChoice === 1 && s.peril === 4, `hen ${s.henChoice}, peril ${s.peril}`);
     await page.screenshot('21-title.png');
     await page.tapKey('KeyB', 50);
     await page.waitFor('window.__qq.snapshot().shopOpen', 2000);

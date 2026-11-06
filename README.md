@@ -98,13 +98,13 @@ Survive **10 minutes**. At dawn the rooster crows (_¡quiquiriquí!_) and the pr
 ### Playing again and again
 
 - **Levels never end.** Each level costs more corn than the last. Once every item is maxed, level-ups offer **boons** (more damage, speed, reach, health or fire rate, or a warm meal) with no limit.
-- **Peril 0 to 5.** A dawn unlocks the next peril. Each level adds 10% predator health and bite, and **a rule of its own**, keeping the ones below it (see [Difficulty](#difficulty)). Each peril keeps its own best time.
-- **Three hens.** The white hen starts with Egg Toss; the speckled hen (unlocked by your first dawn) with Peck; the black hen (a dawn at peril 2) with Feather Darts. Locked hens can be browsed on the title screen: they show with a padlock and how to unlock them, but cannot start a run.
+- **Six perils, from EGG to NO MERCY.** Every one is open from the start, and the hardest, NO MERCY, comes first: step down to HAWK, ROOSTER, HEN, CHICK or EGG if you like. Each level adds 15% predator health and bite, and **a rule of its own**, keeping the ones below it (see [Difficulty](#difficulty)). Each peril keeps its own best time.
+- **Three hens.** The white hen starts with Egg Toss; the speckled hen (unlocked by your first dawn) with Peck; the black hen (a dawn on HEN or harder) with Feather Darts. Locked hens can be browsed on the title screen: they show with a padlock and how to unlock them, but cannot start a run.
 - **Golden eggs and the shop.** Every run earns golden eggs (time, kills, dawn, peril, and elites). Spend them on five permanent upgrades, each with its own icon and five levels: Tough Hide (+250 health a level), Strong Legs (+4% speed), Sharp Eye (+12% damage), Big Crop (+0.25 reach) and Quick Learner (+8% XP). The shop is how a hen earns her first dawn.
 
 ### Difficulty
 
-Quiquiriqui is **hard by default**: a new player usually falls between minutes 4 and 6 at peril 0, and the first dawn comes after a few runs, some shop upgrades and learning the dangers. What makes it hard:
+Quiquiriqui is **hard by default**: it starts at NO MERCY, the hardest peril, where the bot is first bitten at 0:36 and falls at about 2:48 with an empty shop (4:07 with the full shop). Players who want it gentler step down; at EGG a new player usually falls between minutes 4 and 6, and the first dawn comes after a few runs, some shop upgrades and learning the dangers. What makes it hard:
 
 - **Pressure from the first minute.** Foxes from 0:20, weasels from 1:00, and a ring of rats at 0:35.
 - **A quota on the meadow.** Each minute sets the fewest predators that must be around the hen; below it, more are born at once. Clearing the screen fast only brings more.
@@ -125,13 +125,14 @@ Quiquiriqui is **hard by default**: a new player usually falls between minutes 4
 - **Levels are earned.** Predators drop corn 80% of the time and each level costs more (6, 10, 14, 19, 25...), so every card counts.
 - **Peril adds rules**, one per level and cumulative:
 
-| Peril | Rule |
-|-------|------|
-| 1 | **MORE EVENTS**: an event every 30 to 50 s |
-| 2 | **ELITES X2**: an elite every 20 to 30 s; rainbow ones from 2:00 |
-| 3 | **TWO BOSSES**: every boss comes with another |
-| 4 | **TWO CARDS**: level-ups offer two cards, not three |
-| 5 | **NO MERCY**: a fuller meadow and faster predators |
+| Peril | Name | Rule |
+|-------|------|------|
+| 0 | EGG | none: predators at their base health and bite |
+| 1 | CHICK | **MORE EVENTS**: an event every 30 to 50 s |
+| 2 | HEN | **ELITES X2**: an elite every 20 to 30 s; rainbow ones from 2:00 |
+| 3 | ROOSTER | **TWO BOSSES**: every boss comes with another |
+| 4 | HAWK | **TWO CARDS**: level-ups offer two cards, not three |
+| 5 | NO MERCY (the default) | **NO MERCY**: a fuller meadow and faster predators |
 
 `npm run balance` measures it: the bot plays many seeds and reports when it fell, when it was first hurt, its level at 3:00, how calm the run was and the eggs it earned; `--items` compares every item as the bot's favorite. With an empty shop at peril 0 the bot is first bitten at 0:37 and falls at about 4:00 (median of 16 seeds); with the full shop it lasts about 8:25. A hatched weapon kills 2 to 6.6 times as much as the same weapon at level 5. A person dodges better than the bot.
 
@@ -157,7 +158,7 @@ flowchart LR
 | Touch | A stick opens wherever your thumb lands (works with the phone upright or sideways) | Tap a card |
 | Gamepad | Left stick | (planned) |
 
-On the title screen: **Q / E** pick a hen, **Z / C** pick a peril, **B** opens the shop (1-5 buy), **M** turns the music off and on. On a touch screen, tap either half of a row. At dawn, **1** keeps going and **2** ends the run.
+On the title screen: **Q / E** pick a hen, **Z / C** pick a peril (NO MERCY first), **B** opens the shop (1-5 buy), **M** turns the music off and on. On a touch screen, tap either half of a row. At dawn, **1** keeps going and **2** ends the run.
 
 The game pauses when the window loses focus.
 
