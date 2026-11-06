@@ -72,13 +72,23 @@ export const HEALTH_BAR = { x: 32, w: 80 };
 /** Her health as the bar reads it, 850/1000. */
 export const healthText = () => `${Math.ceil(hen.hp)}/${hen.maxHp}`;
 
-/** Title screen rows that react to taps, as offsets (px) from the middle of the screen. */
-const TITLE_ROWS = { hen: 34, peril: 45, shop: 56 };
+/** The title screen's menu rows, top to bottom. */
+const TITLE_ROWS = ['hen', 'peril', 'shop'];
+/** A view at least this tall (a phone held upright) shows the title menu twice as big, for fingers. */
+const TALL_TITLE = 300;
+/** Font scale of the title menu: 2 on a tall view, 1 otherwise. */
+export const titleScale = () => (HEIGHT < TALL_TITLE ? 1 : 2);
+/** Canvas y of title row `i`: 12 px apart, 26 px on a tall view (about 32 CSS px on a phone). */
+export const titleRowY = (i) => HEIGHT / 2 + (titleScale() < 2 ? 34 + i * 12 : 40 + i * 26);
 
-/** The title row under canvas height `y` ('peril'), or null. */
+/**
+ * The title row a tap at canvas height `y` belongs to ('peril'), or null. From under START to the
+ * bottom of the last row every tap picks the nearest row, so a finger that misses one never starts
+ * the run.
+ */
 export function titleRowAt(y) {
-  for (const [row, dy] of Object.entries(TITLE_ROWS)) if (Math.abs(y - (HEIGHT / 2 + dy)) <= 5) return row;
-  return null;
+  const i = Math.max(0, Math.round((y - titleRowY(0)) / (titleRowY(1) - titleRowY(0))));
+  return y > HEIGHT / 2 + 28 ? TITLE_ROWS[i] || null : null;
 }
 
 /** The shop row of the title screen. */
@@ -671,11 +681,13 @@ function drawHud(ctx, time) {
       ctx.drawImage(lockSprite.normal, WIDTH / 2 + 8 + shake, cy - 18);
       drawText(ctx, HENS[game.hen].hint, WIDTH / 2, cy + 22, 1, 10);
     } else if (Math.sin(time * 5) > -0.3) drawText(ctx, S.start, WIDTH / 2, cy + 22, Z.start, 13);
-    drawText(ctx, henLine(), WIDTH / 2, cy + TITLE_ROWS.hen, 1, 13);
-    drawText(ctx, perilLine(), WIDTH / 2, cy + TITLE_ROWS.peril, 1, profile.peril ? 10 : 13);
-    drawText(ctx, shopLine(), WIDTH / 2, cy + TITLE_ROWS.shop, 1, 10);
-    drawText(ctx, S.controls, WIDTH / 2, cy + 67, Z.controls, 13);
-    drawText(ctx, S.music, WIDTH / 2, cy + 77, Z.music, 13);
+    const s = titleScale();
+    drawText(ctx, henLine(), WIDTH / 2, titleRowY(0), s, 13);
+    drawText(ctx, perilLine(), WIDTH / 2, titleRowY(1), s, profile.peril ? 10 : 13);
+    drawText(ctx, shopLine(), WIDTH / 2, titleRowY(2), s, 10);
+    const below = titleRowY(2) + 9 * s;
+    drawText(ctx, S.controls, WIDTH / 2, below, Z.controls, 13);
+    drawText(ctx, S.music, WIDTH / 2, below + 10, Z.music, 13);
     if (game.shopOpen) drawShop(ctx);
     return;
   }

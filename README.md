@@ -158,7 +158,7 @@ flowchart LR
 | Touch | A stick opens wherever your thumb lands (works with the phone upright or sideways) | Tap a card |
 | Gamepad | Left stick | (planned) |
 
-On the title screen: **Q / E** pick a hen, **Z / C** pick a peril (NO MERCY first), **B** opens the shop (1-5 buy), **M** turns the music off and on. On a touch screen, tap either half of a row. At dawn, **1** keeps going and **2** ends the run.
+On the title screen: **Q / E** pick a hen, **Z / C** pick a peril (NO MERCY first), **B** opens the shop (1-5 buy), **M** turns the music off and on. On a touch screen, tap the left or right half of a row: a tap anywhere on the menu goes to its nearest row and never starts the run, and on a phone held upright the menu is twice as big. At dawn, **1** keeps going and **2** ends the run.
 
 The game pauses when the window loses focus.
 

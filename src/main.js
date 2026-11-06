@@ -137,7 +137,8 @@ function winRun() {
 
 /**
  * The title screen's menu rows: Q / E choose the hen and Z / C the peril (or a tap on the left /
- * right half of a row). Returns true if the input was for the menu, so it does not start the run.
+ * right half of a row; any tap on the menu goes to its nearest row). Returns true if the input was
+ * for the menu, so it does not start the run.
  */
 function titleMenu() {
   const tap = input.tap;

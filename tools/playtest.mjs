@@ -604,7 +604,7 @@ async function progressScenarios(page, base) {
 }
 
 async function mobileScenario(page, client, base) {
-  await check('25. a phone held upright: the game fills it; taps start, steer and pick a card', async () => {
+  await check('25. a phone held upright: the game fills it; a tap on the menu picks a peril, then taps start, steer and pick a card', async () => {
     await client.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
     try {
@@ -617,6 +617,16 @@ async function mobileScenario(page, client, base) {
       expect(size.w === 320 && size.h > 400, `internal size ${size.w}x${size.h}`);
       expect(size.cssW >= 380, `the canvas is only ${fmt(size.cssW)} px wide on a 390 px screen`);
       const at = (fx, fy) => page.toPage(320 * fx, size.h * fy);
+      // Every peril is open: up to NO MERCY with the keys, then a finger on the left half of its row steps down
+      for (let k = 0; k < 5; k++) await page.tapKey('KeyC', 30);
+      const rowY = await page.evaluate('window.__qq.titleRowY(1)');
+      const row = await page.toPage(320 * 0.2, rowY);
+      await page.touch('touchStart', [{ x: row.x, y: row.y, id: 9 }]);
+      await page.touch('touchEnd', []);
+      await page.waitFor('window.__qq.snapshot().peril === 4', 2000);
+      await sleep(150);
+      await page.screenshot('28-phone-title.png');
+      expect(!(await page.snapshot()).started, 'a tap on the menu started the run');
       const tap = await at(0.5, 0.75);
       await page.touch('touchStart', [{ x: tap.x, y: tap.y, id: 1 }]);
       await page.touch('touchEnd', []);
@@ -640,6 +650,7 @@ async function mobileScenario(page, client, base) {
       await page.waitFor('window.__qq.snapshot().cards.length === 0', 3000);
       const after = await page.snapshot();
       expect(levelOf(after, card.id) === card.level, `tapped ${card.id}, but it is level ${levelOf(after, card.id)}`);
+      await page.evaluate('localStorage.removeItem("qq_profile")');
     } finally {
       await client.send('Emulation.setTouchEmulationEnabled', { enabled: false });
       await client.send('Emulation.setDeviceMetricsOverride', VIEWPORT);

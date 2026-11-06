@@ -50,6 +50,8 @@ import {
   shopCost,
   shopRowAt,
   shopRowY,
+  titleRowY,
+  titleScale,
   SHOP_ROW,
   viewOrigin,
   HEALTH_BAR,
@@ -1282,11 +1284,55 @@ describe('quiquiriqui at 5x: peril levels', () => {
     assert.equal(game.started, false);
     steps(0.7); // past the title lock
     // A tap on the right half of the peril row also raises it, without starting
-    tapAt(WIDTH * 0.75, HEIGHT / 2 + 45);
+    tapAt(WIDTH * 0.75, titleRowY(1));
     update(STEP);
     assert.equal(profile.peril, 1);
     assert.equal(game.started, false, 'a tap on the menu started the run');
     freshProfile();
+  });
+
+  it('on the title, a tap anywhere from under START to the last row changes the nearest row and never starts the run, wide or upright', () => {
+    try {
+      for (const [w, h] of [[640, 360], [390, 844]]) {
+        fitScreen(w, h);
+        const s = titleScale();
+        const rows = [0, 1, 2].map(titleRowY);
+        const gap = rows[1] - rows[0];
+        assert.equal(s, HEIGHT >= 300 ? 2 : 1);
+        if (s > 1) assert.ok(gap >= 24, 'rows too close together for a finger');
+        // The menu fits at its scale, and the lines under it stay on screen
+        for (let p = 0; p <= MAX_PERIL; p++) {
+          profile.peril = p;
+          assert.ok(textWidth(perilLine(), s) <= WIDTH - 16, perilLine());
+        }
+        for (game.hen = 0; game.hen < HENS.length; game.hen++) assert.ok(textWidth(henLine(), s) <= WIDTH - 16, henLine());
+        profile.eggs = 99999;
+        assert.ok(textWidth(shopLine(), s) <= WIDTH - 16, shopLine());
+        profile.eggs = 0;
+        assert.ok(rows[2] + 9 * s + 13 <= HEIGHT, 'the music line is off the screen');
+        // A quarter pixel off the grid, so no tap is exactly halfway between two rows
+        for (let y = HEIGHT / 2 + 28.25; y < rows[2] + gap / 2; y++) {
+          const nearest = rows.reduce((b, r, i) => (Math.abs(y - r) < Math.abs(y - rows[b]) ? i : b), 0);
+          for (const x of [WIDTH * 0.2, WIDTH * 0.8]) {
+            resetRun({ peril: 2 });
+            tapAt(x, y);
+            update(STEP);
+            assert.equal(game.started, false, `a tap at ${x}, ${y} started the run`);
+            const changed = [game.hen !== 0, profile.peril !== 2, game.shopOpen];
+            assert.deepEqual(changed, rows.map((_, i) => i === nearest), `a tap at ${x}, ${y}`);
+          }
+        }
+        // Above the menu (the hen, START) a tap still starts the run
+        resetRun();
+        tapAt(WIDTH / 2, HEIGHT / 2 + 22);
+        update(STEP);
+        assert.equal(game.started, true, 'a tap on START did not start the run');
+      }
+    } finally {
+      fitScreen(WIDTH, MIN_HEIGHT);
+      freshProfile();
+      resetRun();
+    }
   });
 
   it('an old save, from when perils opened one by one, starts at the hardest and keeps its hens and eggs', () => {

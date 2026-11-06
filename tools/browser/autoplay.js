@@ -24,7 +24,7 @@ import { corn } from '/corn.js';
 import { pickups, spawnPickup } from '/pickups.js';
 import { ITEMS, ITEM_BY_ID, build, buildOrder, applyCard } from '/items.js';
 import { bakeHen, outfitOf } from '/sprites.js';
-import { cardRect } from '/render.js';
+import { cardRect, titleRowY } from '/render.js';
 import { music } from '/music.js';
 import { profile, saveProfile } from '/profile.js';
 import { createBot, hazardsOf } from '/__dev/bot.js';
@@ -104,6 +104,8 @@ window.__qq = {
       hp: hen.hp,
     },
   }),
+  /** Canvas y of title menu row `i` (0 hen, 1 peril, 2 shop), for real taps. */
+  titleRowY,
   /** Canvas-pixel center of card `i` while cards are open (for real clicks and taps). */
   cardCenter(i) {
     const r = cardRect(i, game.cards.length);
