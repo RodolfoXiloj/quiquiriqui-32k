@@ -9,7 +9,7 @@
     "build": "node tools/build.mjs",
     "build:fast": "node tools/build.mjs --fast",
     "size": "node tools/build.mjs --check",
-    "test": "node --test test/play.test.js",
+    "test": "node --test test/play.test.js test/lang.test.js",
     "playtest": "node tools/build.mjs && node tools/playtest.mjs",
     "balance": "node tools/balance.mjs"
   },

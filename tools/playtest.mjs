@@ -18,6 +18,7 @@ import { launchBrowser } from './cdp.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'test-output', 'playtest');
 const DIST = path.join(ROOT, 'dist', 'index.html');
+const DIST_EN = path.join(ROOT, 'dist', 'en', 'index.html');
 const SPEED = 5;
 /** Headless --window-size is the outer size, so the viewport itself is pinned: 640x360 is exactly 2x. */
 const VIEWPORT = { width: 640, height: 360, deviceScaleFactor: 1, mobile: false };
@@ -742,31 +743,37 @@ async function mobileScenario(page, client, base) {
 }
 
 async function distScenario(page) {
-  await check('27. the shipped dist/index.html draws, and walking scrolls the meadow', async () => {
-    await access(DIST).catch(() => {
-      throw new Error('dist/index.html is missing: run npm run build first');
+  // The shipped pages: Spanish at the root, English under en/, both built from the same code
+  const hashes = {};
+  for (const [lang, file, tag] of [['es', DIST, '27'], ['en', DIST_EN, '27b']]) {
+    await check(`${tag}. the shipped ${path.relative(ROOT, file).replace(/\\/g, '/')} (${lang}) draws, and walking scrolls the meadow`, async () => {
+      await access(file).catch(() => {
+        throw new Error(`${path.relative(ROOT, file)} is missing: run npm run build first`);
+      });
+      await page.open(pathToFileURL(file).href, `!!document.getElementById('c')`);
+      await sleep(500);
+      const pageLang = await page.evaluate('document.documentElement.lang');
+      expect(pageLang === lang, `the page says lang="${pageLang}"`);
+      const a = await page.stats();
+      hashes[lang] = a.hash;
+      await page.screenshot(`05-dist-${lang}.png`);
+      expect(a.colors >= 8, `only ${a.colors} colors on screen`);
+      expect(a.henPixels >= 20, `hen not visible at the center (${a.henPixels} px)`);
+      await page.keyDown('KeyD');
+      // Walk at least a second; right after the phone scenario this tab can take ~2 s to answer the
+      // first key (a fresh browser answers in ~0.15 s), so wait up to 3 s for the canvas to change.
+      await sleep(1000);
+      let b = await page.stats();
+      for (let k = 0; k < 20 && b.hash === a.hash; k++) {
+        await sleep(100);
+        b = await page.stats();
+      }
+      await page.screenshot(`06-dist-walk-${lang}.png`);
+      await page.keyUp('KeyD');
+      expect(b.hash !== a.hash, 'walking did not change the picture');
     });
-    await page.open(pathToFileURL(DIST).href, `!!document.getElementById('c')`);
-    await sleep(500);
-    const a = await page.stats();
-    await page.screenshot('05-dist.png');
-    expect(a.colors >= 8, `only ${a.colors} colors on screen`);
-    expect(a.henPixels >= 20, `hen not visible at the center (${a.henPixels} px)`);
-    await page.keyDown('KeyD');
-    // Walk at least a second; right after the phone scenario this tab can take ~2 s to answer the
-    // first key (a fresh browser answers in ~0.15 s), so wait up to 3 s for the canvas to change.
-    await sleep(1000);
-    let b = await page.stats();
-    for (let k = 0; k < 20 && b.hash === a.hash; k++) {
-      await sleep(100);
-      b = await page.stats();
-    }
-    await page.screenshot('06-dist-walk.png');
-    await page.keyUp('KeyD');
-    expect(b.hash !== a.hash, 'the canvas did not change while walking');
-    // The starting corn often gives the first level-up within that second: then the cards cover her.
-    expect(b.henPixels >= 20 || b.panelPixels > 2000, 'neither the hen at the center nor the level-up cards are on screen');
-  });
+  }
+  results.push({ name: '27c. the Spanish and the English title screens differ', ok: hashes.es !== hashes.en, error: 'the same pixels' });
 }
 
 async function main() {

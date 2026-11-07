@@ -5,14 +5,15 @@
 // 3 titles).
 //
 // The data is one string: each glyph is its character followed by five octal digits, one per row
-// from the top; in each digit, 4 is the left column, 2 the middle and 1 the right.
+// from the top; in each digit, 4 is the left column, 2 the middle and 1 the right. Ñ is for the
+// Spanish page (built from the same code, see tools/translate.mjs).
 import { PALETTE } from './palette.js';
 
 const DATA =
   ' 00000!22202.00002,00024:02020/11244+02720-00700%41241<12421>42124(24442)21112\'22000?71202' +
   '075557126227271747371317455711574717674757771122875757975717' +
   'A25755B65656C34443D65556E74647F74644G34553H55755I72227J11152K55655L44447M57755' +
-  'N65555O25552P65644Q25563R65655S34216T72222U55557V55552W55775X55255Y55222Z71247';
+  'N65555O25552P65644Q25563R65655S34216T72222U55557V55552W55775X55255Y55222Z71247Ñ76555';
 
 export const GLYPH_W = 3;
 export const GLYPH_H = 5;

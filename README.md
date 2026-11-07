@@ -2,7 +2,7 @@
 
 > An isometric **horde-survival arcade game** where a hen dresses up in everything she earns. Under **32 KB**. No libraries, no engines, no assets: everything is drawn and synthesized with code.
 
-**[▶ Play Quiquiriqui](https://rodolfoxiloj.github.io/quiquiriqui-32k/)** · Built for **Build & Play**, the game challenge from [Build & Pitch](https://www.open2.io/build-and-pitch/play) (open2.io), Nov 4–18, 2026.
+**[▶ Jugar (español)](https://rodolfoxiloj.github.io/quiquiriqui-32k/)** · **[▶ Play (English)](https://rodolfoxiloj.github.io/quiquiriqui-32k/en/)** · Built for **Build & Play**, the game challenge from [Build & Pitch](https://www.open2.io/build-and-pitch/play) (open2.io), Nov 4–18, 2026.
 
 ---
 
@@ -184,6 +184,7 @@ The engine is reused from our own earlier prototype (see [Archive](#archive)), a
 - **320 pixels wide, as tall as the screen's shape allows** (180 on a wide screen, up to 640 on a phone held upright), scaled up with smoothing off: by whole numbers from 2× up, by a fraction on small screens so a phone is filled edge to edge.
 - **2:1 isometric projection**. Input is read as a screen direction and converted to world space, so "up" always walks up the screen.
 - **Endless meadow**: five flat tile types baked once, pixel by pixel so diamonds tile without seams; each cell picks its tile from a stateless hash, and only visible cells are drawn.
+- **Two pages from one code**: the build minifies the game once, then swaps every on-screen string for its Spanish from `src/lang/es.json` (`tools/translate.mjs`) and packs each version on its own: `dist/index.html` in Spanish, `dist/en/index.html` in English. Each page carries one language, so neither pays bytes for the other, and a test keeps the dictionary complete and fitting.
 - **Procedural pixel sprites**: shape functions rasterized at boot with an automatic 1 px outline and a hit-flash copy. The hen is a stack of layers (items in front, her body, a cape over her back that flutters behind her as she walks) re-baked whenever her outfit changes, so one outline wraps everything she wears.
 - **Our own 3×5 pixel font**, written as data in the code (five octal digits per glyph) and drawn pixel-exact with an ink outline, so text stays as crisp as the art at any scale. No font files, no system fonts.
 - **Fixed 60 Hz timestep**, object pools (300 predators, 300 kernels, 96 projectiles), hitstop, screen shake and a smoothed camera. Every frame blends the last two steps, the camera too, and the view's pixel is taken from the hen's, so she holds still on screen while the meadow scrolls evenly on 60, 120 or 144 Hz displays.
@@ -253,7 +254,7 @@ To measure the difficulty, `npm run balance -- --seeds 16 --peril 0 --shop 0` pl
 - [x] No third-party runtime code: all shipped code is written for this project
 - [x] No image, audio or font assets: everything is procedural
 - [x] Public GitHub repo created during the challenge (Nov 4–18, 2026)
-- [x] Playable link: [https://rodolfoxiloj.github.io/quiquiriqui-32k/](https://rodolfoxiloj.github.io/quiquiriqui-32k/)
+- [x] Playable link: [https://rodolfoxiloj.github.io/quiquiriqui-32k/](https://rodolfoxiloj.github.io/quiquiriqui-32k/) (español) · [/en/](https://rodolfoxiloj.github.io/quiquiriqui-32k/en/) (English)
 - [x] Original names, characters and world
 
 ---
