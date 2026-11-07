@@ -6,9 +6,9 @@ import { profile, SHOP } from './profile.js';
 
 export const MAX_ITEM_LEVEL = 5;
 /**
- * A weapon at MAX_ITEM_LEVEL whose partner passive (`hatch.with`) she owns can hatch:
- * a HATCH! card at the next level-up, or a chest, takes it to this
- * level, the sixth value of its `lv` stats, and changes what it does (weapons.js).
+ * A weapon at MAX_ITEM_LEVEL whose partner passive (`hatch.with`) she owns can hatch: a HATCH!
+ * card at the next level-up, or a chest, takes it to this level, the sixth value of its `lv`
+ * stats, and changes what it does (weapons.js).
  */
 export const HATCH_LEVEL = 6;
 /** Slots per kind: at most this many different weapons and passives. */

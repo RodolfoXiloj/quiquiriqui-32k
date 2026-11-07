@@ -2,7 +2,7 @@
 
 > An isometric **horde-survival arcade game** where a hen dresses up in everything she earns. Under **32 KB**. No libraries, no engines, no assets: everything is drawn and synthesized with code.
 
-**Play:** _link coming soon_ · Built for **Build & Play**, the game challenge from [Build & Pitch](https://www.open2.io/build-and-pitch/play) (open2.io), Nov 4–18, 2026.
+**[▶ Play Quiquiriqui](https://rodolfoxiloj.github.io/quiquiriqui-32k/)** · Built for **Build & Play**, the game challenge from [Build & Pitch](https://www.open2.io/build-and-pitch/play) (open2.io), Nov 4–18, 2026.
 
 ---
 
@@ -122,7 +122,7 @@ Quiquiriqui is **hard by default**: it starts at NO MERCY, the hardest peril, wh
 | Skunk | stink cloud | 350 (+150) | 90 (+15) | 1.9 | 50% | 10 |
 
   The hen runs 6 tiles a second and starts with 1000 health, shown as a number on a bar beside her level; numbers run in the tens and hundreds (an egg hits for 100), and every hit's number pops up at its own spot for 0.8 s, twice as big for a strong hit. One hit in twenty is **critical**: double damage, its number big and gold; Lucky Bandana adds 3% a level. Armor comes off every hit (at least 10 gets through, shown in grey), so small, fast hits barely scratch a badger; elites (+20) and bosses (+30) are armored and hard to push too.
-- **Levels are earned.** Predators drop corn 80% of the time and each level costs more (6, 10, 14, 19, 25...), so every card counts.
+- **Levels are earned.** Predators drop corn 80% of the time and each level costs more (4, 6, 9, 11, 14..., steeper from level 40), so every card counts.
 - **Peril adds rules**, one per level and cumulative:
 
 | Peril | Name | Rule |
@@ -239,20 +239,20 @@ To measure the difficulty, `npm run balance -- --seeds 16 --peril 0 --shop 0` pl
 | ✅ | **M0: Skeleton** | Endless isometric meadow, the hen walking in 8 directions, title, pause on blur, clock, tests. |
 | ✅ | **M1: Core loop** | Rats and Foxes on a wave timeline (minutes 0–3, then a ramp). Three weapons (Egg Toss, Peck, Feather Darts) and three passives (Running Boots, Feed Basket, Pot Helmet). Corn XP with a magnet, level-up cards (1/2/3, click, tap), bites, game over and a saved best time. |
 | ✅ | **M2: Dress-up** | Seven weapons (adds Corn Spray, Wing Gust, Chick Orbit, Thunder Comb) and six passives (adds Sunglasses, Hero Cape, Lucky Bandana). Every item drawn on the hen, with three looks as it levels; she is re-baked whenever her look changes. |
-| ✅ | **M3: The 10 minutes** | A ten-minute timeline with snakes, crows and badgers; bosses with chests; crates with a magnet, a bomb or food; rain, snow and night; the dawn win at 10:00. |
-| ⬜ | **M4: Polish & ship** | A performance pass, a test on real phones, and the deploy to GitHub Pages. Done so far: the outfit and rat readability pass, the phone fit, predators born all around the hen on any screen, the audio pass, replayability (steeper XP, endless boons, endless days, peril levels, three hens, the shop), the pixel font, and variety (the weasel, magpie and skunk, elites, random events). |
+| ✅ | **M3: The 10 minutes** | A ten-minute timeline with snakes, crows and badgers; bosses with chests; crates with a magnet, a bomb or food; rain, snow and night; dawn at 10:00. |
+| ✅ | **M4: Polish & ship** | Deployed to GitHub Pages (https://rodolfoxiloj.github.io/quiquiriqui-32k/), rebuilt and tested on every push. Also: the outfit and rat readability pass, the phone fit, predators born all around the hen on any screen, the audio pass, replayability (steeper XP, endless boons, endless days, peril levels, three hens, the shop), the pixel font, and variety (the weasel, magpie and skunk, elites, random events). |
 
 ---
 
 ## Rules Compliance Checklist
 
-- [ ] `dist/index.html` ≤ 32,768 bytes (enforced by `npm run build`)
-- [ ] No external requests: no CDN, fonts, images or audio (enforced by `npm run build`)
-- [ ] No third-party runtime code: all shipped code is written for this project
-- [ ] No image, audio or font assets: everything is procedural
-- [ ] Public GitHub repo created during the challenge (Nov 4–18, 2026)
-- [ ] Playable link (GitHub Pages)
-- [ ] Original names, characters and world
+- [x] `dist/index.html` ≤ 32,768 bytes (enforced by `npm run build`)
+- [x] No external requests: no CDN, fonts, images or audio (enforced by `npm run build`)
+- [x] No third-party runtime code: all shipped code is written for this project
+- [x] No image, audio or font assets: everything is procedural
+- [x] Public GitHub repo created during the challenge (Nov 4–18, 2026)
+- [x] Playable link: [https://rodolfoxiloj.github.io/quiquiriqui-32k/](https://rodolfoxiloj.github.io/quiquiriqui-32k/)
+- [x] Original names, characters and world
 
 ---
 

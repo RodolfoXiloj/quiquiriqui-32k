@@ -322,6 +322,9 @@ const levelOf = (snap, id) => (snap.build.find(([owned]) => owned === id) || [id
 
 async function playScenarios(page, client, base) {
   await check('7. predators close in, eggs fly and something dies', async () => {
+    // At EGG: she stands still here, which a NO MERCY run (the default) may not survive for long.
+    // Scenario 12 sets the profile again and clears it.
+    await page.evaluate(`localStorage.setItem('qq_profile', '{"peril":0}')`);
     await page.open(`${base}/?autoplay&drive=cdp&speed=${SPEED}`, ready);
     await page.tapKey('KeyD', 150);
     await playUntil(page, 'window.__qq.snapshot().enemies >= 3', 10000);
