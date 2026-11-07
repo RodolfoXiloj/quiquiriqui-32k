@@ -89,6 +89,8 @@ import {
   SHOT_EVERY,
   SHOT_LIFE,
   NO_MERCY_SPEED,
+  SPEED_MIN,
+  SPEED_CAP,
   BOSS_ARMOR,
   MIN_HIT,
   BIG_HIT,
@@ -128,6 +130,7 @@ import {
   EVENT_FROM,
   EVENT_GAP,
   MORE_GAP,
+  GAP_FLOOR,
   HAWK,
   STAMPEDE,
   SURROUNDED,
@@ -734,7 +737,7 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
       const type = ENEMY_TYPES[kind];
       assert.equal(b.maxHp - a.maxHp, Math.floor(type.hp + type.hpMin * 5) - type.hp, `${type.name} health`);
       assert.equal(b.dmg, Math.round(type.dmg + type.dmgMin * 5), `${type.name} bite`);
-      assert.equal(b.speed, a.speed, `${type.name} speed should stay its own`);
+      assert.ok(Math.abs(b.speed / a.speed - (1 + SPEED_MIN * 5)) < 1e-3, `${type.name} speed should grow ${SPEED_MIN * 100}% a minute`);
     }
     assert.ok(late.maxHp - early.maxHp > (rat5.maxHp - rat0.maxHp) * 5, 'the tank should grow much faster than the swarm');
   });
@@ -1525,7 +1528,7 @@ describe('quiquiriqui at 5x: endless days', () => {
     assert.equal(rat.maxHp, Math.floor((type.hp + type.hpMin * minutes) * (1 + DAY_HP)), 'day 2 should add half their health');
   });
 
-  it('a new day replays the timeline with more predators', () => {
+  it('a new day replays the timeline with more predators, skipping its quiet opening', () => {
     resetRun({ peaceful: false });
     reachDawn();
     buildOrder.length = 0; // no weapons: what is born stays
@@ -1537,6 +1540,8 @@ describe('quiquiriqui at 5x: endless days', () => {
       update(STEP);
     }
     assert.ok(countEnemies() >= 60, `only ${countEnemies()} predators a minute into day 2`);
+    // No quiet opening after a dawn: the day starts DAY_SKIP into the timeline, snakes already out
+    assert.ok(enemies.some((e) => e.alive && e.kind === SNAKE), 'no snakes a minute into day 2');
   });
 
   it('every later dawn starts the next day without stopping the run', () => {
@@ -2054,6 +2059,29 @@ describe('quiquiriqui at 5x: random events', () => {
   }
   const alive = () => enemies.filter((e) => e.alive);
 
+  it('deep into a run the events come every 20 to 50 s, never closer', () => {
+    eventRun(true);
+    game.time = 1500; // minute 25: the gap has reached its floor
+    const seen = [];
+    while (seen.length < 3 && game.time < 1700) {
+      hen.hp = hen.maxHp = 1e6;
+      game.cards = [];
+      game.reward = [];
+      game.level = 1; // no bosses: they hold events back
+      for (const e of enemies) if (e.boss) e.alive = false;
+      update(STEP);
+      // A banner just shown (showBanner gives it 2.5 s) is a new event
+      const fresh = !seen.length || game.time - seen[seen.length - 1].time > 1;
+      if (game.bannerTime >= 2.5 - 1e-9 && EVENTS.includes(game.banner) && fresh) seen.push({ name: game.banner, time: game.time });
+    }
+    assert.equal(seen.length, 3, `${seen.length} events in 200 s`);
+    for (let i = 1; i < seen.length; i++) {
+      const gap = seen[i].time - seen[i - 1].time;
+      assert.ok(gap >= GAP_FLOOR - 0.1 && gap <= GAP_FLOOR + 30.1, `a gap of ${gap.toFixed(1)} s at minute 25`);
+    }
+    resetRun();
+  });
+
   it('events start at 1:30, come every 45 to 75 s, never twice in a row, and not in a peaceful meadow', () => {
     eventRun(true);
     const seen = [];
@@ -2072,7 +2100,9 @@ describe('quiquiriqui at 5x: random events', () => {
     assert.equal(seen[0].name, EVENTS[SURROUNDED], 'the first event teaches breaking out of a ring');
     for (let i = 1; i < seen.length; i++) {
       const gap = seen[i].time - seen[i - 1].time;
-      assert.ok(gap >= EVENT_GAP - 0.1 && gap <= EVENT_GAP + 30.1, `a gap of ${gap.toFixed(1)} s`);
+      // The gap loses a second a minute (the clock when the earlier event came)
+      const least = Math.max(GAP_FLOOR, EVENT_GAP - seen[i - 1].time / 60);
+      assert.ok(gap >= least - 0.1 && gap <= least + 30.1, `a gap of ${gap.toFixed(1)} s at ${seen[i - 1].time.toFixed(0)} s`);
       assert.notEqual(seen[i].name, seen[i - 1].name, `${seen[i].name} twice in a row`);
     }
     // Peaceful: nothing
@@ -2241,7 +2271,8 @@ describe('quiquiriqui at 5x: peril rules', () => {
     assert.ok(times.length >= 6, `${times.length} events in 5:30`);
     for (let i = 1; i < times.length; i++) {
       const gap = times[i] - times[i - 1];
-      assert.ok(gap >= MORE_GAP - 0.1 && gap <= MORE_GAP + 20.1, `a gap of ${gap.toFixed(1)} s`);
+      const least = Math.max(GAP_FLOOR * 0.6, MORE_GAP - times[i - 1] / 60); // a second less per minute
+      assert.ok(gap >= least - 0.1 && gap <= least + 20.1, `a gap of ${gap.toFixed(1)} s`);
     }
     resetRun();
   });
@@ -2328,6 +2359,43 @@ describe('quiquiriqui at 5x: peril rules', () => {
     rat.speed = 0;
     return rat;
   }
+
+  it('newborn predators run faster as the minutes pass: a snake born at 9:00 outruns her, one born at 0:00 does not, and the swarm never does', () => {
+    resetRun();
+    start();
+    assert.ok(spawnEnemy(SNAKE, 5, 5).speed < HEN_SPEED, 'a snake born at 0:00 outruns her');
+    game.time = 540;
+    assert.ok(spawnEnemy(SNAKE, 5, 5).speed > HEN_SPEED, 'a snake born at 9:00 is slower than her');
+    game.time = 1800;
+    const rat = spawnEnemy(RAT, 5, 5);
+    assert.ok(rat.speed < HEN_SPEED, 'a rat outruns her');
+    assert.ok(rat.speed <= ENEMY_TYPES[RAT].speed * (1 + SPEED_CAP) + 1e-9, 'the ramp has no cap');
+    assert.ok(spawnEnemy(FOX, 5, 5).speed < HEN_SPEED, 'a fox outruns her');
+    resetRun();
+  });
+
+  it('from minute 8 every other chaser cuts her off, heading for where she is going; the rest head for where she is; bites need a real touch', () => {
+    resetRun();
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    buildOrder.length = 0;
+    game.time = 480; // the lead is full from minute 8
+    holdKey('KeyD', true);
+    steps(0.2);
+    // Both below her on screen, a tile apart; she walks screen-right
+    const leader = sturdy(RAT, hen.x + 3.5, hen.y + 3.5);
+    const direct = sturdy(RAT, hen.x + 4.2, hen.y + 4.2);
+    leader.side = 1;
+    direct.side = -1;
+    leader.age = direct.age = 1;
+    const from = [leader.x, leader.y, direct.x, direct.y];
+    steps(0.2);
+    const along = (e, x0, y0) => (e.x - x0) * hen.dirX + (e.y - y0) * hen.dirY;
+    assert.ok(along(leader, from[0], from[1]) > along(direct, from[2], from[3]) + 0.05, 'the leader did not cut her off');
+    assert.equal(hen.hp, hen.maxHp, 'a bite from afar');
+    holdKey('KeyD', false);
+    resetRun();
+  });
 
   it(`peril ${HOPS}, HOPS: close by, a predator now and then hops at her at once; standing still it bites, walking away dodges it`, () => {
     assert.ok(HOP_TIME <= 0.2, 'a slow hop');

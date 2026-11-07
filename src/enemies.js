@@ -13,7 +13,7 @@ import { HALF_W, HALF_H } from './iso.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
 import { game, saveBest, showBanner } from './state.js';
-import { hen, HEN_RADIUS, damageHen } from './hen.js';
+import { hen, HEN_RADIUS, HEN_SPEED, damageHen } from './hen.js';
 import { stats } from './items.js';
 import { spawnCorn } from './corn.js';
 import { spawnParticle, spawnPopup } from './pool.js';
@@ -45,6 +45,18 @@ export const CLOSE = 4;
 /** During a FRENZY! every predator runs this much faster; at peril NO MERCY, always this much. */
 export const FRENZY_SPEED = 1.2;
 export const NO_MERCY_SPEED = 1.1;
+/**
+ * Each minute of the run adds SPEED_MIN to a newborn's speed, up to SPEED_CAP (minute 20): the
+ * fast kinds come to outrun her (a snake from about 9:00, a crow from about 17:00), the swarm never
+ * does. And every other chaser cuts her off: it heads for where she will be in LEAD seconds, a
+ * lead that starts at minute LEAD_FROM and grows to its full length over LEAD_RAMP minutes (the
+ * first minutes bite enough as they are).
+ */
+export const SPEED_MIN = 0.03;
+export const SPEED_CAP = 0.6;
+export const LEAD = 0.5;
+export const LEAD_FROM = 3;
+export const LEAD_RAMP = 5;
 
 /**
  * Enemy kinds, each with a role and its own growth: hp and dmg are the health and
@@ -473,7 +485,7 @@ export function spawnEnemy(kind, x, y) {
     prevY: y,
     hp,
     maxHp: hp,
-    speed: type.speed * (1 + 0.1 * days) * (peril >= NO_MERCY ? NO_MERCY_SPEED : 1),
+    speed: type.speed * (1 + Math.min(SPEED_CAP, SPEED_MIN * minutes)) * (1 + 0.1 * days) * (peril >= NO_MERCY ? NO_MERCY_SPEED : 1),
     r: type.r,
     dmg: Math.round((type.dmg + (type.dmgMin || 0) * minutes) * (1 + PERIL.bite * peril)),
     kr: type.kr || 0,
@@ -782,6 +794,12 @@ export function updateEnemies(dt) {
     const dx = hen.x - e.x;
     const dy = hen.y - e.y;
     const d = Math.hypot(dx, dy) || 1;
+    // Every other chaser (side 1) cuts her off: it heads for where she will be in LEAD seconds
+    // while she moves. Bites and ranges keep the true distance.
+    const lead = e.side > 0 && hen.moving && !e.flying && e.act === CHASE ? LEAD * HEN_SPEED * Math.min(1, Math.max(0, (game.time / 60 - LEAD_FROM) / LEAD_RAMP)) : 0;
+    const ax = dx + hen.dirX * lead;
+    const ay = dy + hen.dirY * lead;
+    const a = Math.hypot(ax, ay) || 1;
 
     if (e.prop) {
       // Crates stay put; one left far behind is gone.
@@ -813,7 +831,7 @@ export function updateEnemies(dt) {
       e.x += (dx / d) * s;
       e.y += (dy / d) * s;
       e.walkPhase += dt * 8;
-    } else act(e, dx / d, dy / d, d, dt);
+    } else act(e, ax / a, ay / a, d, dt);
     // Face her, or (a stampede rat) the way it runs
     const screenDx = e.act === RUN ? e.dirX - e.dirY : dx - dy;
     if (Math.abs(screenDx) > 0.05) e.facing = (screenDx > 0) === !game.over ? 1 : -1;

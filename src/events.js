@@ -32,6 +32,8 @@ export const EVENTS = ['HAWK!', 'STAMPEDE!', 'SURROUNDED!', 'FRENZY!'];
 export const EVENT_FROM = 35;
 export const EVENT_GAP = 45;
 export const MORE_GAP = 30;
+/** The gap loses a second for each minute of the run, down to this floor (MORE EVENTS: 60% of it). */
+export const GAP_FLOOR = 20;
 /** Each day gone by adds this share to an event's predators (as MORE_PER_DAY does to waves). */
 const MORE_PER_DAY = 0.5;
 
@@ -164,5 +166,8 @@ export function updateEvents(dt) {
     if (kind >= lastEvent) kind++;
   }
   startEvent(kind);
-  nextEventAt = game.time + (game.peril >= MORE_EVENTS ? MORE_GAP + gameRand() * 20 : EVENT_GAP + gameRand() * 30);
+  const minutes = game.time / 60;
+  nextEventAt =
+    game.time +
+    (game.peril >= MORE_EVENTS ? Math.max(GAP_FLOOR * 0.6, MORE_GAP - minutes) + gameRand() * 20 : Math.max(GAP_FLOOR, EVENT_GAP - minutes) + gameRand() * 30);
 }

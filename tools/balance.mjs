@@ -9,7 +9,8 @@
 // her average hit, read from the damage numbers) and her health. Hits per foe that stay flat while
 // she levels mean the predators fall behind her.
 //
-// --god keeps her from falling, to measure how fast she levels over a long run (--minutes 30).
+// --god keeps her from falling, to measure how fast she levels over a long run (--minutes 30), and
+// how much she is bitten each minute while she moves (lives lost: 1.0 is a 1,000-health bar).
 // Each run also lists its bosses: when each came (her level) and how long it lived; the summary
 // gives, per boss, the median arrival time and the median time it took to slay it.
 //
@@ -95,9 +96,18 @@ function runOnce(seed, peril, favor) {
   playWithBot(LENGTH / 5 + 5, {
     bot: botFavoring(favor),
     onFrame() {
-      if (god) hen.hp = hen.maxHp = 1e9;
       if (game.started && !game.over) {
         frames++;
+        const m0 = Math.floor(game.time / 60);
+        const b0 = (byMinute[m0] ||= { level: game.level, xp: xpEarned(), health: hen.hp / hen.maxHp, hit: 0, hits: 0, foe: 0, foes: 0, taken: 0, bites: 0 });
+        if (god) {
+          const lost = hen.maxHp - hen.hp;
+          if (lost > 0) {
+            b0.taken += lost;
+            b0.bites++;
+          }
+          hen.hp = hen.maxHp = 1e9;
+        }
         for (const e of enemies) {
           if (e.alive && e.boss && !liveBosses.has(e)) {
             const entry = { id: e.bossId, born: game.time, level: game.level, died: null };
@@ -112,7 +122,7 @@ function runOnce(seed, peril, favor) {
           }
         }
         const m = Math.floor(game.time / 60);
-        const b = (byMinute[m] ||= { level: game.level, xp: xpEarned(), health: hen.hp / hen.maxHp, hit: 0, hits: 0, foe: 0, foes: 0 });
+        const b = byMinute[m];
         for (const p of popups) {
           const spot = p.alive ? `${p.x},${p.y}` : '';
           if (isHit(p) && seen.get(p) !== spot) {
@@ -147,7 +157,7 @@ function runOnce(seed, peril, favor) {
     calm: Math.round((100 * calm) / Math.max(1, frames)),
     eggs: eggsEarned(game.time, game.kills, game.day > 1, peril) + game.eggBonus,
     minutes,
-    byMinute: byMinute.map((b) => b && { level: b.level, xp: b.xp, health: b.health, perFoe: b.hits && b.foes ? b.foe / b.foes / (b.hit / b.hits) : null }),
+    byMinute: byMinute.map((b) => b && { level: b.level, xp: b.xp, health: b.health, taken: b.taken, bites: b.bites, perFoe: b.hits && b.foes ? b.foe / b.foes / (b.hit / b.hits) : null }),
     favorLevel: favor ? build[favor] || 0 : 0,
     bosses: bossLog,
   };
@@ -220,9 +230,10 @@ if (process.argv.includes('--items')) {
       rows.push(
         `${m}:00 lv ${median(here.map((b) => b.level))} · xp ${Math.round(median(here.map((b) => b.xp)))} · ` +
           `${perFoe.length ? median(perFoe).toFixed(1) : '-'} hits/foe · ` +
+          (god ? `${(median(here.map((b) => b.taken)) / 1000).toFixed(1)} lives (${median(here.map((b) => b.bites))} bites) · ` : '') +
           `${Math.round(100 * median(here.map((b) => b.health)))}% (${here.length})`
       );
     }
-    console.log('  → by minute: level · experience · hits per foe · health (runs standing)\n    ' + rows.join('\n    '));
+    console.log(`  → by minute: level · experience · hits per foe · ${god ? 'lives lost (bites) · ' : ''}health (runs standing)\n    ` + rows.join('\n    '));
   }
 }

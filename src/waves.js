@@ -18,6 +18,11 @@ export const CRATE_EVERY = 20;
 /** Each day gone by adds this share of predators to every wave. */
 export const MORE_PER_DAY = 0.5;
 /**
+ * A later day skips this far into the timeline: no quiet rats-only opening after a dawn, the snakes
+ * and the full quota are out at once (the last minutes of such a day run on the final wave's mix).
+ */
+export const DAY_SKIP = 180;
+/**
  * The first elite comes at ELITE_FROM seconds, then one every 40 to 60 s, of a kind from the
  * latest common wave. From RAINBOW_FROM, RAINBOW_SHARE of them are rainbow.
  */
@@ -177,7 +182,7 @@ export function updateWaves(dt) {
     nextEvent = 0;
   }
   levelBosses();
-  const local = game.time - RUN_LENGTH * (game.day - 1);
+  const local = game.time - RUN_LENGTH * (game.day - 1) + (game.day > 1 ? DAY_SKIP : 0);
   while (nextEvent < TIMELINE.length && local >= TIMELINE[nextEvent].at) startSpawner(TIMELINE[nextEvent++]);
   if (game.time >= nextCrateAt) {
     nextCrateAt += CRATE_EVERY;
