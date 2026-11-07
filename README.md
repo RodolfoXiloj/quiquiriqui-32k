@@ -66,7 +66,7 @@ She starts with **Egg Toss** and can carry six of seven weapons and all six pass
 | **Running Boots** | +10% speed a level, but -50 max health | Red boots |
 | **Feed Basket** | Pulls corn from farther away, +8% XP | A basket of corn on her back |
 | **Pot Helmet** | Takes 10% less damage a level, but runs 4% slower | A pot on her head |
-| **Sunglasses** | +15% damage a level | Dark shades |
+| **Sunglasses** | +15% damage a level | Big shades with a red frame and a shine; mirrored from level 3, gold-framed at 5 |
 | **Hero Cape** | +250 max health a level | A red cape that flies behind her |
 | **Lucky Bandana** | Dodges 7% of bites and adds 3% critical hits a level | A dotted neckerchief |
 

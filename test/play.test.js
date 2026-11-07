@@ -1024,6 +1024,21 @@ describe('quiquiriqui: the hen dresses up', () => {
     }
   });
 
+  it('Sunglasses: a colored brow bar over a night-blue lens with a shine, feathers above, the beak free, gold at tier 3', () => {
+    for (const tier of [1, 2, 3]) {
+      const shape = henShape('idle', { shades: tier });
+      const at = (bx, by) => shape(bx + 6, by + 4); // body coordinates (HEN_OX, HEN_OY)
+      const frame = tier === 3 ? 10 : 9;
+      for (let x = 12; x <= 15; x++) assert.equal(at(x, 4), frame, `tier ${tier}: the brow bar at ${x}`);
+      assert.equal(at(11, 5), frame, `tier ${tier}: no arm`);
+      assert.equal(at(12, 5), 13, `tier ${tier}: no shine`);
+      assert.equal(at(13, 6), 15, `tier ${tier}: the lens is not night blue`);
+      assert.equal(at(13, 5), tier >= 2 ? 12 : 15, `tier ${tier}: the mirror`);
+      assert.equal(at(13, 3), 7, `tier ${tier}: no feathers above the frame`);
+      assert.equal(at(15, 6), 10, `tier ${tier}: the beak is covered`);
+    }
+  });
+
   it('no outfit ever uses a meadow color', () => {
     for (const tier of [1, 2, 3]) {
       const full = Object.fromEntries(WORN_ITEMS.map((id) => [id, tier]));

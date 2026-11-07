@@ -156,9 +156,13 @@ const FRONT_LAYERS = [
   [
     'shades',
     (x, y, t) => {
-      if ((y === 4 || y === 5) && x >= 12 && x <= 15) return t >= 2 && x === 13 && y === 4 ? 13 : 0; // dark lenses, with a shine
-      if (y === 4 && (x === 10 || x === 11)) return t === 3 ? 10 : 0; // arm
-      if (y === 3 && x >= 12 && x <= 15 && t === 3) return 10; // gold frame
+      // A big lens over her eye under a colored brow bar (red, gold at tier 3) that sticks out a
+      // pixel in front, with an arm back over her ear; the lens is night blue with a shine, and
+      // mirrored (sky blue on top) from tier 2. Feathers show above the bar and the beak stays free.
+      const frame = t === 3 ? 10 : 9;
+      if (y === 4 && x >= 12 && x <= 15) return frame; // brow bar
+      if (y === 5 && (x === 10 || x === 11)) return frame; // arm
+      if ((y === 5 || y === 6) && x >= 12 && x <= 14) return y === 5 && x === 12 ? 13 : t >= 2 && y === 5 ? 12 : 15; // lens
       return -1;
     },
   ],
