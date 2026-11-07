@@ -169,7 +169,7 @@ function shopMenu() {
 
 /** Adds to the profile the golden eggs the run has earned and not banked yet. */
 function bankRunEggs() {
-  const earned = eggsEarned(game.time, game.kills, game.day > 1, game.peril) + game.eggBonus;
+  const earned = eggsEarned(game.time, game.kills, game.won || game.day > 1, game.peril) + game.eggBonus;
   if (earned > game.eggs) bankEggs(earned - game.eggs);
   game.eggs = earned;
 }

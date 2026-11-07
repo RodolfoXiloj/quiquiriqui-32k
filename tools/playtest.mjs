@@ -494,7 +494,7 @@ async function dayScenarios(page, base) {
     await page.waitFor('window.__qq.snapshot().reward.length === 0', 3000);
   });
 
-  await check('17b. boss attacks: IRON BADGER rises and lands on her shadow, THE COIL spits a fan of venom', async () => {
+  await check('17b. boss attacks: IRON BADGER rises and lands on her shadow, THE COIL spits a fan of venom, and MIDNIGHT falling wins the run', async () => {
     await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
     await page.tapKey('KeyD', 100);
     await page.evaluate(`window.__qq.cheat.tough(), window.__qq.cheat.boss('IRON BADGER')`); // she stands still under the slam
@@ -507,7 +507,18 @@ async function dayScenarios(page, base) {
     await page.screenshot('17-venom.png');
     const s = await page.snapshot();
     expect(s.shots >= 5, `${s.shots} venom drops`);
-    await page.evaluate('window.__qq.cheat.clear()');
+    // MIDNIGHT: its fall wins the run; a key goes back to the title, and a new run starts for what follows
+    await page.evaluate(`window.__qq.cheat.clear(), window.__qq.cheat.boss('MIDNIGHT')`);
+    await page.waitFor('window.__qq.snapshot().bosses === 1', 3000);
+    await page.evaluate('window.__qq.cheat.slay()');
+    await page.waitFor('window.__qq.snapshot().won', 3000);
+    await sleep(500);
+    await page.screenshot('17-win.png');
+    await page.tapKey('Space', 50);
+    await page.waitFor('!window.__qq.snapshot().started', 3000);
+    await sleep(200); // past the title lock
+    await page.tapKey('KeyD', 100);
+    await page.waitFor('window.__qq.snapshot().started', 3000);
   });
 
   await check('18. a broken crate leaves something behind', async () => {

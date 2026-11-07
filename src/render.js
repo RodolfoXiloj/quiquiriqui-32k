@@ -8,7 +8,7 @@ import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
 import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier, lockSprite } from './sprites.js';
 import { hen } from './hen.js';
-import { enemies, shots, clouds, bossName, BOSSES, LEAP, LEAP_WARN, LEAP_LOCK, RISE_TIME, CLOUD_R, HOP_TIME } from './enemies.js';
+import { enemies, shots, clouds, bossName, BOSSES, LEAP, LEAP_WARN, LEAP_LOCK, VANISH, BOSS_WARN, RISE_TIME, CLOUD_R, HOP_TIME } from './enemies.js';
 import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
@@ -35,7 +35,7 @@ export const HUD_STRINGS = {
   chest: 'CHEST!',
   chestNote: 'NEW GEAR FOR THE HEN',
   gameOver: 'GAME OVER',
-  dawn: 'DAWN!',
+  dawn: 'YOU WIN!',
   crow: 'THE ROOSTER CROWS',
   nod: 'HOLDING OUT FOR A HEN',
   newBest: 'NEW BEST!',
@@ -376,6 +376,8 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     // A boss winding up a leap rises into the air (its shadow is drawn where it will land)
     if (e.atk === LEAP && e.state === 1) lift += Math.round((1 - Math.max(0, e.timer) / LEAP_WARN) * 40);
     ctx.globalAlpha = rise;
+    // SHADOW WEASEL fades away before it comes back beside her
+    if (e.atk === VANISH && e.state === 1 && !e.combo) ctx.globalAlpha *= Math.max(0, e.timer) / BOSS_WARN;
     // White: just hit, or blinking before it acts (a magpie about to throw)
     const white = e.flash > 0.1 || (e.warn && Math.floor(time * 16) % 2 === 0);
     const shake = e.warn ? (Math.floor(time * 30) % 2) * 2 - 1 : 0;
@@ -681,7 +683,8 @@ function drawGameOver(ctx, time) {
   const eggs = game.eggs ? `   +${game.eggs} GOLDEN EGGS` : '';
   if (game.newBest) drawText(ctx, S.newBest + eggs, WIDTH / 2, statsY + 14, Z.newBest, 10);
   else drawText(ctx, `BEST ${formatClock(game.best)}` + eggs, WIDTH / 2, statsY + 14, 1, 13);
-  if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, cy + 40, Z.resume, 13);
+  // (Under the stats, which sit lower on the win screen so the hen stays in sight.)
+  if (game.overTime > 1.5 && Math.sin(time * 5) > -0.3) drawText(ctx, S.resume, WIDTH / 2, cy + (won ? 56 : 40), Z.resume, 13);
 }
 
 function drawHud(ctx, time) {

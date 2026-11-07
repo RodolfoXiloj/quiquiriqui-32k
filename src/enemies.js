@@ -12,14 +12,14 @@
 import { HALF_W, HALF_H } from './iso.js';
 import { WIDTH, HEIGHT } from './screen.js';
 import { gameRand } from './rng.js';
-import { game } from './state.js';
+import { game, saveBest, showBanner } from './state.js';
 import { hen, HEN_RADIUS, damageHen } from './hen.js';
 import { stats } from './items.js';
 import { spawnCorn } from './corn.js';
 import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
-import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge, sfxScreech } from './sfx.js';
+import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge, sfxScreech, sfxCrow } from './sfx.js';
 import { PERIL, NO_MERCY, HOPS } from './profile.js';
 
 export const RAT = 0;
@@ -131,26 +131,33 @@ const SHOT_R = 0.2;
 /**
  * The ten bosses, one at every BOSS_EVERY levels of hers (waves.js): the kind it is a big version
  * of, its name on the boss bar, its tint (a palette index), and its attack: `atk` SUMMON (a ring
- * of rats around it), FAN (a fan of venom drops) or LEAP (it rises, a shadow marks where she is
- * and locks a moment before it lands within `reach` tiles), or `act` CHARGE (three lunges in a
- * row). Every attack blinks first, so she can step away. The last boss, at level 100, is the
- * final one.
+ * of rats around it), FAN (a fan of venom drops), LEAP (it rises, a shadow marks where she is and
+ * locks a moment before it lands within `reach` tiles), RING (pebbles all around), VANISH (it
+ * fades away, comes back beside her blinking, and lunges), TRAIL (stink clouds where it walks) or
+ * PACK (foxes run from behind it past her), or `act` CHARGE (three lunges in a row). Every attack
+ * warns first, so she can step away. The last boss, at level 100, is the final one: MIDNIGHT
+ * lunges, RAGEs (rings and rats) under half its health, and its fall wins the run.
  */
 export const BOSS_EVERY = 10;
 export const SUMMON = 1;
 export const FAN = 2;
 export const LEAP = 3;
+export const RING = 4;
+export const VANISH = 5;
+export const TRAIL = 6;
+export const PACK = 7;
+export const RAGE = 8;
 export const BOSSES = [
   { kind: RAT, name: 'KING RAT', color: 10, atk: SUMMON },
   { kind: FOX, name: 'OLD RED', color: 9, act: CHARGE },
   { kind: SNAKE, name: 'THE COIL', color: 11, atk: FAN },
   { kind: CROW, name: 'CROW MOTHER', color: 18, atk: LEAP, reach: 1.2 },
   { kind: BADGER, name: 'IRON BADGER', color: 16, atk: LEAP, reach: 2 },
-  { kind: MAGPIE, name: 'MAGPIE BARON', color: 12 },
-  { kind: WEASEL, name: 'SHADOW WEASEL', color: 15 },
-  { kind: SKUNK, name: 'STINK DUKE', color: 14 },
-  { kind: FOX, name: 'PACK LEADER', color: 16 },
-  { kind: FOX, name: 'MIDNIGHT', color: 15 },
+  { kind: MAGPIE, name: 'MAGPIE BARON', color: 12, atk: RING },
+  { kind: WEASEL, name: 'SHADOW WEASEL', color: 15, atk: VANISH },
+  { kind: SKUNK, name: 'STINK DUKE', color: 14, atk: TRAIL },
+  { kind: FOX, name: 'PACK LEADER', color: 16, atk: PACK },
+  { kind: FOX, name: 'MIDNIGHT', color: 15, act: CHARGE },
 ];
 /**
  * A boss attacks when she is within BOSS_RANGE tiles: it blinks for BOSS_WARN (a leap takes
@@ -167,6 +174,15 @@ const LUNGE_COMBO = 3;
 export const SUMMON_RATS = 6;
 export const FAN_SHOTS = 5;
 const FAN_STEP = 0.3;
+export const RING_SHOTS = 8;
+/** A vanished boss comes back this far (tiles) from her. */
+export const VANISH_TO = 3;
+/** Seconds between two stink clouds of a trail. */
+export const TRAIL_EVERY = 1.2;
+/** A pack: this many foxes, in a band this wide (tiles), from this far behind the boss. */
+export const PACK_FOXES = 8;
+const PACK_BAND = 4;
+const PACK_FROM = 5;
 /** When two bosses come at once (TWO BOSSES), each has this share of a boss's health. */
 export const BOSS_PAIR_SHARE = 0.75;
 /** Bosses: this many times the health, radius and bite of their kind, and armor on top. */
@@ -269,21 +285,70 @@ function throwPebble(e, ux, uy, dmg = e.dmg, color = 16) {
   sfxThrow();
 }
 
-/** Boss `e` does its attack, the hen being along (ux, uy): see BOSSES. */
+/** A stink cloud at (x, y) that hurts `dmg` while she stands in it (a skunk's death, a duke's trail). */
+function stink(x, y, dmg) {
+  const c = clouds.find((item) => !item.alive);
+  if (c) Object.assign(c, { alive: true, x, y, life: CLOUD_TIME, tick: 0, dmg });
+}
+
+/** Spawns a predator of `kind` at (x, y), making room in a full pool. */
+function place(kind, x, y) {
+  if (!enemies.some((o) => !o.alive)) makeRoom();
+  return spawnEnemy(kind, x, y);
+}
+
+/**
+ * Boss `e` does its attack, the hen being along (ux, uy), and sets what it does next (rest, or
+ * for a vanished weasel the blink and the lunge): see BOSSES. `bite` is its kind's plain bite.
+ */
 function bossAttack(e, ux, uy) {
-  if (e.atk === SUMMON) {
+  const bite = Math.round(e.dmg / BOSS_BITE);
+  e.state = 0;
+  e.timer = BOSS_REST;
+  if (e.atk === SUMMON || e.atk === RAGE) {
     for (let i = 0; i < SUMMON_RATS; i++) {
       const a = (i / SUMMON_RATS) * Math.PI * 2;
-      if (!enemies.some((o) => !o.alive)) makeRoom();
-      spawnEnemy(RAT, e.x + Math.cos(a) * 2, e.y + Math.sin(a) * 2);
+      place(RAT, e.x + Math.cos(a) * 2, e.y + Math.sin(a) * 2);
     }
-  } else if (e.atk === FAN) {
+  }
+  if (e.atk === FAN) {
     const a0 = Math.atan2(uy, ux);
     for (let i = 0; i < FAN_SHOTS; i++) {
       const a = a0 + (i - (FAN_SHOTS - 1) / 2) * FAN_STEP;
-      throwPebble(e, Math.cos(a), Math.sin(a), Math.round(e.dmg / BOSS_BITE), 14);
+      throwPebble(e, Math.cos(a), Math.sin(a), bite, 14);
     }
-  } else {
+  } else if (e.atk === RING || e.atk === RAGE) {
+    for (let i = 0; i < RING_SHOTS; i++) {
+      const a = (i / RING_SHOTS) * Math.PI * 2;
+      throwPebble(e, Math.cos(a), Math.sin(a), bite);
+    }
+  } else if (e.atk === VANISH) {
+    if (e.combo) {
+      // Back in sight beside her: the lunge
+      e.combo = 0;
+      e.state = 2;
+      e.timer = DASH_TIME;
+      sfxLunge();
+    } else {
+      // Gone: it comes back VANISH_TO tiles from her, blinking, aimed at her
+      const a = gameRand() * Math.PI * 2;
+      e.x = e.prevX = hen.x + Math.cos(a) * VANISH_TO;
+      e.y = e.prevY = hen.y + Math.sin(a) * VANISH_TO;
+      e.dirX = -Math.cos(a);
+      e.dirY = -Math.sin(a);
+      e.combo = 1;
+      e.state = 1;
+      e.timer = DASH_WARN;
+    }
+  } else if (e.atk === PACK) {
+    // A howl: foxes run from behind it, past her, at twice their speed
+    for (let i = 0; i < PACK_FOXES; i++) {
+      const across = ((i % 4) / 3 - 0.5) * PACK_BAND;
+      const back = PACK_FROM + Math.floor(i / 4) * 1.5;
+      const f = place(FOX, e.x - ux * back - uy * across, e.y - uy * back + ux * across);
+      if (f) Object.assign(f, { act: RUN, dirX: ux, dirY: uy, speed: f.speed * 2 });
+    }
+  } else if (e.atk === LEAP) {
     // It lands where its shadow locked: dust, a shake, and a bite if she is still under it
     e.x = e.prevX = e.dirX;
     e.y = e.prevY = e.dirY;
@@ -554,6 +619,13 @@ function killEnemy(e) {
     spawnPickup(CHEST, e.x, e.y);
     triggerShake(1, 0, 3, 0.2);
     sfxBoom();
+    if (e.bossId === BOSSES.length - 1) {
+      // MIDNIGHT falls: she wins. The rooster crows and the predators run.
+      game.over = game.won = true;
+      game.overTime = 0;
+      game.newBest = saveBest(game.time);
+      sfxCrow();
+    }
   } else if (e.prop) crateDrop(e);
   if (e.elite) {
     // A chest (three upgrades in a rainbow one's) and golden eggs
@@ -563,10 +635,7 @@ function killEnemy(e) {
     spawnPopup(e.x, e.y, `+${eggs} EGGS`, 10, 1, 1.2);
     sfxBoom();
   }
-  if (type.stink) {
-    const c = clouds.find((item) => !item.alive);
-    if (c) Object.assign(c, { alive: true, x: e.x, y: e.y, life: CLOUD_TIME, tick: 0, dmg: Math.ceil(e.dmg / 3) });
-  }
+  if (type.stink) stink(e.x, e.y, Math.ceil(e.dmg / 3));
   // Corn is worth more the longer the run lasts.
   else if (gameRand() < DROP_CHANCE) spawnCorn(e.x, e.y, Math.floor(1 + game.time / 200));
 }
@@ -582,6 +651,14 @@ function act(e, ux, uy, d, dt) {
   let mx = ux;
   let my = uy;
   let speed = e.speed;
+  // MIDNIGHT under half its health rages: rings of pebbles and rats instead of lunges
+  if (e.bossId === BOSSES.length - 1 && !e.atk && e.hp < e.maxHp / 2) {
+    e.atk = RAGE;
+    e.state = 0;
+    e.timer = 0.5;
+    showBanner('MIDNIGHT RAGES!');
+    sfxScreech();
+  }
   if (e.atk) {
     e.timer -= dt;
     if (e.state === 1) {
@@ -592,19 +669,30 @@ function act(e, ux, uy, d, dt) {
         e.dirX = hen.x;
         e.dirY = hen.y;
       }
+      if (e.timer <= 0) bossAttack(e, ux, uy);
+    } else if (e.state === 2) {
+      // A vanished weasel's lunge
+      mx = e.dirX;
+      my = e.dirY;
+      speed = DASH_SPEED;
       if (e.timer <= 0) {
-        bossAttack(e, ux, uy);
         e.state = 0;
         e.timer = BOSS_REST;
       }
     } else if (e.timer <= 0 && d < BOSS_RANGE) {
-      e.state = 1;
-      e.timer = e.atk === LEAP ? LEAP_WARN : BOSS_WARN;
-      e.dirX = hen.x;
-      e.dirY = hen.y;
-      e.warn = true;
-      speed = 0;
-      sfxScreech();
+      if (e.atk === TRAIL) {
+        // No wind-up: the stink it leaves on the ground is the warning
+        stink(e.x, e.y, Math.round(e.dmg / BOSS_BITE));
+        e.timer = TRAIL_EVERY;
+      } else {
+        e.state = 1;
+        e.timer = e.atk === LEAP ? LEAP_WARN : BOSS_WARN;
+        e.dirX = hen.x;
+        e.dirY = hen.y;
+        e.warn = true;
+        speed = 0;
+        sfxScreech();
+      }
     }
   } else if (e.act === SHOOT) {
     const toward = d > KEEP_FAR ? 1 : d < KEEP_NEAR ? -1 : 0;

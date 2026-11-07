@@ -18,7 +18,7 @@ import { game, settings, formatClock, xpToNext } from '/state.js';
 import { hen, damageHen, syncHenStats } from '/hen.js';
 import { holdKey } from '/input.js';
 import { toIsoX, toIsoY } from '/iso.js';
-import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, BOSSES, CRATE, shots, clouds, CLOUD_R, makeElite } from '/enemies.js';
+import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, BOSSES, CRATE, shots, clouds, CLOUD_R, makeElite, hitEnemy } from '/enemies.js';
 import { hawk, startEvent, EVENTS, HAWK_R, HAWK_HUNT, HAWK_STRIKE } from '/events.js';
 import { corn } from '/corn.js';
 import { pickups, spawnPickup } from '/pickups.js';
@@ -126,6 +126,10 @@ window.__qq = {
     /** The hen cannot fall (to watch attacks land on her). */
     tough() {
       hen.hp = hen.maxHp = 1e9;
+    },
+    /** Kills every boss out (MIDNIGHT's fall wins the run). */
+    slay() {
+      for (const e of enemies) if (e.alive && e.boss) hitEnemy(e, 1e9, hen.x, hen.y);
     },
     /** Removes every predator. */
     clear() {

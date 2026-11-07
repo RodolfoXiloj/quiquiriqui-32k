@@ -50,7 +50,7 @@
 
 A lone hen in an endless sunny meadow. Predators close in from every side, wave after wave, while the day turns to rain, snow and night. Her weapons fire on their own; **you only move**. Every level-up offers three upgrades, and **every upgrade is something she wears or carries**: a pot helmet, running boots, sunglasses, a feed basket, a cape. Glance at the hen and you see your build.
 
-Rats arrive from the first second and foxes from 0:30; snakes join at 3:00, crows at 5:00 and badgers at 7:00, and the last minute brings everything. **Ten bosses come by her level**, one at every tenth level up to 100: KING RAT, OLD RED, THE COIL, CROW MOTHER, IRON BADGER, MAGPIE BARON, SHADOW WEASEL, STINK DUKE, PACK LEADER and MIDNIGHT, each a big, crowned version of a predator in its own color, with its name on a health bar; each drops a chest. Each has an attack of its own, and each attack warns first (a blink, or a shadow where it will land) so a step away dodges it: KING RAT calls a ring of rats, OLD RED lunges three times in a row, THE COIL spits a fan of venom, CROW MOTHER dives onto her shadow and IRON BADGER leaps and slams the ground. Three predators do more than chase: the **weasel** (from 1:00) stops, blinks and lunges in a straight line; the **magpie** (from 4:00) keeps its distance, circles and throws pebbles you can dodge; the **skunk** (from 6:00) leaves a stink cloud where it falls. Now and then a predator comes as a golden **elite** (much tougher; it drops a chest and golden eggs), and from 3:00 a rare **rainbow** one cycles through every color and drops a chest of three. A **boss** (a big, tough version of a predator) comes on most minutes and drops a **chest** with one or three upgrades. Every 20 seconds a **crate** appears; broken, it leaves a magnet (pulls in every kernel), a bomb (clears the screen), food or corn. The day turns to rain, snow and a dark night (she sees only by a pool of light around her), and at 10:00 the sun comes up.
+Rats arrive from the first second and foxes from 0:30; snakes join at 3:00, crows at 5:00 and badgers at 7:00, and the last minute brings everything. **Ten bosses come by her level**, one at every tenth level up to 100: KING RAT, OLD RED, THE COIL, CROW MOTHER, IRON BADGER, MAGPIE BARON, SHADOW WEASEL, STINK DUKE, PACK LEADER and MIDNIGHT, each a big, crowned version of a predator in its own color, with its name on a health bar; each drops a chest. Each has an attack of its own, and each attack warns first (a blink, or a shadow where it will land) so a step away dodges it: KING RAT calls a ring of rats, OLD RED lunges three times in a row, THE COIL spits a fan of venom, CROW MOTHER dives onto her shadow, IRON BADGER leaps and slams the ground, MAGPIE BARON throws a ring of pebbles, SHADOW WEASEL fades away and comes back beside her to lunge, STINK DUKE leaves a trail of stink, PACK LEADER howls and sends a pack running past her, and MIDNIGHT lunges, then rages under half its health with rings of pebbles and rats. **Beat MIDNIGHT and the run is won.** Three predators do more than chase: the **weasel** (from 1:00) stops, blinks and lunges in a straight line; the **magpie** (from 4:00) keeps its distance, circles and throws pebbles you can dodge; the **skunk** (from 6:00) leaves a stink cloud where it falls. Now and then a predator comes as a golden **elite** (much tougher; it drops a chest and golden eggs), and from 3:00 a rare **rainbow** one cycles through every color and drops a chest of three. A **boss** (a big, tough version of a predator) comes on most minutes and drops a **chest** with one or three upgrades. Every 20 seconds a **crate** appears; broken, it leaves a magnet (pulls in every kernel), a bomb (clears the screen), food or corn. The day turns to rain, snow and a dark night (she sees only by a pool of light around her), and at 10:00 the sun comes up.
 
 She starts with **Egg Toss** and can carry six of seven weapons and all six passives:
 
@@ -144,6 +144,7 @@ flowchart LR
   D --> B
   B --> E["A boss every ten levels: drops a chest"]
   E --> B
+  E --> W["Level 100: MIDNIGHT falls, the run is won"]
   B --> G["Random events and elites"]
   G --> B
   B --> F["10:00, dawn: the rooster crows and day 2 begins"]
@@ -170,7 +171,7 @@ The game pauses when the window loses focus.
 1. **Nothing to learn.** Movement only: the hen fights on her own. Easy on mobile.
 2. **You can see your build.** Each upgrade is a visible item on the hen, and items change look as they level up.
 3. **A calm, readable meadow.** The ground is drawn in large quiet patches so the hen and the threats always stand out.
-4. **Hard, arcade.** A minute-by-minute timeline of denser waves and bosses, day after day, no saves, until she falls.
+4. **Hard, arcade.** A minute-by-minute timeline of denser waves and bosses, day after day, no saves, until she falls or beats MIDNIGHT at level 100.
 
 ---
 

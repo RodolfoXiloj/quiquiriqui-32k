@@ -107,6 +107,12 @@ import {
   LEAP_LOCK,
   SUMMON_RATS,
   FAN_SHOTS,
+  RING_SHOTS,
+  VANISH_TO,
+  TRAIL_EVERY,
+  PACK_FOXES,
+  RAGE,
+  RUN,
   spawnEnemy,
   spawnBoss,
   hitEnemy,
@@ -1236,6 +1242,96 @@ describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
       steps(LEAP_WARN + STEP);
       assert.equal(hen.hp, hp - b.dmg, `${BOSSES[id].name}: it landed on her for ${hp - hen.hp}, not ${b.dmg}`);
     }
+    resetRun();
+  });
+
+  it('MAGPIE BARON blinks, then throws a ring of eight pebbles all around', () => {
+    const baron = bossNear(5, 4);
+    update(STEP);
+    assert.ok(baron.warn, 'no warning');
+    steps(BOSS_WARN + STEP);
+    const stones = shots.filter((s) => s.alive);
+    assert.equal(stones.length, RING_SHOTS);
+    const angles = stones.map((s) => Math.atan2(s.vy, s.vx)).sort((a, b) => a - b);
+    for (let i = 1; i < angles.length; i++) assert.ok(angles[i] - angles[i - 1] > 0.7, 'two stones too close in the ring');
+    assert.equal(stones[0].dmg, Math.round(baron.dmg / BOSS_BITE));
+    resetRun();
+  });
+
+  it('SHADOW WEASEL fades away standing still, comes back beside her blinking, and lunges', () => {
+    const weasel = bossNear(6, 6);
+    update(STEP);
+    assert.ok(weasel.warn && weasel.state === 1 && !weasel.combo, 'it did not start to fade');
+    const far = [weasel.x, weasel.y];
+    steps(BOSS_WARN - 2 * STEP);
+    assert.deepEqual([weasel.x, weasel.y], far, 'it moved while fading');
+    steps(3 * STEP);
+    const away = Math.hypot(weasel.x - hen.x, weasel.y - hen.y);
+    assert.ok(Math.abs(away - VANISH_TO) < 0.05, `it came back ${away.toFixed(2)} tiles from her`);
+    assert.ok(weasel.state === 1 && weasel.combo === 1 && weasel.warn, 'it did not blink before the lunge');
+    const [x0, y0] = [weasel.x, weasel.y];
+    steps(DASH_WARN + STEP);
+    assert.equal(weasel.state, 2, 'no lunge');
+    steps(DASH_TIME + 0.2);
+    // It lunges at her, ends up against her (she keeps it off her body) and bites as the lunge ends
+    assert.ok(Math.hypot(weasel.x - x0, weasel.y - y0) > 1.5, 'it did not lunge');
+    assert.ok(Math.hypot(weasel.x - hen.x, weasel.y - hen.y) < 1.2, 'it did not reach her');
+    assert.ok(hen.hp < hen.maxHp, 'the lunge did not bite');
+    assert.equal(weasel.combo, 0);
+    resetRun();
+  });
+
+  it('STINK DUKE leaves a trail of stink clouds with no wind-up: they hurt her inside, not outside', () => {
+    const duke = bossNear(7, 3);
+    const hp = hen.hp;
+    steps(TRAIL_EVERY * 2 + 0.2);
+    const trail = clouds.filter((c) => c.alive);
+    assert.ok(trail.length >= 2, `only ${trail.length} clouds`);
+    assert.ok(!duke.warn && duke.state === 0, 'it stopped to wind up');
+    assert.equal(trail[0].dmg, Math.round(duke.dmg / BOSS_BITE));
+    assert.equal(hen.hp, hp, 'a cloud 3 tiles away hurt her');
+    hen.x = duke.x - 0.5;
+    steps(0.6);
+    assert.ok(hen.hp < hp, 'standing in the stink did not hurt');
+    resetRun();
+  });
+
+  it('PACK LEADER howls, then a pack of foxes runs from behind it past her at twice their speed', () => {
+    const leader = bossNear(8, 5);
+    update(STEP);
+    assert.ok(leader.warn, 'no howl');
+    steps(BOSS_WARN + STEP);
+    const pack = enemies.filter((e) => e.alive && !e.boss);
+    assert.equal(pack.length, PACK_FOXES);
+    for (const f of pack) {
+      assert.equal(f.kind, FOX);
+      assert.equal(f.act, RUN);
+      assert.ok(f.dirX * (hen.x - leader.x) + f.dirY * (hen.y - leader.y) > 0, 'a fox runs away from her');
+      assert.ok(f.x > leader.x, 'a fox started ahead of the leader');
+      assert.ok(f.speed > ENEMY_TYPES[FOX].speed * 1.5, 'a fox at a walk');
+    }
+    resetRun();
+  });
+
+  it('MIDNIGHT lunges, rages under half its health (a ring of pebbles and rats), and its fall wins the run', () => {
+    localStorage.removeItem('qq_best');
+    game.best = 0;
+    const night = bossNear(9, 4.5);
+    update(STEP);
+    assert.ok(night.warn && night.state === 1 && !night.atk, 'phase one is not a lunge');
+    night.hp = Math.floor(night.maxHp / 2) - 1;
+    update(STEP);
+    assert.equal(night.atk, RAGE, 'it did not rage');
+    assert.equal(game.banner, 'MIDNIGHT RAGES!');
+    steps(0.5 + BOSS_WARN + 2 * STEP);
+    assert.equal(shots.filter((s) => s.alive).length, RING_SHOTS, 'no ring of pebbles');
+    assert.equal(enemies.filter((e) => e.alive && !e.boss && e.kind === RAT).length, SUMMON_RATS, 'no rats');
+    hitEnemy(night, 1e9, hen.x, hen.y);
+    assert.equal(game.over, true, 'the run did not end');
+    assert.equal(game.won, true, 'the run was not won');
+    assert.ok(Number(localStorage.getItem('qq_best')) > 0, 'no best time saved');
+    steps(0.5);
+    assert.ok(!night.alive);
     resetRun();
   });
 
@@ -2766,7 +2862,7 @@ describe('quiquiriqui: text and layout', () => {
     texts.push('+250 HP', '+300', '-120', 'MISS', '850/1000', '0123456789', 'BOON', 'NEW!', 'LV 99', 'KILLS 9999', 'SHOP', 'B: BACK');
     for (const b of BOSSES) texts.push(b.name);
     // Banners: the events, the rainbow elites and the bosses, drawn at scale 3
-    const banners = [...EVENTS, ...ENEMY_TYPES.map((type) => `RAINBOW ${type.name.toUpperCase()}!`), ...BOSSES.map((b) => `${b.name}!`)];
+    const banners = [...EVENTS, ...ENEMY_TYPES.map((type) => `RAINBOW ${type.name.toUpperCase()}!`), ...BOSSES.map((b) => `${b.name}!`), 'MIDNIGHT RAGES!'];
     for (const banner of banners) assert.ok(textWidth(banner, 3) <= WIDTH - 16, `${banner} is too wide`);
     texts.push(...banners, `+${ELITE_EGGS[0]} EGGS`, `+${ELITE_EGGS[1]} EGGS`);
     for (const text of texts) {
