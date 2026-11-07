@@ -716,15 +716,23 @@ async function mobileScenario(page, client, base) {
       await page.screenshot('19-mobile.png');
       await page.touch('touchEnd', []);
       expect(b.hen.isoX - a.hen.isoX > 20, `the stick moved her only ${fmt(b.hen.isoX - a.hen.isoX)} px right`);
+      // A thumb on the stick (held) while another finger taps a card: she keeps walking afterwards
+      await page.touch('touchStart', [{ x: from.x, y: from.y, id: 4 }]);
+      await page.touch('touchMove', [{ x: to.x, y: to.y, id: 4 }]);
+      await sleep(100);
       const cards = await openCards(page);
       const card = cards.cards[1];
       const c = await page.evaluate('window.__qq.cardCenter(1)');
       const p = await page.toPage(c.x, c.y);
-      await page.touch('touchStart', [{ x: p.x, y: p.y, id: 3 }]);
-      await page.touch('touchEnd', []);
+      await page.touch('touchStart', [{ x: to.x, y: to.y, id: 4 }, { x: p.x, y: p.y, id: 3 }]);
+      await page.touch('touchEnd', [{ x: p.x, y: p.y, id: 3 }]); // the tapping finger lifts; the thumb stays
       await page.waitFor('window.__qq.snapshot().cards.length === 0', 3000);
       const after = await page.snapshot();
       expect(levelOf(after, card.id) === card.level, `tapped ${card.id}, but it is level ${levelOf(after, card.id)}`);
+      await sleep(400);
+      const walked = await page.snapshot();
+      await page.touch('touchEnd', [{ x: to.x, y: to.y, id: 4 }]);
+      expect(walked.hen.isoX - after.hen.isoX > 15, `after the pick the held stick moved her only ${fmt(walked.hen.isoX - after.hen.isoX)} px`);
       await page.evaluate('localStorage.removeItem("qq_profile")');
     } finally {
       await client.send('Emulation.setTouchEmulationEnabled', { enabled: false });

@@ -52,12 +52,13 @@ export function tapAt(x, y) {
   input.anyAction = true;
 }
 
-/** Lets go of the mouse button and the touch stick (after a card is picked with them). */
+/**
+ * Lets go of the mouse button (after a click picks a card or a menu row, the held button must not
+ * steer her). The touch stick stays with its finger: a thumb held on it through the cards keeps
+ * her walking the same way once they close, and lifting it ends it (touchend).
+ */
 export function releasePointer() {
   input.mouseHeld = false;
-  input.stick.active = false;
-  input.stick.dx = 0;
-  input.stick.dy = 0;
 }
 
 /**
@@ -71,6 +72,9 @@ export function releaseAllInput() {
   input.pressed.clear();
   input.tap = null;
   releasePointer();
+  input.stick.active = false;
+  input.stick.dx = 0;
+  input.stick.dy = 0;
   input.anyAction = false;
 }
 

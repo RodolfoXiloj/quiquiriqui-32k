@@ -662,6 +662,40 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     assert.equal(game.cards.length, 0, 'a key after the lock did not pick');
   });
 
+  it('a thumb held on the touch stick keeps her walking after a tap by another finger picks a card; a held mouse lets go', () => {
+    start();
+    Object.assign(input.stick, { active: true, id: 7, ox: 60, oy: 100, dx: 18, dy: 0 }); // screen-right
+    steps(0.3);
+    assert.equal(hen.moving, true, 'the stick does not move her');
+    openFirstCards();
+    steps(0.4); // past the card lock
+    const r = cardRect(1, 3);
+    tapAt(r.x + r.w / 2, r.y + r.h / 2);
+    update(STEP);
+    assert.equal(game.cards.length, 0, 'the tap did not pick a card');
+    assert.equal(input.stick.active, true, 'the pick let go of the stick');
+    const x0 = hen.x;
+    steps(0.2);
+    assert.ok(hen.moving && hen.x > x0, 'she stopped although the thumb never left the stick');
+    input.stick.active = false;
+    input.stick.dx = 0;
+    // A mouse button held while clicking a card lets go, so the click does not steer her afterwards
+    input.mouseHeld = true;
+    input.mouseX = WIDTH;
+    input.mouseY = HEIGHT / 2;
+    game.xp = xpToNext(game.level); // the next level-up (she is past level 1 now)
+    steps(0.4); // the cards open and their lock passes
+    assert.equal(game.cards.length, 3, 'the cards did not open');
+    const r2 = cardRect(0, 3);
+    tapAt(r2.x + r2.w / 2, r2.y + r2.h / 2);
+    update(STEP);
+    assert.equal(game.cards.length, 0);
+    assert.equal(input.mouseHeld, false, 'the mouse button stayed held');
+    steps(0.1);
+    assert.equal(hen.moving, false, 'the click kept steering her');
+    resetRun();
+  });
+
   it('a click or tap on a card picks it; a tap beside the cards does not', () => {
     start();
     openFirstCards();
