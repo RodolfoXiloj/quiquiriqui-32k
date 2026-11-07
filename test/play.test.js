@@ -93,7 +93,8 @@ import {
   MIN_HIT,
   BIG_HIT,
   CRIT_MULT,
-  BOSS_HP,
+  BOSS_BASE,
+  BOSS_GROWTH,
   BOSS_SIZE,
   BOSS_BITE,
   SPAWN_MAX,
@@ -1358,7 +1359,7 @@ describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
     const type = ENEMY_TYPES[FOX];
     assert.equal(bossName(boss), 'OLD RED');
     assert.equal(boss.boss, true);
-    assert.equal(boss.maxHp, type.hp * BOSS_HP);
+    assert.equal(boss.maxHp, Math.floor(BOSS_BASE * (1 + game.level ** 2 / BOSS_GROWTH)), 'a boss has its own health, by her level');
     assert.equal(boss.r, type.r * BOSS_SIZE);
     assert.equal(boss.dmg, type.dmg * BOSS_BITE);
     const kills = game.kills;
@@ -2278,7 +2279,7 @@ describe('quiquiriqui at 5x: peril rules', () => {
     const pair = atLevel(TWO_BOSSES, 10);
     assert.deepEqual(pair.map(bossName), ['KING RAT', 'KING RAT']);
     const full = spawnBoss(0).maxHp; // one on its own, in the same run
-    for (const b of pair) assert.equal(b.maxHp, Math.floor(full * BOSS_PAIR_SHARE), 'a paired boss has full health');
+    for (const b of pair) assert.ok(Math.abs(b.maxHp - full * BOSS_PAIR_SHARE) <= 1, `a paired boss has ${b.maxHp} health, one alone ${full}`);
     // At level 20 (same run), OLD RED comes with KING RAT
     for (const e of enemies) e.alive = false;
     game.level = 20;

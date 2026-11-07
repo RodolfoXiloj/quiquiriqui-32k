@@ -10,6 +10,8 @@
 // she levels mean the predators fall behind her.
 //
 // --god keeps her from falling, to measure how fast she levels over a long run (--minutes 30).
+// Each run also lists its bosses: when each came (her level) and how long it lived; the summary
+// gives, per boss, the median arrival time and the median time it took to slay it.
 //
 // --favor <id> makes the bot take that item whenever a card offers it; --items runs every item as
 // the favorite in turn and prints how long the bot lasts with each (does the choice matter?).
@@ -22,7 +24,7 @@
 //   five levels (5,0,0,2,0).
 import { resetRun, playWithBot, game, hen, enemies } from '../test/harness.js';
 import { createBot } from './browser/bot.js';
-import { onScreen } from '../src/enemies.js';
+import { onScreen, BOSSES } from '../src/enemies.js';
 import { popups } from '../src/pool.js';
 import { eggsEarned, SHOP } from '../src/profile.js';
 import { ITEMS, build } from '../src/items.js';
@@ -83,6 +85,9 @@ function runOnce(seed, peril, favor) {
   let lastHp = hen.hp;
   let levelAt3 = null;
   const minutes = [];
+  // Every boss of the run: { id, born, level, died }, followed while its pool slot stays a boss
+  const bossLog = [];
+  const liveBosses = new Map();
   // Per minute: her level and health as it starts, damage numbers seen, foe health on screen
   const byMinute = [];
   // Each popup's spot when last seen: a number at a new spot is a new hit
@@ -93,6 +98,19 @@ function runOnce(seed, peril, favor) {
       if (god) hen.hp = hen.maxHp = 1e9;
       if (game.started && !game.over) {
         frames++;
+        for (const e of enemies) {
+          if (e.alive && e.boss && !liveBosses.has(e)) {
+            const entry = { id: e.bossId, born: game.time, level: game.level, died: null };
+            liveBosses.set(e, entry);
+            bossLog.push(entry);
+          }
+        }
+        for (const [e, entry] of liveBosses) {
+          if (!e.alive || !e.boss) {
+            entry.died = game.time;
+            liveBosses.delete(e);
+          }
+        }
         const m = Math.floor(game.time / 60);
         const b = (byMinute[m] ||= { level: game.level, xp: xpEarned(), health: hen.hp / hen.maxHp, hit: 0, hits: 0, foe: 0, foes: 0 });
         for (const p of popups) {
@@ -131,6 +149,7 @@ function runOnce(seed, peril, favor) {
     minutes,
     byMinute: byMinute.map((b) => b && { level: b.level, xp: b.xp, health: b.health, perFoe: b.hits && b.foes ? b.foe / b.foes / (b.hit / b.hits) : null }),
     favorLevel: favor ? build[favor] || 0 : 0,
+    bosses: bossLog,
   };
 }
 
@@ -167,7 +186,24 @@ if (process.argv.includes('--items')) {
           `calm ${String(r.calm).padStart(2)}%  eggs ${String(r.eggs).padStart(3)}  | ` +
           r.minutes.slice(1).map((m) => m || '-').join(' ')
       );
+      if (r.bosses.length) {
+        console.log(
+          '           bosses: ' +
+            r.bosses.map((b) => `${BOSSES[b.id].name}@${formatClock(b.born)}/lv${b.level}${b.died === null ? ' alive' : ` ${Math.round(b.died - b.born)}s`}`).join(', ')
+        );
+      }
     }
+    // Per boss: when it comes and how long it lives (over the runs that met it)
+    const met = BOSSES.map((b, id) => runs.flatMap((r) => r.bosses.filter((x) => x.id === id)));
+    const bossRows = met
+      .map((list, id) => {
+        if (!list.length) return null;
+        const slain = list.filter((x) => x.died !== null);
+        return `${BOSSES[id].name}: met in ${list.length} run(s), at ${formatClock(median(list.map((x) => x.born)))} (lv ${median(list.map((x) => x.level))})` +
+          (slain.length ? `, slain in ${Math.round(median(slain.map((x) => x.died - x.born)))} s (${slain.length}/${list.length})` : ', never slain');
+      })
+      .filter(Boolean);
+    if (bossRows.length) console.log('  → bosses:\n    ' + bossRows.join('\n    '));
     const falls = runs.map((r) => r.time);
     console.log(
       `  → fall: median ${formatClock(median(falls))}, fastest ${formatClock(Math.min(...falls))}, slowest ${formatClock(Math.max(...falls))}` +

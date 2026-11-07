@@ -171,7 +171,7 @@ export const LEAP_LOCK = 0.5;
 const BOSS_REST = 5;
 const BOSS_FIRST = 2;
 const LUNGE_COMBO = 3;
-export const SUMMON_RATS = 6;
+export const SUMMON_RATS = 4;
 export const FAN_SHOTS = 5;
 const FAN_STEP = 0.3;
 export const RING_SHOTS = 8;
@@ -185,8 +185,14 @@ const PACK_BAND = 4;
 const PACK_FROM = 5;
 /** When two bosses come at once (TWO BOSSES), each has this share of a boss's health. */
 export const BOSS_PAIR_SHARE = 0.75;
-/** Bosses: this many times the health, radius and bite of their kind, and armor on top. */
-export const BOSS_HP = 10;
+/**
+ * A boss's health is its own, the same for every kind: BOSS_BASE, growing with the square of her
+ * level over BOSS_GROWTH (bosses come by level: about 1,000 at level 10, 10,600 at 50, 40,600 at
+ * 100), plus peril's share. Its radius and bite are its kind's, times BOSS_SIZE and BOSS_BITE,
+ * with BOSS_ARMOR on top.
+ */
+export const BOSS_BASE = 600;
+export const BOSS_GROWTH = 150;
 export const BOSS_SIZE = 2;
 export const BOSS_BITE = 3;
 export const BOSS_ARMOR = 30;
@@ -518,7 +524,7 @@ export function spawnBoss(id, share = 1) {
   if (!e) return null;
   e.boss = true;
   e.bossId = id;
-  e.hp = e.maxHp = Math.floor(e.hp * BOSS_HP * share);
+  e.hp = e.maxHp = Math.floor(BOSS_BASE * (1 + game.level ** 2 / BOSS_GROWTH) * (1 + PERIL.hp * game.peril) * share);
   e.r *= BOSS_SIZE;
   e.dmg *= BOSS_BITE;
   e.armor += BOSS_ARMOR;
