@@ -3,7 +3,7 @@
 // title). Everything is drawn at 320x180 and upscaled by an integer factor.
 import { PALETTE } from './palette.js';
 import { drawPixelText, textWidth } from './font.js';
-import { WIDTH, HEIGHT } from './screen.js';
+import { WIDTH, HEIGHT, ZOOM } from './screen.js';
 import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
 import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier, lockSprite } from './sprites.js';
@@ -230,7 +230,12 @@ function tinted(sprite, color, amount) {
   return { ...sprite, normal: tintCanvas };
 }
 
-const visible = (sx, sy) => sx > -24 && sx < WIDTH + 24 && sy > -24 && sy < HEIGHT + 32;
+/** Whether a sprite at canvas (sx, sy) is in view: the part of the canvas the zoom shows, plus a margin. */
+const visible = (sx, sy) => {
+  const mx = (WIDTH / 2) * (1 - 1 / ZOOM);
+  const my = (HEIGHT / 2) * (1 - 1 / ZOOM);
+  return sx > mx - 24 && sx < WIDTH - mx + 24 && sy > my - 24 && sy < HEIGHT - my + 32;
+};
 
 /**
  * Draws `sprite` (normal or flash) with its feet at (sx, sy), mirrored when `facing` < 0 and
@@ -841,11 +846,19 @@ export function renderScene(ctx, alpha, time) {
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = PALETTE[2];
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  // The world, ZOOM times bigger around the center (where the camera keeps her) on a small screen
+  ctx.save();
+  if (ZOOM !== 1) {
+    ctx.translate(WIDTH / 2, HEIGHT / 2);
+    ctx.scale(ZOOM, ZOOM);
+    ctx.translate(-WIDTH / 2, -HEIGHT / 2);
+  }
   drawGround(ctx, camX, camY);
   drawWorld(ctx, camX, camY, alpha, time);
   drawEffects(ctx, camX, camY);
   drawHawk(ctx, camX, camY, time);
   if (game.started) drawWeather(ctx, time, Math.round(ix - camX), Math.round(iy - camY));
+  ctx.restore();
   tint(ctx, 13, (juice.flash / juice.flashDur) * 0.7);
   if (game.frenzy > 0 && !game.over) {
     // FRENZY!: a red frame pulses around the screen

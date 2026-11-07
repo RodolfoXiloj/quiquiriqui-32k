@@ -690,6 +690,7 @@ async function mobileScenario(page, client, base) {
       })()`);
       expect(size.w === 320 && size.h > 400, `internal size ${size.w}x${size.h}`);
       expect(size.cssW >= 380, `the canvas is only ${fmt(size.cssW)} px wide on a 390 px screen`);
+      expect((await page.snapshot()).zoom === 1.5, `the world is drawn x${(await page.snapshot()).zoom} on a phone`);
       const at = (fx, fy) => page.toPage(320 * fx, size.h * fy);
       // Every peril is open: up to NO MERCY with the keys, then a finger on the left half of its row steps down
       for (let k = 0; k < 5; k++) await page.tapKey('KeyC', 30);

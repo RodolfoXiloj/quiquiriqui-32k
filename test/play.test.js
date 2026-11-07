@@ -60,7 +60,7 @@ import {
   healthText,
 } from '../src/render.js';
 import { frameAlpha } from '../src/main.js';
-import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, fitScreen, screenScale } from '../src/screen.js';
+import { WIDTH, HEIGHT, MIN_HEIGHT, MAX_HEIGHT, ZOOM, MAX_ZOOM, fitScreen, screenScale } from '../src/screen.js';
 import { formatClock, xpToNext } from '../src/state.js';
 import {
   RAT,
@@ -2913,7 +2913,13 @@ describe('quiquiriqui: text and layout', () => {
       assert.ok(newborns > 0, 'nobody was born');
       assert.ok(screenScale(390, 844) > 1.2 && screenScale(390, 844) < 1.25, 'the phone should fill its width');
       assert.equal(fitScreen(844, 390), MIN_HEIGHT);
+      assert.equal(ZOOM, 1, 'a phone held sideways (2x) needs no zoom');
       assert.equal(fitScreen(1024, 768), 240);
+      assert.equal(ZOOM, 1, 'a tablet needs no zoom');
+      fitScreen(390, 844);
+      assert.equal(ZOOM, MAX_ZOOM, 'a phone held upright (about 1.2x) shows the world bigger');
+      fitScreen(1280, 720);
+      assert.equal(ZOOM, 1, 'a desktop needs no zoom');
       assert.equal(fitScreen(1920, 1080), MIN_HEIGHT);
       assert.equal(screenScale(1920, 1080), 6);
     } finally {

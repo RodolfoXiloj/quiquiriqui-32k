@@ -18,6 +18,7 @@ import { game, settings, formatClock, xpToNext } from '/state.js';
 import { hen, damageHen, syncHenStats } from '/hen.js';
 import { holdKey } from '/input.js';
 import { toIsoX, toIsoY } from '/iso.js';
+import { ZOOM } from '/screen.js';
 import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, BOSSES, CRATE, shots, clouds, CLOUD_R, makeElite, hitEnemy } from '/enemies.js';
 import { hawk, startEvent, EVENTS, HAWK_R, HAWK_HUNT, HAWK_STRIKE } from '/events.js';
 import { corn } from '/corn.js';
@@ -60,6 +61,7 @@ window.__qq = {
   speed,
   record,
   snapshot: () => ({
+    zoom: ZOOM,
     started: game.started,
     paused: game.paused,
     over: game.over,
