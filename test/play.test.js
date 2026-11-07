@@ -83,6 +83,7 @@ import {
   DASH_TIME,
   HOP_TIME,
   HOP_EVERY,
+  HOP_MAX,
   ENEMY_TYPES,
   MAX_ENEMIES,
   shots,
@@ -2423,6 +2424,23 @@ describe('quiquiriqui at 5x: peril rules', () => {
     const far = ratAt(1.5);
     steps(0.5);
     assert.ok(!far.hop && far.state === 0, 'it hopped from too far');
+    resetRun();
+  });
+
+  it(`peril ${HOPS}: as the minutes pass they hop from farther, the hop covers the gap, and they rest less between hops`, () => {
+    hopRun(HOPS);
+    const far = ratAt(2.2);
+    update(STEP);
+    assert.ok(!far.hop, 'at 0:00 it hopped from 2.2 tiles');
+    hopRun(HOPS);
+    game.time = 1200; // minute 20: the reach is HOP_MAX
+    const late = ratAt(2.2);
+    update(STEP);
+    assert.ok(late.hop && late.state === 2, 'at 20:00 it did not hop from 2.2 tiles');
+    steps(HOP_TIME + 0.1);
+    assert.equal(hen.maxHp - hen.hp, late.dmg, 'the long hop did not reach her');
+    assert.ok(late.timer > 0.9 && late.timer <= HOP_EVERY, `it rests ${late.timer.toFixed(2)} s at minute 20`);
+    assert.ok(HOP_MAX < 3, 'a hop from farther than the screen');
     resetRun();
   });
 

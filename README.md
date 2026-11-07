@@ -131,7 +131,7 @@ Quiquiriqui is **hard by default**: it starts at NO MERCY, the hardest peril, wh
 | 0 | EGG | none: predators at their base health and bite |
 | 1 | CHICK | **MORE EVENTS**: an event every 30 to 50 s |
 | 2 | HEN | **ELITES X2**: an elite every 20 to 30 s; rainbow ones from 2:00 |
-| 3 | ROOSTER | **TWO BOSSES + HOPS**: every boss comes with the one before it (each with 25% less health), and a predator close by now and then (every 2 to 4 s) hops at her on the spot, with no warning; a short hop, so walking away makes it miss |
+| 3 | ROOSTER | **TWO BOSSES + HOPS**: every boss comes with the one before it (each with 25% less health), and a predator close by now and then (every 2 to 4 s) hops at her on the spot, with no warning; a short hop at first, so walking away makes it miss; as the minutes pass they hop from farther (up to 2.5 tiles by minute 20) and more often, and a hop always covers the gap to where she is heading |
 | 4 | HAWK | **TWO CARDS**: level-ups offer two cards, not three |
 | 5 | NO MERCY (the default) | **NO MERCY**: a fuller meadow, faster predators, and halfway between bosses (levels 15, 25...) one she has met comes back |
 

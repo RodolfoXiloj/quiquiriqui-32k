@@ -125,6 +125,11 @@ const DASH_REST = 1.5;
  * HOP_EVERY to twice that before the next. Short, so walking away makes it miss.
  */
 const HOP_FROM = 0.8;
+/** The hop reaches HOP_GROW tiles farther for each minute of the run, up to HOP_MAX (minute 20), and grows to cover that gap. */
+export const HOP_GROW = 0.085;
+export const HOP_MAX = 2.5;
+/** Each minute of the run also cuts the wait between hops, down to half (minute 20). */
+export const HOP_HASTE = 1 / 40;
 export const HOP_TIME = 0.15;
 export const HOP_SPEED = 8;
 export const HOP_EVERY = 2;
@@ -278,8 +283,9 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   side: 1,
   /** A lunger or a hopper: 0 chasing, 1 winding up, 2 in the air along (dirX, dirY). */
   state: 0,
-  /** True when its leap is a short hop (HOPS), not a weasel's long lunge. */
+  /** True when its leap is a short hop (HOPS), not a weasel's long lunge, and the hop's speed (tiles/s): enough to cover the gap to her in HOP_TIME. */
   hop: false,
+  dash: 0,
   dirX: 0,
   dirY: 0,
   /** 0, or 1 for a golden elite and 2 for a rainbow one. */
@@ -510,6 +516,7 @@ export function spawnEnemy(kind, x, y) {
     side: phase < 1 ? 1 : -1,
     state: 0,
     hop: false,
+    dash: 0,
     elite: 0,
   });
   return e;
@@ -751,16 +758,19 @@ function act(e, ux, uy, d, dt) {
     } else if (e.state === 2) {
       mx = e.dirX;
       my = e.dirY;
-      speed = e.hop ? HOP_SPEED : DASH_SPEED;
+      speed = e.hop ? e.dash : DASH_SPEED;
       if (e.timer <= 0) {
         e.state = 0;
         // A boss lunges LUNGE_COMBO times in a row before it rests
-        e.timer = e.hop ? HOP_EVERY * (1 + gameRand()) : e.boss && ++e.combo % LUNGE_COMBO ? 0.05 : DASH_REST;
+        e.timer = e.hop ? HOP_EVERY * (1 + gameRand()) * (1 - Math.min(0.5, (game.time / 60) * HOP_HASTE)) : e.boss && ++e.combo % LUNGE_COMBO ? 0.05 : DASH_REST;
       }
     } else if (e.timer <= 0) {
       // Close by (HOPS): a hop, at once; a lunger from farther: blink, then its long lunge
       const gap = d - e.r - HEN_RADIUS;
-      e.hop = !e.boss && game.peril >= HOPS && gap > 0 && gap < HOP_FROM;
+      const reach = Math.min(HOP_MAX, HOP_FROM + (HOP_GROW * game.time) / 60);
+      e.hop = !e.boss && game.peril >= HOPS && gap > 0 && gap < reach;
+      // The hop grows with the reach: 1.2 tiles at first (walking away makes it miss), the whole gap and more by minute 20
+      e.dash = HOP_SPEED + (reach - HOP_FROM) * 9;
       e.dirX = ux;
       e.dirY = uy;
       if (e.hop) {
