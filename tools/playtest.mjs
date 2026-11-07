@@ -494,6 +494,22 @@ async function dayScenarios(page, base) {
     await page.waitFor('window.__qq.snapshot().reward.length === 0', 3000);
   });
 
+  await check('17b. boss attacks: IRON BADGER rises and lands on her shadow, THE COIL spits a fan of venom', async () => {
+    await page.open(`${base}/?autoplay&drive=cdp&peaceful&speed=${SPEED}`, ready);
+    await page.tapKey('KeyD', 100);
+    await page.evaluate(`window.__qq.cheat.tough(), window.__qq.cheat.boss('IRON BADGER')`); // she stands still under the slam
+    await page.waitFor('window.__qq.snapshot().bossAttacks[0] === 1', 8000);
+    await sleep(120);
+    await page.screenshot('17-leap.png');
+    await page.waitFor('window.__qq.snapshot().bossAttacks.length === 0', 4000);
+    await page.evaluate(`window.__qq.cheat.clear(), window.__qq.cheat.boss('THE COIL')`);
+    await page.waitFor('window.__qq.snapshot().shots >= 5', 8000);
+    await page.screenshot('17-venom.png');
+    const s = await page.snapshot();
+    expect(s.shots >= 5, `${s.shots} venom drops`);
+    await page.evaluate('window.__qq.cheat.clear()');
+  });
+
   await check('18. a broken crate leaves something behind', async () => {
     const a = await page.snapshot();
     await page.evaluate('window.__qq.cheat.crate()');

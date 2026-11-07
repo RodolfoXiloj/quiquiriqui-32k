@@ -64,7 +64,7 @@ export function botWorld() {
     enemies,
     corn,
     pickups,
-    hazards: hazardsOf(shots, clouds, hawk, { cloudR: CLOUD_R, hawkR: HAWK_R, hawkHunt: HAWK_HUNT, hawkStrike: HAWK_STRIKE }),
+    hazards: hazardsOf(shots, clouds, hawk, { cloudR: CLOUD_R, hawkR: HAWK_R, hawkHunt: HAWK_HUNT, hawkStrike: HAWK_STRIKE }, enemies),
     game,
     cards: game.cards.map((card) => ({ ...card, weapon: !!ITEM_BY_ID[card.id].weapon })),
   };

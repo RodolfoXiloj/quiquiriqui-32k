@@ -81,6 +81,8 @@ window.__qq = {
     build: buildOrder.map((id) => [id, build[id]]),
     enemies: countEnemies(),
     bosses: enemies.filter((e) => e.alive && e.boss).length,
+    /** Each boss winding up (1) or in the middle of (2) an attack or a lunge. */
+    bossAttacks: enemies.filter((e) => e.alive && e.boss && e.state).map((e) => e.state),
     elites: enemies.filter((e) => e.alive && e.elite).map((e) => e.elite),
     /** Each predator in the middle of a hop (2). */
     hops: enemies.filter((e) => e.alive && e.hop && e.state).map((e) => e.state),
@@ -120,6 +122,10 @@ window.__qq = {
     },
     damage(amount) {
       damageHen(amount, hen.x + 1, hen.y);
+    },
+    /** The hen cannot fall (to watch attacks land on her). */
+    tough() {
+      hen.hp = hen.maxHp = 1e9;
     },
     /** Removes every predator. */
     clear() {
@@ -224,7 +230,7 @@ if (!externalDriver) {
       holdKey(tapped, false);
       tapped = null;
     }
-    const hazards = hazardsOf(shots, clouds, hawk, { cloudR: CLOUD_R, hawkR: HAWK_R, hawkHunt: HAWK_HUNT, hawkStrike: HAWK_STRIKE });
+    const hazards = hazardsOf(shots, clouds, hawk, { cloudR: CLOUD_R, hawkR: HAWK_R, hawkHunt: HAWK_HUNT, hawkStrike: HAWK_STRIKE }, enemies);
     const { keys, tap } = bot.decide({ hen, enemies, corn, pickups, hazards, game, cards: cardsWithKind() });
     for (const code of MOVE_KEYS) holdKey(code, keys.includes(code));
     if (tap) {

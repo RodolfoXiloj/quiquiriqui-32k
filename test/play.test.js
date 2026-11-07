@@ -17,6 +17,7 @@ import {
   game,
   enemies,
   corn,
+  botWorld,
 } from './harness.js';
 import { tapAt } from '../src/input.js';
 import { toIsoX, toIsoY } from '../src/iso.js';
@@ -101,6 +102,11 @@ import {
   BOSSES,
   BOSS_EVERY,
   BOSS_PAIR_SHARE,
+  BOSS_WARN,
+  LEAP_WARN,
+  LEAP_LOCK,
+  SUMMON_RATS,
+  FAN_SHOTS,
   spawnEnemy,
   spawnBoss,
   hitEnemy,
@@ -1119,6 +1125,134 @@ describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
     game.level = 21;
     update(STEP);
     assert.deepEqual(bossesOut().map(bossName).sort(), ['KING RAT', 'OLD RED']);
+    resetRun();
+  });
+
+  /** A quiet run (no waves, no weapons, a tough hen) with boss `id` `d` tiles to her side, about to attack. */
+  function bossNear(id, d) {
+    resetRun();
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    buildOrder.length = 0;
+    const b = spawnBoss(id);
+    b.x = b.prevX = hen.x + d;
+    b.y = b.prevY = hen.y;
+    b.timer = 0;
+    b.age = 1;
+    b.speed = 0; // it stays where it is put (its attacks move it, not its legs)
+    return b;
+  }
+
+  it('KING RAT squeals, still and blinking, then calls a ring of rats around itself', () => {
+    const king = bossNear(0, 3);
+    update(STEP);
+    assert.ok(king.warn && king.state === 1, 'no warning');
+    const [x0, y0] = [king.x, king.y];
+    steps(BOSS_WARN - 2 * STEP);
+    assert.equal(countEnemies(), 1, 'rats came while it was still squealing');
+    assert.ok(Math.hypot(king.x - x0, king.y - y0) < 0.01, 'it moved while squealing');
+    steps(3 * STEP);
+    const rats = enemies.filter((e) => e.alive && !e.boss);
+    assert.equal(rats.length, SUMMON_RATS);
+    for (const r of rats) {
+      assert.equal(r.kind, RAT);
+      assert.ok(Math.hypot(r.x - king.x, r.y - king.y) < 2.6, 'a rat far from the king');
+    }
+    assert.equal(king.state, 0);
+    resetRun();
+  });
+
+  it('OLD RED lunges three times in a row, each with its blink, then rests', () => {
+    const red = bossNear(1, 4.5);
+    let lunges = 0;
+    let airborne = false;
+    const watch = (seconds) => {
+      for (let i = 0; i < Math.round(seconds / STEP); i++) {
+        update(STEP);
+        if (red.state === 2 && !airborne) lunges++;
+        airborne = red.state === 2;
+      }
+    };
+    watch(DASH_WARN + DASH_TIME + 0.2);
+    assert.equal(lunges, 1, 'no first lunge');
+    watch(2.4);
+    assert.equal(lunges, 3, 'not three lunges in a row');
+    watch(0.7);
+    assert.equal(lunges, 3, 'a fourth lunge with no rest');
+    watch(1.8);
+    assert.equal(lunges, 4, 'no lunge after the rest');
+    resetRun();
+  });
+
+  it('THE COIL blinks, then spits a fan of five venom drops: a step aside dodges them, standing still does not', () => {
+    const coil = bossNear(2, 5);
+    coil.speed = 0;
+    update(STEP);
+    assert.ok(coil.warn, 'no warning');
+    steps(BOSS_WARN + STEP);
+    const drops = shots.filter((s) => s.alive);
+    assert.equal(drops.length, FAN_SHOTS);
+    const aim = Math.atan2(hen.y - coil.y, hen.x - coil.x);
+    const angles = drops.map((s) => Math.atan2(s.vy, s.vx) - aim).sort((a, b) => a - b);
+    assert.ok(angles[FAN_SHOTS - 1] - angles[0] > 1, `a fan only ${(angles[FAN_SHOTS - 1] - angles[0]).toFixed(2)} rad wide`);
+    assert.ok(angles.some((a) => Math.abs(a) < 0.02), 'no drop aimed at her');
+    for (const s of drops) assert.equal(s.color, 14);
+    assert.equal(drops[0].dmg, Math.round(coil.dmg / BOSS_BITE), 'a drop bites like the whole boss');
+    let hp = hen.hp;
+    hen.y -= 5;
+    steps(SHOT_LIFE + 0.1);
+    assert.equal(hen.hp, hp, 'a dodged drop still hit');
+    hen.y += 5;
+    coil.timer = 0;
+    hp = hen.hp;
+    steps(BOSS_WARN + 1);
+    assert.ok(hen.hp < hp, 'standing in the fan did not hurt');
+    resetRun();
+  });
+
+  it('CROW MOTHER and IRON BADGER rise, their shadow following her until it locks, then land there: a step away dodges it', () => {
+    for (const [id, reach] of [[3, 1.2], [4, 2]]) {
+      const b = bossNear(id, 4);
+      update(STEP);
+      assert.ok(b.warn && b.state === 1 && b.reach === reach, `${BOSSES[id].name}: no leap`);
+      hen.x += 1;
+      update(STEP);
+      assert.ok(Math.abs(b.dirX - hen.x) < 0.01 && Math.abs(b.dirY - hen.y) < 0.01, 'the shadow did not follow her');
+      steps(LEAP_WARN - LEAP_LOCK);
+      const [tx, ty] = [b.dirX, b.dirY];
+      hen.x -= reach + 1.5;
+      update(STEP);
+      assert.equal(b.dirX, tx, 'the shadow followed her after it locked');
+      let hp = hen.hp;
+      steps(LEAP_LOCK + STEP);
+      assert.ok(Math.hypot(b.x - tx, b.y - ty) < 0.01, 'it did not land on its shadow');
+      assert.equal(hen.hp, hp, 'it hit her although she stepped away');
+      assert.equal(b.state, 0);
+      // Standing still under the shadow: its full bite
+      b.timer = 0;
+      update(STEP);
+      assert.equal(b.state, 1, 'no second leap');
+      hp = hen.hp;
+      steps(LEAP_WARN + STEP);
+      assert.equal(hen.hp, hp - b.dmg, `${BOSSES[id].name}: it landed on her for ${hp - hen.hp}, not ${b.dmg}`);
+    }
+    resetRun();
+  });
+
+  it('a boss never hops (it lunges or attacks instead), and the bot sees where a leaping boss will land', () => {
+    resetRun({ peril: NO_MERCY });
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    buildOrder.length = 0;
+    const red = spawnBoss(1);
+    Object.assign(red, { x: hen.x + red.r + HEN_RADIUS + 0.5, y: hen.y, timer: 0, age: 1 });
+    update(STEP);
+    assert.ok(!red.hop && red.state === 1 && red.warn, 'OLD RED hopped instead of winding up a lunge');
+    const crow = spawnBoss(3);
+    Object.assign(crow, { x: hen.x + 4, y: hen.y, timer: 0, age: 1 });
+    update(STEP);
+    const seen = botWorld().hazards.find((h) => h.weight === 6);
+    assert.ok(seen && Math.abs(seen.x - crow.dirX) < 0.01 && seen.r > crow.reach, 'the bot does not see the leap coming');
     resetRun();
   });
 

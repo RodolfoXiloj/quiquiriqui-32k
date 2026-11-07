@@ -19,7 +19,7 @@ import { spawnCorn } from './corn.js';
 import { spawnParticle, spawnPopup } from './pool.js';
 import { spawnPickup, CHEST, MAGNET, BOMB, FOOD } from './pickups.js';
 import { triggerShake } from './juice.js';
-import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge } from './sfx.js';
+import { sfxPeck, sfxBoom, sfxKill, sfxThrow, sfxLunge, sfxScreech } from './sfx.js';
 import { PERIL, NO_MERCY, HOPS } from './profile.js';
 
 export const RAT = 0;
@@ -130,22 +130,43 @@ const SHOT_R = 0.2;
 
 /**
  * The ten bosses, one at every BOSS_EVERY levels of hers (waves.js): the kind it is a big version
- * of, its name on the boss bar, and its tint (a palette index). The last one, at level 100, is
- * the final boss.
+ * of, its name on the boss bar, its tint (a palette index), and its attack: `atk` SUMMON (a ring
+ * of rats around it), FAN (a fan of venom drops) or LEAP (it rises, a shadow marks where she is
+ * and locks a moment before it lands within `reach` tiles), or `act` CHARGE (three lunges in a
+ * row). Every attack blinks first, so she can step away. The last boss, at level 100, is the
+ * final one.
  */
 export const BOSS_EVERY = 10;
+export const SUMMON = 1;
+export const FAN = 2;
+export const LEAP = 3;
 export const BOSSES = [
-  { kind: RAT, name: 'KING RAT', color: 10 },
-  { kind: FOX, name: 'OLD RED', color: 9 },
-  { kind: SNAKE, name: 'THE COIL', color: 11 },
-  { kind: CROW, name: 'CROW MOTHER', color: 18 },
-  { kind: BADGER, name: 'IRON BADGER', color: 16 },
+  { kind: RAT, name: 'KING RAT', color: 10, atk: SUMMON },
+  { kind: FOX, name: 'OLD RED', color: 9, act: CHARGE },
+  { kind: SNAKE, name: 'THE COIL', color: 11, atk: FAN },
+  { kind: CROW, name: 'CROW MOTHER', color: 18, atk: LEAP, reach: 1.2 },
+  { kind: BADGER, name: 'IRON BADGER', color: 16, atk: LEAP, reach: 2 },
   { kind: MAGPIE, name: 'MAGPIE BARON', color: 12 },
   { kind: WEASEL, name: 'SHADOW WEASEL', color: 15 },
   { kind: SKUNK, name: 'STINK DUKE', color: 14 },
   { kind: FOX, name: 'PACK LEADER', color: 16 },
   { kind: FOX, name: 'MIDNIGHT', color: 15 },
 ];
+/**
+ * A boss attacks when she is within BOSS_RANGE tiles: it blinks for BOSS_WARN (a leap takes
+ * LEAP_WARN, its shadow following her until LEAP_LOCK seconds before it lands), acts, then waits
+ * BOSS_REST (BOSS_FIRST after it is born). A lunger's combo is three lunges, then its usual rest.
+ */
+const BOSS_RANGE = 8;
+export const BOSS_WARN = 0.6;
+export const LEAP_WARN = 1.3;
+export const LEAP_LOCK = 0.5;
+const BOSS_REST = 5;
+const BOSS_FIRST = 2;
+const LUNGE_COMBO = 3;
+export const SUMMON_RATS = 6;
+export const FAN_SHOTS = 5;
+const FAN_STEP = 0.3;
 /** When two bosses come at once (TWO BOSSES), each has this share of a boss's health. */
 export const BOSS_PAIR_SHARE = 0.75;
 /** Bosses: this many times the health, radius and bite of their kind, and armor on top. */
@@ -195,8 +216,11 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   dmg: 0,
   flying: false,
   boss: false,
-  /** Which of BOSSES it is (when `boss`). */
+  /** Which of BOSSES it is (when `boss`), its attack (SUMMON, FAN, LEAP or 0), a leap's reach, and its lunges in a row. */
   bossId: 0,
+  atk: 0,
+  reach: 0,
+  combo: 0,
   /** Crates: still, harmless, not counted as kills. */
   prop: false,
   /** Seconds since it appeared. */
@@ -234,15 +258,44 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
 /** Stink clouds left by skunks. */
 export const clouds = Array.from({ length: 12 }, () => ({ alive: false, x: 0, y: 0, life: 0, tick: 0, dmg: 0 }));
 
-/** Pebbles thrown by magpies, flying straight at where the hen was. */
-export const shots = Array.from({ length: 32 }, () => ({ alive: false, x: 0, y: 0, prevX: 0, prevY: 0, vx: 0, vy: 0, life: 0, dmg: 0 }));
+/** Pebbles thrown by magpies (and a boss's venom drops, `color` 14), flying straight at where the hen was. */
+export const shots = Array.from({ length: 32 }, () => ({ alive: false, x: 0, y: 0, prevX: 0, prevY: 0, vx: 0, vy: 0, life: 0, dmg: 0, color: 16 }));
 
-/** Predator `e` throws a pebble along (ux, uy), a unit vector. */
-function throwPebble(e, ux, uy) {
+/** Predator `e` throws a pebble along (ux, uy), a unit vector, hurting `dmg` (its bite). */
+function throwPebble(e, ux, uy, dmg = e.dmg, color = 16) {
   const s = shots.find((p) => !p.alive);
   if (!s) return;
-  Object.assign(s, { alive: true, x: e.x, y: e.y, prevX: e.x, prevY: e.y, vx: ux * SHOT_SPEED, vy: uy * SHOT_SPEED, life: SHOT_LIFE, dmg: e.dmg });
+  Object.assign(s, { alive: true, x: e.x, y: e.y, prevX: e.x, prevY: e.y, vx: ux * SHOT_SPEED, vy: uy * SHOT_SPEED, life: SHOT_LIFE, dmg, color });
   sfxThrow();
+}
+
+/** Boss `e` does its attack, the hen being along (ux, uy): see BOSSES. */
+function bossAttack(e, ux, uy) {
+  if (e.atk === SUMMON) {
+    for (let i = 0; i < SUMMON_RATS; i++) {
+      const a = (i / SUMMON_RATS) * Math.PI * 2;
+      if (!enemies.some((o) => !o.alive)) makeRoom();
+      spawnEnemy(RAT, e.x + Math.cos(a) * 2, e.y + Math.sin(a) * 2);
+    }
+  } else if (e.atk === FAN) {
+    const a0 = Math.atan2(uy, ux);
+    for (let i = 0; i < FAN_SHOTS; i++) {
+      const a = a0 + (i - (FAN_SHOTS - 1) / 2) * FAN_STEP;
+      throwPebble(e, Math.cos(a), Math.sin(a), Math.round(e.dmg / BOSS_BITE), 14);
+    }
+  } else {
+    // It lands where its shadow locked: dust, a shake, and a bite if she is still under it
+    e.x = e.prevX = e.dirX;
+    e.y = e.prevY = e.dirY;
+    sfxBoom();
+    triggerShake(0, 1, 3, 0.2);
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      spawnParticle(e.x, e.y, 1, Math.cos(a) * 2.5, Math.sin(a) * 2.5, 10, i % 2 ? 6 : 19, 1, 0.4);
+    }
+    if (Math.hypot(hen.x - e.x, hen.y - e.y) < e.reach + HEN_RADIUS) damageHen(e.dmg, e.x, e.y);
+    e.biteCooldown = BITE_COOLDOWN; // the landing is its bite: no touch bite on top
+  }
 }
 
 /** Pebbles fly and hit; stink clouds hurt the hen while she stands in them, then clear. */
@@ -357,6 +410,9 @@ export function spawnEnemy(kind, x, y) {
     flying: !!type.flying,
     boss: false,
     bossId: 0,
+    atk: 0,
+    reach: 0,
+    combo: 0,
     prop: !!type.prop,
     age: 0,
     flash: 0,
@@ -402,6 +458,11 @@ export function spawnBoss(id, share = 1) {
   e.dmg *= BOSS_BITE;
   e.armor += BOSS_ARMOR;
   e.kr = Math.max(e.kr, HEAVY_KR);
+  const b = BOSSES[id];
+  e.atk = b.atk || 0;
+  e.reach = b.reach || 0;
+  if (b.act) e.act = b.act;
+  e.timer = BOSS_FIRST;
   return e;
 }
 
@@ -513,14 +574,39 @@ function killEnemy(e) {
 /**
  * One step of what predator `e` does, the hen being `d` tiles away along (ux, uy): chase her;
  * (a shooter) hold its distance, circle her and throw a pebble now and then while on screen;
- * (a lunger) now and then stop, blink, and lunge at where she was; and from ROOSTER (a chaser or a
- * lunger close by) now and then hop at her.
+ * (a lunger) now and then stop, blink, and lunge at where she was; (a boss with an attack) now and
+ * then stop, blink, and do it; and from ROOSTER (a chaser or a lunger close by) now and then hop at
+ * her (bosses never hop).
  */
 function act(e, ux, uy, d, dt) {
   let mx = ux;
   let my = uy;
   let speed = e.speed;
-  if (e.act === SHOOT) {
+  if (e.atk) {
+    e.timer -= dt;
+    if (e.state === 1) {
+      // Winding up: still, blinking; a leap's shadow follows her until it locks
+      e.warn = true;
+      speed = 0;
+      if (e.atk === LEAP && e.timer > LEAP_LOCK) {
+        e.dirX = hen.x;
+        e.dirY = hen.y;
+      }
+      if (e.timer <= 0) {
+        bossAttack(e, ux, uy);
+        e.state = 0;
+        e.timer = BOSS_REST;
+      }
+    } else if (e.timer <= 0 && d < BOSS_RANGE) {
+      e.state = 1;
+      e.timer = e.atk === LEAP ? LEAP_WARN : BOSS_WARN;
+      e.dirX = hen.x;
+      e.dirY = hen.y;
+      e.warn = true;
+      speed = 0;
+      sfxScreech();
+    }
+  } else if (e.act === SHOOT) {
     const toward = d > KEEP_FAR ? 1 : d < KEEP_NEAR ? -1 : 0;
     mx = toward ? ux * toward : -uy * e.side;
     my = toward ? uy * toward : ux * e.side;
@@ -562,18 +648,19 @@ function act(e, ux, uy, d, dt) {
       speed = e.hop ? HOP_SPEED : DASH_SPEED;
       if (e.timer <= 0) {
         e.state = 0;
-        e.timer = e.hop ? HOP_EVERY * (1 + gameRand()) : DASH_REST;
+        // A boss lunges LUNGE_COMBO times in a row before it rests
+        e.timer = e.hop ? HOP_EVERY * (1 + gameRand()) : e.boss && ++e.combo % LUNGE_COMBO ? 0.05 : DASH_REST;
       }
     } else if (e.timer <= 0) {
       // Close by (HOPS): a hop, at once; a lunger from farther: blink, then its long lunge
       const gap = d - e.r - HEN_RADIUS;
-      e.hop = game.peril >= HOPS && gap > 0 && gap < HOP_FROM;
+      e.hop = !e.boss && game.peril >= HOPS && gap > 0 && gap < HOP_FROM;
       e.dirX = ux;
       e.dirY = uy;
       if (e.hop) {
         e.state = 2;
         e.timer = HOP_TIME;
-      } else if (e.act === CHARGE && d < DASH_FROM && d > DASH_NEAR) {
+      } else if (e.act === CHARGE && d < DASH_FROM && (d > DASH_NEAR || e.boss)) {
         e.state = 1;
         e.timer = DASH_WARN;
         e.warn = true;
@@ -637,7 +724,8 @@ export function updateEnemies(dt) {
     const screenDx = e.act === RUN ? e.dirX - e.dirY : dx - dy;
     if (Math.abs(screenDx) > 0.05) e.facing = (screenDx > 0) === !game.over ? 1 : -1;
 
-    if (!game.over && e.age > RISE_TIME && d < e.r + HEN_RADIUS && e.biteCooldown <= 0) {
+    // (A boss in the air, winding up a leap or a fan, does not bite by touch.)
+    if (!game.over && e.age > RISE_TIME && d < e.r + HEN_RADIUS && e.biteCooldown <= 0 && !(e.atk && e.state)) {
       e.biteCooldown = BITE_COOLDOWN;
       damageHen(e.dmg, e.x, e.y);
     }

@@ -8,7 +8,7 @@ import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
 import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier, lockSprite } from './sprites.js';
 import { hen } from './hen.js';
-import { enemies, shots, clouds, bossName, BOSSES, RISE_TIME, CLOUD_R, HOP_TIME } from './enemies.js';
+import { enemies, shots, clouds, bossName, BOSSES, LEAP, LEAP_WARN, LEAP_LOCK, RISE_TIME, CLOUD_R, HOP_TIME } from './enemies.js';
 import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
@@ -341,6 +341,13 @@ function drawWorld(ctx, camX, camY, alpha, time) {
   drawRings(ctx, camX, camY);
   drawClouds(ctx, camX, camY, time);
   drawHawkShadow(ctx, camX, camY, time);
+  // Where each leaping boss will land
+  for (const e of enemies) {
+    if (!e.alive || e.atk !== LEAP || e.state !== 1) continue;
+    const sx = Math.round(toIsoX(e.dirX, e.dirY) - camX);
+    const sy = Math.round(toIsoY(e.dirX, e.dirY) - camY);
+    drawShadowMark(ctx, sx, sy, e.reach * HALF_W * Math.SQRT2, 1 - e.timer / LEAP_WARN, e.timer < LEAP_LOCK ? e.timer / LEAP_LOCK : -1, time);
+  }
 
   // Painter's algorithm: back to front.
   drawList.sort((a, b) => a.depth - b.depth);
@@ -366,6 +373,8 @@ function drawWorld(ctx, camX, camY, alpha, time) {
     if (!e.flying) lift -= Math.round((1 - rise) * 4);
     // A hop at her: an arc through the air
     if (e.hop && e.state === 2) lift += Math.round(Math.sin((1 - Math.max(0, e.timer) / HOP_TIME) * Math.PI) * (e.boss ? 10 : 5));
+    // A boss winding up a leap rises into the air (its shadow is drawn where it will land)
+    if (e.atk === LEAP && e.state === 1) lift += Math.round((1 - Math.max(0, e.timer) / LEAP_WARN) * 40);
     ctx.globalAlpha = rise;
     // White: just hit, or blinking before it acts (a magpie about to throw)
     const white = e.flash > 0.1 || (e.warn && Math.floor(time * 16) % 2 === 0);
@@ -398,13 +407,13 @@ function drawWorld(ctx, camX, camY, alpha, time) {
   }
   if (game.started && !game.over) drawHealthBar(ctx, henPos.sx, henPos.sy);
 
-  // Magpie pebbles: grey stones flying a little above their shadows.
+  // Magpie pebbles (grey stones) and venom drops, flying a little above their shadows.
   for (const s of shots) {
     if (!s.alive) continue;
     const { sx, sy } = screenPos(s, alpha, camX, camY);
     ctx.fillStyle = PALETTE[0];
     ctx.fillRect(sx - 2, sy - 9, 4, 4);
-    ctx.fillStyle = PALETTE[16];
+    ctx.fillStyle = PALETTE[s.color];
     ctx.fillRect(sx - 1, sy - 8, 2, 2);
     ctx.fillStyle = PALETTE[13];
     ctx.fillRect(sx - 1, sy - 8, 1, 1);
@@ -455,21 +464,17 @@ function drawRings(ctx, camX, camY) {
 const hawkPos = (camX, camY) => [Math.round(toIsoX(hawk.x, hawk.y) - camX), Math.round(toIsoY(hawk.x, hawk.y) - camY)];
 
 /**
- * The hawk's shadow grows as it comes down; once it takes aim it holds still inside a blinking
- * red ring that closes in until the dive.
+ * A shadow at (sx, sy) that grows as something comes down on it (`near` 0..1); once it has taken
+ * aim (`left`: the share of the aim time left, or -1 before) a blinking red ring closes in on it.
  */
-function drawHawkShadow(ctx, camX, camY, time) {
-  if (!hawk.dives || hawk.t >= HAWK_STRIKE) return;
-  const [sx, sy] = hawkPos(camX, camY);
-  const rx = HAWK_R * HALF_W * Math.SQRT2;
-  const near = hawk.t / HAWK_STRIKE;
+function drawShadowMark(ctx, sx, sy, rx, near, left, time) {
   ctx.globalAlpha = 0.25 + 0.25 * near;
   ctx.fillStyle = PALETTE[0];
   ctx.beginPath();
   ctx.ellipse(sx, sy, rx * (0.5 + 0.5 * near), rx * (0.25 + 0.25 * near), 0, 0, Math.PI * 2);
   ctx.fill();
-  if (hawk.t > HAWK_HUNT) {
-    const k = 1 + (2 * (HAWK_STRIKE - hawk.t)) / (HAWK_STRIKE - HAWK_HUNT);
+  if (left >= 0) {
+    const k = 1 + 2 * left;
     ctx.globalAlpha = Math.floor(time * 16) % 2 ? 1 : 0.5;
     ctx.strokeStyle = PALETTE[9];
     ctx.beginPath();
@@ -477,6 +482,14 @@ function drawHawkShadow(ctx, camX, camY, time) {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+}
+
+/** The hawk's shadow hunts her, then holds still inside the closing ring until the dive. */
+function drawHawkShadow(ctx, camX, camY, time) {
+  if (!hawk.dives || hawk.t >= HAWK_STRIKE) return;
+  const [sx, sy] = hawkPos(camX, camY);
+  const left = hawk.t > HAWK_HUNT ? (HAWK_STRIKE - hawk.t) / (HAWK_STRIKE - HAWK_HUNT) : -1;
+  drawShadowMark(ctx, sx, sy, HAWK_R * HALF_W * Math.SQRT2, hawk.t / HAWK_STRIKE, left, time);
 }
 
 /** The hawk itself (a big brown crow): diving in from the upper left, climbing away to the right. */
