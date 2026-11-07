@@ -41,6 +41,8 @@ export const game = {
   hen: 0,
   /** Golden eggs this run has earned (already added to the profile). */
   eggs: 0,
+  /** When the last boss arrived: events wait a moment after it (events.js). */
+  bossAt: -99,
   /** True while the shop is open on the title screen. */
   shopOpen: false,
   /** Seconds the padlock of a locked hen keeps shaking after a try to start with her. */
@@ -92,6 +94,7 @@ export function resetGame() {
   game.shopOpen = false;
   game.lockShake = 0;
   game.eggBonus = 0;
+  game.bossAt = -99;
   game.bigChests = 0;
   game.frenzy = 0;
 }

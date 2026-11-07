@@ -18,6 +18,7 @@ import { buildOrder, weaponStat, weaponDamage, weaponCooldown, hatched } from '.
 import { enemies, hitEnemy, nearestEnemy, onScreen } from './enemies.js';
 import { gameRand } from './rng.js';
 import { game } from './state.js';
+import { STEP } from './loop.js';
 import { triggerShake } from './juice.js';
 import { spawnParticle, spawnRing, spawnBolt, spawnPopup } from './pool.js';
 import { sfxSplat, sfxGust, sfxThunder } from './sfx.js';
@@ -48,11 +49,14 @@ const KERNEL_LIFE = 0.75;
 const KERNEL_SPREAD = 0.12;
 const GUST_KNOCK = 12;
 const CHICK_ORBIT = 1.6; // tiles from the hen
-const CHICK_REACH = 0.3; // added to a predator's radius
+export const CHICK_REACH = 0.45; // added to a predator's radius: a chick nips what it visibly touches
 const CHICK_COOLDOWN = 0.5;
 const BOLT_SPLASH = 0.6;
-/** Extra reach (tiles) added to a predator's radius when a projectile tests it. */
-const HIT_PAD = 0.15;
+/**
+ * Extra reach (tiles) added to a predator's radius when a projectile tests it: a shot that crosses
+ * the predator's drawn body hits it (a rat's body is about 0.7 tiles wide on screen, its radius 0.32).
+ */
+export const HIT_PAD = 0.4;
 
 export const projectiles = Array.from({ length: MAX_PROJECTILES }, () => ({
   alive: false,
@@ -112,10 +116,12 @@ function randomTarget() {
 }
 
 function throwEgg(target, dmg) {
-  const dx = target.x - hen.x;
-  const dy = target.y - hen.y;
-  const d = Math.hypot(dx, dy) || 1;
-  const flight = Math.max(0.25, d / EGG_SPEED);
+  // Thrown to where the target will be when the egg lands, going on as it did in the last step
+  let dx = target.x - hen.x;
+  let dy = target.y - hen.y;
+  const flight = Math.max(0.25, (Math.hypot(dx, dy) || 1) / EGG_SPEED);
+  dx += ((target.x - target.prevX) / STEP) * flight;
+  dy += ((target.y - target.prevY) / STEP) * flight;
   spawnProjectile(EGG, dx / flight, dy / flight, flight, dmg, 1);
 }
 

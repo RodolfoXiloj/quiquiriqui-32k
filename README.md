@@ -109,6 +109,7 @@ Quiquiriqui is **hard by default**: it starts at NO MERCY, the hardest peril, wh
 - **Pressure from the first minute.** Foxes from 0:20, weasels from 1:00, and a ring of rats at 0:35.
 - **A quota on the meadow.** Each minute sets the fewest predators that must be around the hen; below it, more are born at once. Clearing the screen fast only brings more.
 - **Keeping on the move is not enough.** Newborn predators run 3% faster for each minute of the run (up to 60%): a snake outruns her from about 9:00 and a crow from about 17:00, while the swarm never does. From minute 3 on, every other chaser cuts her off, heading for where she is going instead of where she is (fully so by minute 8). A later day skips the quiet opening of the timeline: after a dawn the snakes and the full quota are out at once. And the events come closer together as the minutes pass, from every 45-75 s down to every 20-50 s.
+- **Shots hit what they visibly cross.** A projectile's hit reach covers a predator's drawn body, and eggs are thrown to where their target will be when they land. Events keep coming through a boss fight: a boss's arrival only holds them for ten seconds.
 - **Each predator grows at its own pace**, by the clock and never by her level, so every level-up is pure gain. Predators are born more often ahead of where she runs.
 
 | Predator | Role | Health (+ per minute) | Bite (+ per minute) | Speed | Knockback resist | Armor |

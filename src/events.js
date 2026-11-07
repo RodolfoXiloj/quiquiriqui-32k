@@ -1,6 +1,6 @@
 // Events: the first, at 0:50, is always SURROUNDED! (a ring of rats, to teach breaking out early);
 // then every 45 to 75 seconds a random short burst of danger, announced across the screen and
-// never the same twice in a row (none while a boss is out: it waits ten seconds).
+// never the same twice in a row (none in the BOSS_HOLD seconds after a boss arrives).
 // - HAWK!       a hawk's shadow hunts the hen, holds still, and the hawk dives there, four times;
 //               it hurts her if she is still under it, and any predator it lands on.
 // - STAMPEDE!   a band of rats runs straight across the meadow at twice their speed, then leaves.
@@ -30,6 +30,8 @@ export const EVENTS = ['HAWK!', 'STAMPEDE!', 'SURROUNDED!', 'FRENZY!'];
  * EVENT_GAP + 30 (at peril MORE EVENTS, every MORE_GAP to MORE_GAP + 20).
  */
 export const EVENT_FROM = 35;
+/** Seconds after a boss arrives with no event (bosses come by her level and may live for minutes). */
+export const BOSS_HOLD = 10;
 export const EVENT_GAP = 45;
 export const MORE_GAP = 30;
 /** The gap loses a second for each minute of the run, down to this floor (MORE EVENTS: 60% of it). */
@@ -155,10 +157,7 @@ export function updateEvents(dt) {
   updateHawk(dt);
   // A peaceful meadow schedules none (an event started by hand still plays out)
   if (settings.peaceful || game.time < nextEventAt) return;
-  if (enemies.some((e) => e.alive && e.boss)) {
-    nextEventAt = game.time + 10;
-    return;
-  }
+  if (game.time - game.bossAt < BOSS_HOLD) return;
   // Any event but the last one
   let kind = SURROUNDED;
   if (lastEvent >= 0) {

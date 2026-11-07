@@ -132,6 +132,7 @@ import {
   EVENT_GAP,
   MORE_GAP,
   GAP_FLOOR,
+  BOSS_HOLD,
   HAWK,
   STAMPEDE,
   SURROUNDED,
@@ -167,7 +168,7 @@ import {
   weaponDamage,
   weaponCooldown,
 } from '../src/items.js';
-import { projectiles, chicks, KERNEL } from '../src/weapons.js';
+import { projectiles, chicks, KERNEL, EGG, HIT_PAD, CHICK_REACH } from '../src/weapons.js';
 import { HEN_SPEED, HEN_RADIUS, START_HP, damageHen, syncHenStats } from '../src/hen.js';
 import { particles, popups, bolts, POPUP_LIFE } from '../src/pool.js';
 import { weatherAt, RUN_LENGTH } from '../src/weather.js';
@@ -565,6 +566,33 @@ describe('quiquiriqui at 5x: weapons, corn and cards', () => {
     play(0.6);
     assert.equal(game.kills, 1);
     assert.equal(countEnemies(), 0);
+  });
+
+  it('an egg is thrown to where its target will be, so a running rat is still hit', () => {
+    armedWith('egg');
+    stats.crit = 0;
+    const rat = sturdy(RAT, hen.x + 3, hen.y);
+    Object.assign(rat, { act: RUN, dirX: 0, dirY: 1, speed: 4, age: 1 }); // running across her view
+    let egg = null;
+    let landed = null;
+    for (let i = 0; i < 180 && !landed; i++) {
+      update(STEP);
+      const flying = projectiles.find((p) => p.alive && p.kind === EGG);
+      if (flying) egg = { x: flying.x, y: flying.y };
+      else if (egg) landed = { ...egg, ratX: rat.x, ratY: rat.y };
+    }
+    assert.ok(landed, 'no egg was thrown');
+    // It breaks on the rat (or lands on its spot): a tile and more behind it before the lead
+    const miss = Math.hypot(landed.x - landed.ratX, landed.y - landed.ratY);
+    assert.ok(miss < 1, `the egg broke ${miss.toFixed(2)} tiles from the running rat`);
+    assert.ok(rat.hp < rat.maxHp, 'the running rat was not hit');
+    resetRun();
+  });
+
+  it('a shot hits what it visibly crosses: the hit pad covers the drawn body of a predator', () => {
+    assert.ok(HIT_PAD >= 0.4, `HIT_PAD ${HIT_PAD}`);
+    assert.ok(ENEMY_TYPES[RAT].r + HIT_PAD >= 0.7, 'a rat is about 0.7 tiles wide on screen');
+    assert.ok(CHICK_REACH >= 0.45, `CHICK_REACH ${CHICK_REACH}`);
   });
 
   it('most kills drop corn', () => {
@@ -2108,6 +2136,35 @@ describe('quiquiriqui at 5x: random events', () => {
     buildOrder.length = 0;
   }
   const alive = () => enemies.filter((e) => e.alive);
+
+  it('events wait ten seconds after a boss arrives, then come as usual while it lives', () => {
+    resetRun({ peaceful: false });
+    start();
+    hen.hp = hen.maxHp = 1e6;
+    buildOrder.length = 0;
+    const seen = [];
+    const run = (until) => {
+      while (game.time < until) {
+        game.cards = [];
+        game.reward = [];
+        update(STEP);
+        if (game.bannerTime === 2.5 && EVENTS.includes(game.banner)) seen.push(game.time);
+      }
+    };
+    game.time = EVENT_FROM - 1;
+    const king = spawnBoss(0); // just before the first event is due
+    king.hp = king.maxHp = 1e9;
+    assert.equal(game.bossAt, game.time);
+    run(EVENT_FROM + BOSS_HOLD - 2);
+    assert.equal(seen.length, 0, 'an event came right after the boss');
+    run(EVENT_FROM + BOSS_HOLD + 1);
+    assert.equal(seen.length, 1, 'no event once the hold passed');
+    // The boss lives on; the next event still comes at its usual hour
+    run(seen[0] + EVENT_GAP + 31);
+    assert.ok(king.alive, 'the boss fell');
+    assert.equal(seen.length, 2, `${seen.length} events with a boss alive: ${seen.map((t) => t.toFixed(0)).join(' ')}`);
+    resetRun();
+  });
 
   it('deep into a run the events come every 20 to 50 s, never closer', () => {
     eventRun(true);

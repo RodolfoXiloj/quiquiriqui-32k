@@ -553,6 +553,7 @@ export function spawnBoss(id, share = 1) {
   e.reach = b.reach || 0;
   if (b.act) e.act = b.act;
   e.timer = BOSS_FIRST;
+  game.bossAt = game.time;
   return e;
 }
 
