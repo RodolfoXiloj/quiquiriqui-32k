@@ -8,7 +8,7 @@ import { toIsoX, toIsoY, depthKey, HALF_W, HALF_H } from './iso.js';
 import { drawGround } from './ground.js';
 import { henSprites, enemySprites, cornSprites, eggSprites, chickSprite, iconSprites, pickupSprites, outfitTier, lockSprite } from './sprites.js';
 import { hen } from './hen.js';
-import { enemies, shots, clouds, bossName, RISE_TIME, CLOUD_R, HOP_TIME } from './enemies.js';
+import { enemies, shots, clouds, bossName, BOSSES, RISE_TIME, CLOUD_R, HOP_TIME } from './enemies.js';
 import { pickups, CHEST } from './pickups.js';
 import { corn, cornTier } from './corn.js';
 import { projectiles, chicks, EGG, KERNEL } from './weapons.js';
@@ -381,6 +381,17 @@ function drawWorld(ctx, camX, camY, alpha, time) {
       ctx.stroke();
       ctx.globalAlpha = rise;
       sprite = tinted(sprite, color, e.elite > 1 ? 0.6 : 0.55);
+    }
+    if (e.boss) {
+      // A boss: tinted its own color, with a crown of that color over its head
+      const color = BOSSES[e.bossId].color;
+      sprite = tinted(sprite, color, 0.45);
+      const top = d.sy - lift - (sprite.footY + 1) * 2 - 4;
+      ctx.fillStyle = PALETTE[0];
+      ctx.fillRect(d.sx - 4, top - 1, 9, 5);
+      ctx.fillStyle = PALETTE[color];
+      for (const px of [-3, 0, 3]) ctx.fillRect(d.sx + px, top, 1, 1);
+      ctx.fillRect(d.sx - 3, top + 1, 7, 2);
     }
     drawSprite(ctx, sprite, d.sx + shake, d.sy - lift, e.facing, white, false, e.boss ? 2 : e.elite ? 1.5 : 1);
     ctx.globalAlpha = 1;

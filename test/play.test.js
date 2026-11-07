@@ -98,6 +98,9 @@ import {
   SPAWN_MAX,
   DAY_HP,
   bossName,
+  BOSSES,
+  BOSS_EVERY,
+  BOSS_PAIR_SHARE,
   spawnEnemy,
   spawnBoss,
   hitEnemy,
@@ -1069,15 +1072,61 @@ describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
     resetRun();
   });
 
-  it('bosses come on minutes 1, 3, 4, 5, 7 and 8, and three at once on minute 9', () => {
-    const bosses = TIMELINE.filter((event) => event.boss !== undefined).map((event) => event.at);
-    assert.deepEqual(bosses, [60, 180, 240, 300, 420, 480, 540, 540, 540]);
+  /** Plays a run with waves, a tough unarmed hen and her level pinned at `level`, for `seconds`. */
+  function playAtLevel(peril, level, seconds) {
+    resetRun({ peaceful: false, peril });
+    start();
+    buildOrder.length = 0;
+    const until = game.time + seconds;
+    while (game.time < until) {
+      hen.hp = hen.maxHp = 1e6;
+      game.level = level;
+      game.xp = 0;
+      game.cards = [];
+      game.reward = [];
+      update(STEP);
+    }
+  }
+  const bossesOut = () => enemies.filter((e) => e.alive && e.boss);
+
+  it('bosses come by her level, not the clock: the ten of them, one at every tenth level, each with its name and a banner', () => {
+    assert.equal(BOSSES.length, 10);
+    assert.ok(!TIMELINE.some((event) => event.boss !== undefined), 'a boss on the timeline');
+    playAtLevel(0, 9, 61);
+    assert.equal(bossesOut().length, 0, 'a boss came by the clock, or before level 10');
+    for (let i = 0; i < BOSSES.length; i++) {
+      for (const e of enemies) e.alive = false;
+      game.level = (i + 1) * BOSS_EVERY;
+      update(STEP);
+      const out = bossesOut();
+      assert.equal(out.length, 1, `level ${game.level}: ${out.length} bosses`);
+      assert.equal(bossName(out[0]), BOSSES[i].name);
+      assert.equal(out[0].kind, BOSSES[i].kind);
+      assert.equal(game.banner, `${BOSSES[i].name}!`);
+    }
+    assert.equal(bossName(bossesOut()[0]), 'MIDNIGHT');
+    resetRun();
+  });
+
+  it('a boss held by the cards comes once they close; a level skipped by a chest still brings its boss', () => {
+    playAtLevel(0, 9, 1);
+    game.level = 10;
+    game.cards = [{ id: 'egg', level: 1 }];
+    game.cardLock = 0;
+    update(STEP);
+    assert.equal(bossesOut().length, 0, 'a boss came while the cards were open');
+    game.cards = [];
+    game.level = 21;
+    update(STEP);
+    assert.deepEqual(bossesOut().map(bossName).sort(), ['KING RAT', 'OLD RED']);
+    resetRun();
   });
 
   it('a boss is a big, tough version of its kind and drops a chest', () => {
     start();
-    const boss = spawnBoss(FOX);
+    const boss = spawnBoss(1); // OLD RED, a fox
     const type = ENEMY_TYPES[FOX];
+    assert.equal(bossName(boss), 'OLD RED');
     assert.equal(boss.boss, true);
     assert.equal(boss.maxHp, type.hp * BOSS_HP);
     assert.equal(boss.r, type.r * BOSS_SIZE);
@@ -1092,7 +1141,7 @@ describe('quiquiriqui at 5x: bosses, chests, crates and prizes', () => {
     start();
     for (let i = 0; i < MAX_ENEMIES; i++) spawnEnemy(RAT, 20 + i * 0.01, 0);
     assert.equal(countEnemies(), MAX_ENEMIES);
-    assert.ok(spawnBoss(BADGER), 'the boss did not fit');
+    assert.ok(spawnBoss(4), 'the boss did not fit');
   });
 
   it('a chest gives one or three upgrades at once, and the run waits until a key', () => {
@@ -1245,17 +1294,18 @@ describe('quiquiriqui at 5x: endless days', () => {
     assert.equal(rat.maxHp, Math.floor((type.hp + type.hpMin * minutes) * (1 + DAY_HP)), 'day 2 should add half their health');
   });
 
-  it('a new day replays the timeline, bosses included, with more predators', () => {
+  it('a new day replays the timeline with more predators', () => {
     resetRun({ peaceful: false });
     reachDawn();
+    buildOrder.length = 0; // no weapons: what is born stays
     for (const e of enemies) e.alive = false;
     while (game.time < RUN_LENGTH + 62) {
       hen.hp = hen.maxHp = 1e6;
+      game.cards = [];
+      game.reward = [];
       update(STEP);
-      if (game.cards.length && game.cardLock <= 0) tapKey('Digit1');
-      if (game.reward.length && game.rewardLock <= 0) tapKey('Space');
     }
-    assert.ok(enemies.some((e) => e.alive && e.boss), 'no boss on minute 1 of day 2');
+    assert.ok(countEnemies() >= 60, `only ${countEnemies()} predators a minute into day 2`);
   });
 
   it('every later dawn starts the next day without stopping the run', () => {
@@ -1984,21 +2034,49 @@ describe('quiquiriqui at 5x: peril rules', () => {
     resetRun();
   });
 
-  it(`peril ${TWO_BOSSES}, TWO BOSSES: each boss comes with another`, () => {
-    const bosses = (peril) => {
+  it(`peril ${TWO_BOSSES}, TWO BOSSES: each boss comes with the one before it (two of the first at level 10), each with less health`, () => {
+    const atLevel = (peril, level) => {
       resetRun({ peaceful: false, peril });
       start();
       buildOrder.length = 0;
-      while (game.time < 61) {
-        hen.hp = hen.maxHp = 1e6;
-        game.cards = [];
-        game.reward = [];
-        update(STEP);
-      }
-      return enemies.filter((e) => e.alive && e.boss).length;
+      hen.hp = hen.maxHp = 1e6;
+      game.level = level;
+      update(STEP);
+      return enemies.filter((e) => e.alive && e.boss);
     };
-    assert.equal(bosses(TWO_BOSSES - 1), 1);
-    assert.equal(bosses(TWO_BOSSES), 2);
+    assert.deepEqual(atLevel(TWO_BOSSES - 1, 10).map(bossName), ['KING RAT']);
+    const pair = atLevel(TWO_BOSSES, 10);
+    assert.deepEqual(pair.map(bossName), ['KING RAT', 'KING RAT']);
+    const full = spawnBoss(0).maxHp; // one on its own, in the same run
+    for (const b of pair) assert.equal(b.maxHp, Math.floor(full * BOSS_PAIR_SHARE), 'a paired boss has full health');
+    // At level 20 (same run), OLD RED comes with KING RAT
+    for (const e of enemies) e.alive = false;
+    game.level = 20;
+    update(STEP);
+    assert.deepEqual(enemies.filter((e) => e.alive && e.boss).map(bossName).sort(), ['KING RAT', 'OLD RED']);
+    resetRun();
+  });
+
+  it(`peril ${NO_MERCY}: halfway between bosses (levels 15, 25...) one she has met comes back`, () => {
+    resetRun({ peaceful: false, peril: NO_MERCY });
+    start();
+    buildOrder.length = 0;
+    hen.hp = hen.maxHp = 1e6;
+    const out = () => enemies.filter((e) => e.alive && e.boss);
+    const clear = () => enemies.forEach((e) => (e.alive = false));
+    game.level = 5;
+    update(STEP);
+    assert.equal(out().length, 0, 'a boss before any has come');
+    for (const [level, names] of [[10, ['KING RAT', 'KING RAT']], [15, ['KING RAT']], [20, ['KING RAT', 'OLD RED']]]) {
+      game.level = level;
+      update(STEP);
+      assert.deepEqual(out().map(bossName).sort(), names, `level ${level}`);
+      clear();
+    }
+    game.level = 25;
+    update(STEP);
+    assert.equal(out().length, 1, `${out().length} bosses at level 25`);
+    assert.ok(['KING RAT', 'OLD RED'].includes(bossName(out()[0])), bossName(out()[0]));
     resetRun();
   });
 
@@ -2552,9 +2630,9 @@ describe('quiquiriqui: text and layout', () => {
     Object.assign(profile, saved);
     texts.push(gameOverLine(3599.9, 98765, 123), 'BEST 12:34   +99 GOLDEN EGGS', ...PERIL_NAMES.map((name) => `${name} DAY 12  59:59`));
     texts.push('+250 HP', '+300', '-120', 'MISS', '850/1000', '0123456789', 'BOON', 'NEW!', 'LV 99', 'KILLS 9999', 'SHOP', 'B: BACK');
-    for (let kind = 0; kind < ENEMY_TYPES.length; kind++) texts.push(bossName({ kind }));
-    // Banners: the events and the rainbow elites, drawn at scale 3
-    const banners = [...EVENTS, ...ENEMY_TYPES.map((type) => `RAINBOW ${type.name.toUpperCase()}!`)];
+    for (const b of BOSSES) texts.push(b.name);
+    // Banners: the events, the rainbow elites and the bosses, drawn at scale 3
+    const banners = [...EVENTS, ...ENEMY_TYPES.map((type) => `RAINBOW ${type.name.toUpperCase()}!`), ...BOSSES.map((b) => `${b.name}!`)];
     for (const banner of banners) assert.ok(textWidth(banner, 3) <= WIDTH - 16, `${banner} is too wide`);
     texts.push(...banners, `+${ELITE_EGGS[0]} EGGS`, `+${ELITE_EGGS[1]} EGGS`);
     for (const text of texts) {

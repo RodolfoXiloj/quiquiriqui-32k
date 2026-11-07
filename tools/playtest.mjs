@@ -477,6 +477,12 @@ async function dayScenarios(page, base) {
     await page.waitFor('window.__qq.snapshot().bosses === 1', 3000);
     await sleep(300);
     await page.screenshot('17-boss.png');
+    // All ten, around her, to look at their colors and crowns
+    await page.evaluate('window.__qq.cheat.bosses()');
+    await page.waitFor('window.__qq.snapshot().bosses === 11', 3000);
+    await sleep(300);
+    await page.screenshot('17-bosses.png');
+    await page.evaluate('window.__qq.cheat.clear()'); // unkillable bosses would draw every shot from here on
     await page.evaluate('window.__qq.cheat.prize(0)');
     await page.waitFor('window.__qq.snapshot().reward.length > 0', 3000);
     await sleep(200);

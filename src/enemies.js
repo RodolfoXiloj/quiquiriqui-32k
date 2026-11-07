@@ -2,7 +2,8 @@
 // other apart so a horde reads as a crowd instead of one blob, and bite on contact (from ROOSTER,
 // one close by now and then hops at her too). Hits flash
 // them, knock them back and float a damage number; a kill drops corn most of the time.
-// Bosses are big versions of a kind and drop a chest. Crates are props in the same pool: they
+// Bosses (`BOSSES`, one at every tenth level, waves.js) are big, tinted, named versions of a kind
+// and drop a chest. Crates are props in the same pool: they
 // stand still, never bite, are not kills, and break into a prize. Some kinds act on their own
 // (`act`): the magpie keeps its distance and throws pebbles (`shots`); the weasel stops, blinks
 // and lunges in a straight line. A skunk leaves a stink cloud where it falls (`clouds`). Any
@@ -127,6 +128,26 @@ const SHOT_SPEED = 5;
 export const SHOT_LIFE = 3;
 const SHOT_R = 0.2;
 
+/**
+ * The ten bosses, one at every BOSS_EVERY levels of hers (waves.js): the kind it is a big version
+ * of, its name on the boss bar, and its tint (a palette index). The last one, at level 100, is
+ * the final boss.
+ */
+export const BOSS_EVERY = 10;
+export const BOSSES = [
+  { kind: RAT, name: 'KING RAT', color: 10 },
+  { kind: FOX, name: 'OLD RED', color: 9 },
+  { kind: SNAKE, name: 'THE COIL', color: 11 },
+  { kind: CROW, name: 'CROW MOTHER', color: 18 },
+  { kind: BADGER, name: 'IRON BADGER', color: 16 },
+  { kind: MAGPIE, name: 'MAGPIE BARON', color: 12 },
+  { kind: WEASEL, name: 'SHADOW WEASEL', color: 15 },
+  { kind: SKUNK, name: 'STINK DUKE', color: 14 },
+  { kind: FOX, name: 'PACK LEADER', color: 16 },
+  { kind: FOX, name: 'MIDNIGHT', color: 15 },
+];
+/** When two bosses come at once (TWO BOSSES), each has this share of a boss's health. */
+export const BOSS_PAIR_SHARE = 0.75;
 /** Bosses: this many times the health, radius and bite of their kind, and armor on top. */
 export const BOSS_HP = 10;
 export const BOSS_SIZE = 2;
@@ -174,6 +195,8 @@ export const enemies = Array.from({ length: MAX_ENEMIES }, () => ({
   dmg: 0,
   flying: false,
   boss: false,
+  /** Which of BOSSES it is (when `boss`). */
+  bossId: 0,
   /** Crates: still, harmless, not counted as kills. */
   prop: false,
   /** Seconds since it appeared. */
@@ -333,6 +356,7 @@ export function spawnEnemy(kind, x, y) {
     armor: type.armor || 0,
     flying: !!type.flying,
     boss: false,
+    bossId: 0,
     prop: !!type.prop,
     age: 0,
     flash: 0,
@@ -363,15 +387,17 @@ export function makeElite(e, rainbow) {
 }
 
 /**
- * Spawns a boss of `kind` just off-screen. If the pool is full, the farthest regular predator
- * makes room: a boss always arrives.
+ * Spawns boss `id` (a BOSSES index) just off-screen: a big version of its kind (×BOSS_HP health,
+ * ×BOSS_SIZE radius, ×BOSS_BITE bite, armor), with `share` of that health when two come at once.
+ * It always finds room.
  */
-export function spawnBoss(kind) {
+export function spawnBoss(id, share = 1) {
   if (!enemies.some((e) => !e.alive)) makeRoom();
-  const e = spawnEnemy(kind);
+  const e = spawnEnemy(BOSSES[id].kind);
   if (!e) return null;
   e.boss = true;
-  e.hp = e.maxHp = e.hp * BOSS_HP;
+  e.bossId = id;
+  e.hp = e.maxHp = Math.floor(e.hp * BOSS_HP * share);
   e.r *= BOSS_SIZE;
   e.dmg *= BOSS_BITE;
   e.armor += BOSS_ARMOR;
@@ -381,7 +407,7 @@ export function spawnBoss(kind) {
 
 /** The on-screen name of a boss. */
 export function bossName(e) {
-  return `BIG ${ENEMY_TYPES[e.kind].name.toUpperCase()}`;
+  return BOSSES[e.bossId].name;
 }
 
 export function clearEnemies() {

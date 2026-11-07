@@ -18,7 +18,7 @@ import { game, settings, formatClock, xpToNext } from '/state.js';
 import { hen, damageHen, syncHenStats } from '/hen.js';
 import { holdKey } from '/input.js';
 import { toIsoX, toIsoY } from '/iso.js';
-import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, CRATE, shots, clouds, CLOUD_R, makeElite } from '/enemies.js';
+import { enemies, spawnEnemy, spawnBoss, countEnemies, ENEMY_TYPES, BOSSES, CRATE, shots, clouds, CLOUD_R, makeElite } from '/enemies.js';
 import { hawk, startEvent, EVENTS, HAWK_R, HAWK_HUNT, HAWK_STRIKE } from '/events.js';
 import { corn } from '/corn.js';
 import { pickups, spawnPickup } from '/pickups.js';
@@ -138,9 +138,10 @@ window.__qq = {
       const index = Math.max(0, ENEMY_TYPES.findIndex((type) => type.name === kind));
       for (let i = 0; i < n; i++) spawnEnemy(index);
     },
-    /** Spawns a boss of `kind` just off-screen. */
-    boss(kind = 'fox') {
-      spawnBoss(Math.max(0, ENEMY_TYPES.findIndex((type) => type.name === kind)));
+    /** Spawns a boss just off-screen: by BOSSES index, by its name ('OLD RED') or by its kind ('fox'). */
+    boss(which = 1) {
+      const id = typeof which === 'number' ? which : BOSSES.findIndex((b) => b.name === which.toUpperCase() || ENEMY_TYPES[b.kind].name === which);
+      spawnBoss(Math.max(0, id));
     },
     /** Starts a random event now: 'hawk', 'stampede', 'surrounded' or 'frenzy'. */
     event(name = 'hawk') {
@@ -158,6 +159,16 @@ window.__qq = {
     /** Drops prize `kind` (0 chest, 1 magnet, 2 bomb, 3 food) under the hen, or (dx, dy) tiles away. */
     prize(kind = 0, dx = 0, dy = 0) {
       spawnPickup(kind, hen.x + dx, hen.y + dy);
+    },
+    /** All ten bosses in a ring around the hen, standing still and unkillable (to look at them). */
+    bosses() {
+      BOSSES.forEach((_, i) => {
+        const e = spawnBoss(i);
+        if (e) {
+          const a = (i / BOSSES.length) * Math.PI * 2;
+          Object.assign(e, { x: hen.x + Math.cos(a) * 7.5, y: hen.y + Math.sin(a) * 7.5, speed: 0, hp: 1e9, maxHp: 1e9, timer: 1e9, age: 1 });
+        }
+      });
     },
     /** Spawns one predator of each kind in a row in front of the hen, standing still. */
     lineup() {

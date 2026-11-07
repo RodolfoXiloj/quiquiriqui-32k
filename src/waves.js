@@ -2,15 +2,16 @@
 // `count` predators spread evenly over `over` seconds, picking each one's kind at random from
 // `kinds` (repeat a kind to make it more common). Snakes join at 3:00, crows at 5:00 and
 // badgers at 7:00; weasels, which lunge, at 2:00, magpies, which keep away and throw pebbles,
-// at 4:00, and skunks, which leave a stink cloud, at 6:00. The last minute brings everything. Events with `boss` send one boss of that
-// kind. A crate appears every 20 seconds near the edge of the screen. In endless play the timeline
-// starts over each day, with half as many predators again per day gone by.
+// at 4:00, and skunks, which leave a stink cloud, at 6:00. The last minute brings everything. A
+// crate appears every 20 seconds near the edge of the screen. In endless play the timeline starts
+// over each day, with half as many predators again per day gone by. Bosses come by her level, not
+// the clock: one of `BOSSES` at every tenth level (see `levelBosses`).
 import { gameRand } from './rng.js';
 import { game, settings, showBanner } from './state.js';
 import { RUN_LENGTH } from './weather.js';
 import { ELITES_X2, TWO_BOSSES, NO_MERCY } from './profile.js';
 import { hen } from './hen.js';
-import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, SKUNK, ENEMY_TYPES, enemies, spawnEnemy, spawnBoss, spawnPoint, makeElite, makeRoom, SPAWN_MAX } from './enemies.js';
+import { RAT, FOX, SNAKE, CROW, BADGER, CRATE, MAGPIE, WEASEL, SKUNK, ENEMY_TYPES, BOSSES, BOSS_EVERY, BOSS_PAIR_SHARE, enemies, spawnEnemy, spawnBoss, spawnPoint, makeElite, makeRoom, SPAWN_MAX } from './enemies.js';
 
 /** Seconds between two crates. */
 export const CRATE_EVERY = 20;
@@ -44,34 +45,25 @@ export const TIMELINE = [
   { at: 30, kinds: [RAT], count: 30, over: 30 },
   { at: 20, kinds: [FOX], count: 12, over: 40 },
   { at: 60, kinds: [WEASEL], count: 8, over: 60 },
-  { at: 60, boss: FOX },
   { at: 60, kinds: [RAT, RAT, FOX], count: 80, over: 60 },
   { at: 120, kinds: [RAT, FOX], count: 120, over: 60 },
   { at: 120, kinds: [WEASEL], count: 12, over: 60 },
-  { at: 180, boss: RAT },
   { at: 180, kinds: [RAT, FOX, SNAKE, SNAKE], count: 140, over: 60 },
   { at: 180, kinds: [WEASEL], count: 14, over: 60 },
-  { at: 240, boss: SNAKE },
   { at: 240, kinds: [FOX, SNAKE, RAT], count: 160, over: 60 },
   { at: 240, kinds: [MAGPIE], count: 8, over: 60 },
-  { at: 300, boss: CROW },
   { at: 300, kinds: [CROW, CROW, RAT, FOX], count: 170, over: 60 },
   { at: 300, kinds: [MAGPIE], count: 10, over: 60 },
   { at: 300, kinds: [WEASEL], count: 16, over: 60 },
   { at: 360, kinds: [CROW, SNAKE, FOX], count: 190, over: 60 },
   { at: 360, kinds: [MAGPIE], count: 12, over: 60 },
   { at: 360, kinds: [SKUNK], count: 12, over: 60 },
-  { at: 420, boss: BADGER },
   { at: 420, kinds: [BADGER, RAT, RAT, CROW], count: 200, over: 60 },
   { at: 420, kinds: [WEASEL], count: 18, over: 60 },
   { at: 420, kinds: [SKUNK], count: 14, over: 60 },
-  { at: 480, boss: FOX },
   { at: 480, kinds: [BADGER, FOX, SNAKE, CROW], count: 240, over: 60 },
   { at: 480, kinds: [MAGPIE], count: 14, over: 60 },
   { at: 480, kinds: [SKUNK], count: 16, over: 60 },
-  { at: 540, boss: SNAKE },
-  { at: 540, boss: CROW },
-  { at: 540, boss: BADGER },
   { at: 540, kinds: [RAT, FOX, SNAKE, CROW, BADGER], count: 300, over: 60 },
   { at: 540, kinds: [MAGPIE], count: 16, over: 60 },
   { at: 540, kinds: [WEASEL], count: 20, over: 60 },
@@ -87,6 +79,8 @@ let quotaTimer = 0;
 let commonKinds = [RAT];
 /** The day the timeline is playing; a new day starts it over. */
 let waveDay = 1;
+/** Her level at which the next boss comes (every BOSS_EVERY levels; at NO MERCY also halfway). */
+let nextBossAt = BOSS_EVERY;
 
 export function resetWaves() {
   spawners.length = 0;
@@ -96,6 +90,37 @@ export function resetWaves() {
   quotaTimer = 0;
   commonKinds = [RAT];
   waveDay = 1;
+  nextBossAt = BOSS_EVERY;
+}
+
+/**
+ * Bosses by her level: at every BOSS_EVERY levels the next of BOSSES comes, with a banner. From
+ * TWO BOSSES the boss before it comes along (two of the first at level 10), each with
+ * BOSS_PAIR_SHARE of the health. At NO MERCY, halfway between (levels 15, 25...) a boss she has
+ * already met comes back. Called only while the run moves, so a level-up's cards hold them.
+ */
+function levelBosses() {
+  while (game.level >= nextBossAt) {
+    const at = nextBossAt;
+    nextBossAt += game.peril >= NO_MERCY ? BOSS_EVERY / 2 : BOSS_EVERY;
+    const seen = Math.floor(at / BOSS_EVERY); // how many bosses have come
+    let id;
+    if (at % BOSS_EVERY) {
+      if (!seen) continue;
+      id = Math.floor(gameRand() * seen);
+    } else {
+      if (seen > BOSSES.length) continue;
+      id = seen - 1;
+      if (game.peril >= TWO_BOSSES) {
+        spawnBoss(id, BOSS_PAIR_SHARE);
+        spawnBoss(Math.max(0, id - 1), BOSS_PAIR_SHARE);
+        showBanner(`${BOSSES[id].name}!`);
+        continue;
+      }
+    }
+    spawnBoss(id);
+    showBanner(`${BOSSES[id].name}!`);
+  }
 }
 
 /** A crate just inside the edge of the screen. */
@@ -151,15 +176,9 @@ export function updateWaves(dt) {
     waveDay = game.day;
     nextEvent = 0;
   }
+  levelBosses();
   const local = game.time - RUN_LENGTH * (game.day - 1);
-  while (nextEvent < TIMELINE.length && local >= TIMELINE[nextEvent].at) {
-    const event = TIMELINE[nextEvent++];
-    if (event.boss !== undefined) {
-      spawnBoss(event.boss);
-      if (game.peril >= TWO_BOSSES) spawnBoss(event.boss);
-    }
-    else startSpawner(event);
-  }
+  while (nextEvent < TIMELINE.length && local >= TIMELINE[nextEvent].at) startSpawner(TIMELINE[nextEvent++]);
   if (game.time >= nextCrateAt) {
     nextCrateAt += CRATE_EVERY;
     spawnCrate();
